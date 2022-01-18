@@ -25,7 +25,7 @@ struct SummonedChampion
 
     star : u8,
     items : [u8; 3],
-
+    location : [u8; 2]
 }
 
 struct Player
@@ -36,7 +36,7 @@ struct Player
     level : u8,
     xp : u8,
 
-    bench : 
+    champions : [u8 ; 25],
 
 }
 
