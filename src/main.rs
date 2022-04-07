@@ -33,6 +33,7 @@ struct SummonedChampion
 	location : [u8 ; 4],
 	health : u16,
 	sm : u8,
+	dc : u8, //dodge chance
 	mc : u8,
 	ar : u8,
 	mr : u8,
@@ -40,8 +41,45 @@ struct SummonedChampion
 	aS : u8,
 	ra : u8,
 	aID : u8,
+	items : [u8 ; 3], //item abilities 
+	tIDs : [[u8; 2] ; 3], //trait abilities
+}
 
-	tIDs : [u8 ; 3],
+impl SummonedChampion 
+{
+	//Method for converting PlacedChampion into SummonChampion
+	fn new(placedChampion : &PlacedChampion, ofChampion : &Champion) -> SummonedChampion
+	{
+		let starLevel = placedChampion.star as usize;
+		/*nLocation = [placedChampion.location[0], placedChampion.location[1], 0, 0];
+		
+		nHealth = ofChampion.hp[starLevel];
+		nStartingMana = ofChampion.sm;
+		nDodgeChance = 0;
+		nManaCost = ofChampion.mc;
+		nArmour = ofChampion.ar;
+		nMagicResist = ofChampion.mr;
+		nAttackDamage = ofChampion.ad[starLevel];
+		nAttackSpeed = ofChampion.aS;
+		nRange = ofChampion.ra;
+		nAbilityID = ofChampion.aID;
+		nItems = placedChampion.items;
+		nTraits = ofChampion.traits;*/
+		SummonedChampion { location: [placedChampion.location[0], placedChampion.location[1], 0, 0],
+						   health: ofChampion.hp[starLevel], 
+						   sm: ofChampion.sm, 
+						   dc: 0, 
+						   mc: ofChampion.mc, 
+						   ar: ofChampion.ar, 
+						   mr: ofChampion.mr, 
+						   ad: ofChampion.ad[starLevel], 
+						   aS: ofChampion.aS, 
+						   ra: ofChampion.ra, 
+						   aID: ofChampion.aID, 
+						   items: placedChampion.items, 
+						   tIDs: [[0, 0], [0, 0], [0, 0]]
+						}
+	}
 }
 
 
@@ -59,11 +97,15 @@ struct Player
 	augments : [u8 ; 3] //augments
 }
 
-struct board
+struct Board
 {
 	playerOneChampions : [PlacedChampion ; 12],
 	playerTwoChampions : [PlacedChampion ; 12],
+	champMS : u8, //champ movement speed in tiles per second
+	timeUnit : u8, //time unit for board in centiseconds (1/100 of a second)
 }
+
+
 
 
 
