@@ -1,4 +1,4 @@
-#![allow(non_snake_case)] //Allows snake case because I like it.
+#![allow(non_snake_case)] //allows snake case because.
 
 struct Champion
 {
@@ -11,7 +11,7 @@ struct Champion
     ar : u8, //armor
     mr : u8, //magic resist
     ad : [u8; 3], //attack damage (scales with star level)
-    aS : u8, //attack speed
+    aS : u8, //attack speed, divide by ten
     ra : u8, //auto attack range
     
     aID : u8, //ability ID
@@ -19,7 +19,7 @@ struct Champion
     traits : [u8 ; 3], //traits
 }
 
-struct SummonedChampion
+struct PlacedChampion
 {
     id : u8, //champ id
 
@@ -27,6 +27,23 @@ struct SummonedChampion
     items : [u8; 3], //items given
     location : [u8; 2] //location on board
 }
+
+struct SummonedChampion
+{
+	location : [u8 ; 4],
+	health : u16,
+	sm : u8,
+	mc : u8,
+	ar : u8,
+	mr : u8,
+	ad : u8,
+	aS : u8,
+	ra : u8,
+	aID : u8,
+
+	tIDs : [u8 ; 3],
+}
+
 
 struct Player
 {
@@ -39,8 +56,18 @@ struct Player
 
 
     champions : [u8 ; 25], //all player champions
-
+	augments : [u8 ; 3] //augments
 }
+
+struct board
+{
+	playerOneChampions : [PlacedChampion ; 12],
+	playerTwoChampions : [PlacedChampion ; 12],
+}
+
+
+
+
 
 fn main() {
     let champions = [Champion{id : 0, cost : 1, hp : [700, 1260, 2268], sm : 0, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 7, ra : 3, aID : 0, traits : [1, 2, 0]}, 
