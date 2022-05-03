@@ -21,7 +21,7 @@ struct Champion
 
 struct PlacedChampion
 {
-    id : u8, //champ id
+    id : usize, //champ id
 
     star : usize, //star level
     items : [u8; 3], //items given
@@ -108,9 +108,15 @@ struct Board
 
 impl Board
 {
-	fn new(p1PlacedChamps : [PlacedChampion ; 12], p2PlacedChamps : [PlacedChampion ; 12], champMS : u8, timeUnit : u8)
+	fn new(p1PlacedChamps : &[PlacedChampion/* ; 12 */], p2PlacedChamps : &[PlacedChampion/* ; 12*/], champMS : u8, timeUnit : u8, champions : &[Champion])
 	{
-		
+		/*P1 and P2 placed champs to convert into Summoned Champs for  */
+		let mut i : u8 = 0;
+		let mut p1Champions : [SummonedChampion ; 12];
+		for p1Champion in p1PlacedChamps//place for optimisation
+		{
+			p1Champions[i] = SummonedChampion::new(&p1Champion, &champions[p1Champion.id])
+		}
 	}
 	fn StartBattle(self : Board)
 	{
