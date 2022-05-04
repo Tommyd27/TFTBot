@@ -1,5 +1,5 @@
 #![allow(non_snake_case)] //allows snake case because.
-
+use std::{mem::MaybeUninit, iter::Sum};
 struct Champion
 {
     id : u8, //champ id
@@ -80,6 +80,40 @@ impl SummonedChampion
 						   tIDs: [[0, 0], [0, 0], [0, 0]]
 						}
 	}
+	fn empty() -> SummonedChampion //Create an empty champion for initialization
+	{
+		SummonedChampion { location: [0, 0, 0, 0],
+			health: 0, 
+			sm: 0, 
+			dc: 0, 
+			mc: 0, 
+			ar: 0, 
+			mr: 0, 
+			ad: 0, 
+			aS: 0, 
+			ra: 0, 
+			aID: 256, 
+			items: [0, 0, 0], 
+			tIDs: [[0, 0], [0, 0], [0, 0]]
+		 }
+	}
+	fn Copy(summonedChamp : SummonedChampion) -> SummonedChampion
+	{
+		SummonedChampion { location: summonedChamp.location, 
+						   health: summonedChamp.health, 
+						   sm: summonedChamp.sm, 
+						   dc: summonedChamp.dc, 
+						   mc: summonedChamp.dc, 
+						   ar: summonedChamp.ar, 
+						   mr: summonedChamp.mr, 
+						   ad: summonedChamp.ad, 
+						   aS: summonedChamp.aS, 
+						   ra: summonedChamp.ra, 
+						   aID: summonedChamp.aID, 
+						   items: summonedChamp.items, 
+						   tIDs: summonedChamp.tIDs }
+	}
+
 }
 
 
@@ -111,11 +145,18 @@ impl Board
 	fn new(p1PlacedChamps : &[PlacedChampion/* ; 12 */], p2PlacedChamps : &[PlacedChampion/* ; 12*/], champMS : u8, timeUnit : u8, champions : &[Champion])
 	{
 		/*P1 and P2 placed champs to convert into Summoned Champs for  */
-		let mut i : u8 = 0;
-		let mut p1Champions : [SummonedChampion ; 12];
+		let mut i : usize = 0;
+		let mut p1Champions : [SummonedChampion ; 12] = [SummonedChampion::empty() ; 12];
+		let mut p2Champions : [SummonedChampion ; 12];
 		for p1Champion in p1PlacedChamps//place for optimisation
 		{
-			p1Champions[i] = SummonedChampion::new(&p1Champion, &champions[p1Champion.id])
+			p1Champions[i] = SummonedChampion::new(&p1Champion, &champions[p1Champion.id]);//converts into summoned champ
+		}
+		i = 0;
+		for p2Champion in p2PlacedChamps//place for optimisation
+		{
+			p2Champions[i] = SummonedChampion::new(&p2Champion, &champions[p2Champion.id]);//converts into summoned champ
+			i += 1;
 		}
 	}
 	fn StartBattle(self : Board)
@@ -132,7 +173,7 @@ impl Board
 
 
 fn main() {
-    let champions = [Champion{id : 0, cost : 1, hp : [700, 1260, 2268], sm : 0, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 7, ra : 3, aID : 0, traits : [1, 2, 0]}, 
+    const champions : [Champion ; 3] = [Champion{id : 0, cost : 1, hp : [700, 1260, 2268], sm : 0, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 7, ra : 3, aID : 0, traits : [1, 2, 0]}, 
                  Champion{id : 1, cost : 2, hp : [900, 1620, 2916], sm : 50, mc : 100, ar : 40, mr : 40, ad : [77, 138, 248], aS : 7, ra : 3, aID : 0, traits : [2, 3, 0]}, 
                  Champion{id : 2, cost : 3, hp : [700, 1260, 2268], sm : 35, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 7, ra : 3, aID : 0, traits : [4, 5, 0]}];
     //let mut Chadden = Summ1dChampion{id : 0, star : 1, items : [0, 0, 0]};
