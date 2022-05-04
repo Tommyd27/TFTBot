@@ -23,13 +23,13 @@ struct PlacedChampion
     id : usize, //champ id
 
     star : usize, //star level
-    items : [u8; 3], //items given
+    items : [u8 ; 3], //items given
     location : [u8; 2] //location on board
 }
 
 struct SummonedChampion
 {
-	location : [u8 ; 4],
+	location : [i8 ; 4],
 	health : u16,
 	sm : u8,
 	dc : u8, //dodge chance
@@ -40,14 +40,17 @@ struct SummonedChampion
 	aS : u8,
 	ra : u8,
 	aID : u8,
+	id : u8,
+	targetCountDown : i8,
+	target : u8,
 	items : [u8 ; 3], //item abilities 
-	tIDs : [[u8; 2] ; 3], //trait abilities
+	//tIDs : Vec<[u8; 2]>, //trait abilities
 }
 
 impl SummonedChampion 
 {
 	//Method for converting PlacedChampion into SummonChampion
-	fn new(placedChampion : &PlacedChampion, ofChampion : &Champion) -> SummonedChampion
+	fn new(placedChampion : &PlacedChampion, ofChampion : &Champion, id : u8) -> SummonedChampion
 	{
 		let starLevel = placedChampion.star;
 		/*nLocation = [placedChampion.location[0], placedChampion.location[1], 0, 0];
@@ -73,46 +76,35 @@ impl SummonedChampion
 						   mr: ofChampion.mr, 
 						   ad: ofChampion.ad[starLevel], 
 						   aS: ofChampion.aS, 
-						   ra: ofChampion.ra, 
+						   ra: ofChampion.ra,
+						   id : id,
+						   targetCountDown : 0,
+						   target : 256,
 						   aID: ofChampion.aID, 
 						   items: placedChampion.items, 
-						   tIDs: [[0, 0], [0, 0], [0, 0]]
+						   //tIDs: Vec::new(),
 						}
 	}
-	fn empty() -> SummonedChampion //Create an empty champion for initialization
+	fn takeTurn(self : &mut SummonedChampion, friendlyChampions : &Vec<SummonedChampion>, enemyChampions : &Vec<SummonedChampion>, timeUnit : u8)
 	{
-		SummonedChampion { location: [0, 0, 0, 0],
-			health: 0, 
-			sm: 0, 
-			dc: 0, 
-			mc: 0, 
-			ar: 0, 
-			mr: 0, 
-			ad: 0, 
-			aS: 0, 
-			ra: 0, 
-			aID: 256, 
-			items: [0, 0, 0], 
-			tIDs: [[0, 0], [0, 0], [0, 0]]
-		 }
+		self.targetCountDown -= timeUnit as i8;
+		if self.targetCountDown <= 0
+		{
+			self.targetCountDown = 25;
+			self.target = 0;
+			let mut lowestDistance : u8 = 255;
+			let mut distance : i8 = 0;
+			for enemyChampion in enemyChampions
+			{
+				distance = (enemyChampion.location[0] - self.location[0]).abs() + (enemyChampion.location[1] - self.location[1]).abs();
+				if distance < lowestDistance
+				{
+					self.target = enemyChampion.id;
+					lowestDistance = distance;
+				}
+			}
+		}
 	}
-	fn Copy(summonedChamp : SummonedChampion) -> SummonedChampion
-	{
-		SummonedChampion { location: summonedChamp.location, 
-						   health: summonedChamp.health, 
-						   sm: summonedChamp.sm, 
-						   dc: summonedChamp.dc, 
-						   mc: summonedChamp.dc, 
-						   ar: summonedChamp.ar, 
-						   mr: summonedChamp.mr, 
-						   ad: summonedChamp.ad, 
-						   aS: summonedChamp.aS, 
-						   ra: summonedChamp.ra, 
-						   aID: summonedChamp.aID, 
-						   items: summonedChamp.items, 
-						   tIDs: summonedChamp.tIDs }
-	}
-
 }
 
 
@@ -126,43 +118,52 @@ struct Player
     xp : u8, //p xp
 
 
-    champions : [u8 ; 25], //all p champions
+    champions : Vec<PlacedChampion>, //all p champions
 	augments : [u8 ; 3] //augments
 }
 
 struct Board
 {
-	p1Champions : [SummonedChampion ; 12],
-	p2Champions : [SummonedChampion ; 12],
+	p1Champions : Vec<SummonedChampion>,
+	p2Champions : Vec<SummonedChampion>,
 	champMS : u8, //champ movement speed in tiles per second
-	timeUnit : u8, //time unit for board in centiseconds (1/100 of a second)
+	timeUnit : u8, //time unit for board in centiseconds (1/100 of a second
+	gridSize : [u8 ; 2],
 }
 
 
 impl Board
 {
-	fn new(p1PlacedChamps : &[PlacedChampion/* ; 12 */], p2PlacedChamps : &[PlacedChampion/* ; 12*/], champMS : u8, timeUnit : u8, champions : &[Champion])
+	fn new(p1PlacedChamps : &Vec<PlacedChampion>, p2PlacedChamps : &Vec<PlacedChampion>, champMS : u8, timeUnit : u8, champions : &[Champion]) -> Board
 	{
 		/*P1 and P2 placed champs to convert into Summoned Champs for  */
-		let mut i : usize = 0;
-		let mut p1Champions : [SummonedChampion ; 12] = [SummonedChampion::empty() ; 12];
-		let mut p2Champions : [SummonedChampion ; 12];
+		let mut p1Champions = Vec::new();
+		let mut p2Champions = Vec::new();
+		let mut i = 0;
 		for p1Champion in p1PlacedChamps//place for optimisation
 		{
-			p1Champions[i] = SummonedChampion::new(&p1Champion, &champions[p1Champion.id]);//converts into summoned champ
-		}
-		i = 0;
-		for p2Champion in p2PlacedChamps//place for optimisation
-		{
-			p2Champions[i] = SummonedChampion::new(&p2Champion, &champions[p2Champion.id]);//converts into summoned champ
+			p1Champions.push(SummonedChampion::new(&p1Champion, &champions[p1Champion.id], i));//converts into summoned champ
 			i += 1;
 		}
+
+		for p2Champion in p2PlacedChamps//place for optimisation
+		{
+			p2Champions.push(SummonedChampion::new(&p2Champion, &champions[p2Champion.id], i));//converts into summoned champ
+			i += 1;
+		}
+
+		Board{p1Champions : p1Champions,
+			  p2Champions : p2Champions,
+			  champMS : champMS,
+			  timeUnit : timeUnit,
+			  gridSize : [7, 8],
+			}
 	}
 	fn StartBattle(self : Board)
 	{
 		for p1Champion in self.p1Champions
 		{
-
+			p1Champion.takeTurn(&self.p1Champions, &self.p2Champions, self.timeUnit)
 		}
 
 	}
@@ -173,8 +174,8 @@ impl Board
 
 fn main() {
     const champions : [Champion ; 3] = [Champion{id : 0, cost : 1, hp : [700, 1260, 2268], sm : 0, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 7, ra : 3, aID : 0, traits : [1, 2, 0]}, 
-                 Champion{id : 1, cost : 2, hp : [900, 1620, 2916], sm : 50, mc : 100, ar : 40, mr : 40, ad : [77, 138, 248], aS : 7, ra : 3, aID : 0, traits : [2, 3, 0]}, 
-                 Champion{id : 2, cost : 3, hp : [700, 1260, 2268], sm : 35, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 7, ra : 3, aID : 0, traits : [4, 5, 0]}];
+                 						Champion{id : 1, cost : 2, hp : [900, 1620, 2916], sm : 50, mc : 100, ar : 40, mr : 40, ad : [77, 138, 248], aS : 7, ra : 3, aID : 0, traits : [2, 3, 0]}, 
+                 						Champion{id : 2, cost : 3, hp : [700, 1260, 2268], sm : 35, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 7, ra : 3, aID : 0, traits : [4, 5, 0]}];
     //let mut Chadden = Summ1dChampion{id : 0, star : 1, items : [0, 0, 0]};
     //let mut SomeGuy = Summ1dChampion{id : 1, star : 2, items : [0, 0, 0]};
 
