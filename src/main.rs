@@ -1,5 +1,4 @@
 #![allow(non_snake_case)] //allows snake case because.
-use std::{mem::MaybeUninit, iter::Sum};
 struct Champion
 {
     id : u8, //champ id
@@ -18,7 +17,7 @@ struct Champion
 
     traits : [u8 ; 3], //traits
 }
-
+//
 struct PlacedChampion
 {
     id : usize, //champ id
