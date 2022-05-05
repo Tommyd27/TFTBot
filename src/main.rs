@@ -53,6 +53,7 @@ impl SummonedChampion
 	//Method for converting PlacedChampion into SummonChampion
 	fn new(placedChampion : &PlacedChampion, ofChampion : &Champion, id : u8) -> SummonedChampion
 	{
+		// Pass in grid of friendly champions rather than list of placed champions that will not be used
 		let starLevel = placedChampion.star;
 		/*nLocation = [placedChampion.location[0], placedChampion.location[1], 0, 0];
 		
