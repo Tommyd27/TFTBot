@@ -67,7 +67,7 @@ impl SummonedChampion
 		nAbilityID = ofChampion.aID;
 		nItems = placedChampion.items;
 		nTraits = ofChampion.traits;*/
-		SummonedChampion { location: [placedChampion.location[0], placedChampion.location[1], 0, 0],
+		SummonedChampion { location: [placedChampion.location[0] as i8, placedChampion.location[1] as i8, 0, 0],
 						   health: ofChampion.hp[starLevel], 
 						   sm: ofChampion.sm, 
 						   dc: 0, 
@@ -88,22 +88,38 @@ impl SummonedChampion
 	fn takeTurn(self : &mut SummonedChampion, friendlyChampions : &Vec<SummonedChampion>, enemyChampions : &Vec<SummonedChampion>, timeUnit : u8)
 	{
 		self.targetCountDown -= timeUnit as i8;
+		let mut index : usize = 0;
 		if self.targetCountDown <= 0
 		{
 			self.targetCountDown = 25;
 			self.target = 0;
-			let mut lowestDistance : u8 = 255;
+			let mut lowestDistance : i8 = 127;
 			let mut distance : i8 = 0;
-			for enemyChampion in enemyChampions
+
+			for (i, enemyChampion) in enemyChampions.iter().enumerate()
 			{
 				distance = (enemyChampion.location[0] - self.location[0]).abs() + (enemyChampion.location[1] - self.location[1]).abs();
 				if distance < lowestDistance
 				{
 					self.target = enemyChampion.id;
 					lowestDistance = distance;
+					index = i;
 				}
+				i += 1;
 			}
 		}
+		else 
+		{
+			for enemyChampion in enemyChampions
+			{
+				if enemyChampion.id == self.target
+				{
+					
+				}
+			}	
+		}
+		let distanceToTarget : i8 = 
+		if
 	}
 }
 
@@ -139,17 +155,14 @@ impl Board
 		/*P1 and P2 placed champs to convert into Summoned Champs for  */
 		let mut p1Champions = Vec::new();
 		let mut p2Champions = Vec::new();
-		let mut i = 0;
-		for p1Champion in p1PlacedChamps//place for optimisation
+		for (i, p1Champion) in p1PlacedChamps.iter().enumerate()//place for optimisation
 		{
-			p1Champions.push(SummonedChampion::new(&p1Champion, &champions[p1Champion.id], i));//converts into summoned champ
-			i += 1;
+			p1Champions.push(SummonedChampion::new(&p1Champion, &champions[p1Champion.id], i as u8));//converts into summoned champ
 		}
 
-		for p2Champion in p2PlacedChamps//place for optimisation
+		for (i, p2Champion) in p2PlacedChamps.iter().enumerate()//place for optimisation
 		{
-			p2Champions.push(SummonedChampion::new(&p2Champion, &champions[p2Champion.id], i));//converts into summoned champ
-			i += 1;
+			p2Champions.push(SummonedChampion::new(&p2Champion, &champions[p2Champion.id], i as u8));//converts into summoned champ
 		}
 
 		Board{p1Champions : p1Champions,
