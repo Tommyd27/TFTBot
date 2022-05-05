@@ -42,6 +42,8 @@ struct SummonedChampion
 	aID : u8,
 	id : u8,
 	targetCountDown : i8,
+	autoAttackDelay : i8,
+	attackSpeedIncrease : u8,
 	target : u8,
 	targetCell : [i8 ; 2],
 	items : [u8 ; 3], //item abilities 
@@ -81,6 +83,7 @@ impl SummonedChampion
 						   ra: ofChampion.ra,
 						   id : id,
 						   targetCountDown : 0,
+						   autoAttackDelay : 0,
 						   target : 255,
 						   targetCell : [-1, -1], //Optimisation, list in path
 						   aID: ofChampion.aID, 
@@ -91,6 +94,11 @@ impl SummonedChampion
 	fn takeTurn(self : &mut SummonedChampion, friendlyChampions : &Vec<SummonedChampion>, enemyChampions : &Vec<SummonedChampion>, timeUnit : u8)
 	{
 		self.targetCountDown -= timeUnit as i8;//Reduce cooldown to check target/ find new target
+		self.autoAttackDelay -= timeUnit as i8;//Risks going out of bounds as auto attack value may not be called for some time
+
+		//does auto attack delay need to reset on pathing? does attack instantly after reaching path/ in range
+
+
 		let mut index : usize = 0;//Cache index of target in enemyChampions
 		let mut distanceToTarget : i8 = 127;//Distance to target (is set either while finding target or when target found)
 		let mut needNewTargetCell : bool = false;//Bool to store whether new path is needed
@@ -125,7 +133,10 @@ impl SummonedChampion
 		}
 		if distanceToTarget <= self.ra as i8
 		{
-			//autoattack
+			if self.autoAttackDelay <= 0
+			{
+				self.autoAttackDelay =     //attack speed unclear, capped at five yet some champions let you boost beyond it?
+			}
 		}
 		else 
 		{
