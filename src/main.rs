@@ -43,6 +43,7 @@ struct SummonedChampion
 	id : u8,
 	targetCountDown : i8,
 	target : u8,
+	targetCell : [i8 ; 2],
 	items : [u8 ; 3], //item abilities 
 	//tIDs : Vec<[u8; 2]>, //trait abilities
 }
@@ -79,7 +80,8 @@ impl SummonedChampion
 						   ra: ofChampion.ra,
 						   id : id,
 						   targetCountDown : 0,
-						   target : 256,
+						   target : 255,
+						   targetCell : [-1, -1], //Optimisation, list in path
 						   aID: ofChampion.aID, 
 						   items: placedChampion.items, 
 						   //tIDs: Vec::new(),
@@ -87,39 +89,51 @@ impl SummonedChampion
 	}
 	fn takeTurn(self : &mut SummonedChampion, friendlyChampions : &Vec<SummonedChampion>, enemyChampions : &Vec<SummonedChampion>, timeUnit : u8)
 	{
-		self.targetCountDown -= timeUnit as i8;
-		let mut index : usize = 0;
+		self.targetCountDown -= timeUnit as i8;//Reduce cooldown to check target/ find new target
+		let mut index : usize = 0;//Cache index of target in enemyChampions
+		let mut distanceToTarget : i8 = 127;//Distance to target (is set either while finding target or when target found)
+		let mut needNewTargetCell : bool = false;//Bool to store whether new path is needed
 		if self.targetCountDown <= 0
 		{
 			self.targetCountDown = 25;
 			self.target = 0;
-			let mut lowestDistance : i8 = 127;
 			let mut distance : i8 = 0;
+			needNewTargetCell = true;
 
 			for (i, enemyChampion) in enemyChampions.iter().enumerate()
 			{
 				distance = (enemyChampion.location[0] - self.location[0]).abs() + (enemyChampion.location[1] - self.location[1]).abs();
-				if distance < lowestDistance
+				if distance < distanceToTarget
 				{
 					self.target = enemyChampion.id;
-					lowestDistance = distance;
+					distanceToTarget = distance;
 					index = i;
 				}
-				i += 1;
 			}
 		}
 		else 
 		{
-			for enemyChampion in enemyChampions
+			for (i, enemyChampion) in enemyChampions.iter().enumerate()// potential bug if target champion gets killed and therefore not in enemyChampions
 			{
 				if enemyChampion.id == self.target
 				{
-					
+					index = i;
+					distanceToTarget = (enemyChampion.location[0] - self.location[0]).abs() + (enemyChampion.location[1] - self.location[1]).abs();
 				}
 			}	
 		}
-		let distanceToTarget : i8 = 
-		if
+		if distanceToTarget <= self.ra as i8
+		{
+			//autoattack
+		}
+		else 
+		{
+		    if needNewTargetCell || self.location[0..2] == self.targetCell //optimisation?
+			{
+				//find new path
+			}
+			//follow current path
+		}
 	}
 }
 
