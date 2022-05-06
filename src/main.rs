@@ -1,4 +1,5 @@
 #![allow(non_snake_case)] //allows snake case because.
+
 struct Champion
 {
     id : u8, //champ id
@@ -42,7 +43,7 @@ struct SummonedChampion
 	aID : u8,
 	id : u8,
 	targetCountDown : i8,
-	autoAttackDelay : i8,
+	autoAttackDelay : i16,
 	attackSpeedIncrease : u8,
 	target : u8,
 	targetCell : [i8 ; 2],
@@ -84,6 +85,7 @@ impl SummonedChampion
 						   id : id,
 						   targetCountDown : 0,
 						   autoAttackDelay : 0,
+						   attackSpeedIncrease : 0,
 						   target : 255,
 						   targetCell : [-1, -1], //Optimisation, list in path
 						   aID: ofChampion.aID, 
@@ -94,7 +96,7 @@ impl SummonedChampion
 	fn takeTurn(self : &mut SummonedChampion, friendlyChampions : &Vec<SummonedChampion>, enemyChampions : &Vec<SummonedChampion>, timeUnit : u8)
 	{
 		self.targetCountDown -= timeUnit as i8;//Reduce cooldown to check target/ find new target
-		self.autoAttackDelay -= timeUnit as i8;//Risks going out of bounds as auto attack value may not be called for some time
+		self.autoAttackDelay -= timeUnit as i16;//Risks going out of bounds as auto attack value may not be called for some time
 
 		//does auto attack delay need to reset on pathing? does attack instantly after reaching path/ in range
 
@@ -135,7 +137,22 @@ impl SummonedChampion
 		{
 			if self.autoAttackDelay <= 0
 			{
-				self.autoAttackDelay =     //attack speed unclear, capped at five yet some champions let you boost beyond it?
+				/* 
+				self.aS = attacks per 10 seconds
+				self.autoAttackDelay = time in 1/10 of second until next attack
+				self.attackSpeedIncrease = percentage increase in attack speed
+				
+				
+
+				autoAttacKDelay (seconds) = 1 (second) / 0.7 (attacks per seconds)
+				autoAttackDelay (centiseconds) = 100 (centisecond) / 0.7 (attacks per second)
+				autoAttackDelay (centiseconds) = 1000 (centisecond * 10) / 7 (attacks per 10 seconds) + 7 * attackSpeedIncrease
+				
+				*/
+				self.autoAttackDelay = 1000 / (self.aS + self.aS * self.attackSpeedIncrease) as i16; //attack speed unclear, capped at five yet some champions let you boost beyond it?
+				//optimisation definitely here
+
+				enemyChampions[index].health -= ((100 / (100 + enemyChampions[index].ar)) * self.ad) as u16; 
 			}
 		}
 		else 
