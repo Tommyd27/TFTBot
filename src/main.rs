@@ -157,7 +157,7 @@ impl SummonedChampion
 		}
 		else 
 		{
-		    if needNewTargetCell || self.location[0..2] == self.targetCell //optimisation?
+		    if needNewTargetCell || self.location[0..2] == self.targetCell //optimisation?, accuracy vs performance cost
 			{
 				//find new path
 			}
@@ -165,6 +165,39 @@ impl SummonedChampion
 		}
 	}
 }
+
+/*r		greater than
+0       0	2
+1	0	2
+2	1	1
+3	1	1
+4	2	0
+five	2	0
+6	3	n/a
+
+
+
+if 2 - (r $ 2) < pos:
+	its in
+
+
+
+
+r		smaller than	
+0	0	7
+1	0	7
+2	1	6	
+3	1	6
+4	2	five
+five	2	five
+6	3	4
+
+
+if 7 - (r $ 2) > pos:
+	its in */
+
+
+
 
 
 struct Player
