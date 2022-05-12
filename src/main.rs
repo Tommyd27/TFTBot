@@ -46,7 +46,7 @@ struct SummonedChampion
 	autoAttackDelay : i16,
 	attackSpeedIncrease : u8,
 	target : u8,
-	targetCell : [i8 ; 2],
+	targetCells : [i8 ; 2],
 	items : [u8 ; 3], //item abilities 
 	//tIDs : Vec<[u8; 2]>, //trait abilities
 }
@@ -87,7 +87,7 @@ impl SummonedChampion
 						   autoAttackDelay : 0,
 						   attackSpeedIncrease : 0,
 						   target : 255,
-						   targetCell : [-1, -1], //Optimisation, list in path
+						   targetCells : [-1, -1], //Optimisation, list in path
 						   aID: ofChampion.aID, 
 						   items: placedChampion.items, 
 						   //tIDs: Vec::new(),
@@ -157,9 +157,22 @@ impl SummonedChampion
 		}
 		else 
 		{
-		    if needNewTargetCell || self.location[0..2] == self.targetCell //optimisation?, accuracy vs performance cost
+			/*
+			
+			
+			
+			
+			
+			
+			*/
+		    if needNewTargetCell || self.location[0..2] == self.targetCells //optimisation?, accuracy vs performance cost
 			{
-				//find new path
+				let mut lowestDistance : i8 = 10;
+
+
+
+
+
 			}
 			//follow current path
 		}
@@ -265,7 +278,14 @@ fn main() {
     const champions : [Champion ; 3] = [Champion{id : 0, cost : 1, hp : [700, 1260, 2268], sm : 0, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 7, ra : 3, aID : 0, traits : [1, 2, 0]}, 
                  						Champion{id : 1, cost : 2, hp : [900, 1620, 2916], sm : 50, mc : 100, ar : 40, mr : 40, ad : [77, 138, 248], aS : 7, ra : 3, aID : 0, traits : [2, 3, 0]}, 
                  						Champion{id : 2, cost : 3, hp : [700, 1260, 2268], sm : 35, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 7, ra : 3, aID : 0, traits : [4, 5, 0]}];
-    //let mut Chadden = Summ1dChampion{id : 0, star : 1, items : [0, 0, 0]};
+    const possibleMoves : [[i8 ; 2] ; 6] = [[0, -1], [1, -1], [1, 0], [-1, 0], [-1, 1], [0, 1]];
+	
+	
+	
+	
+										 //let mut Chadden = Summ1dChampion{id : 0, star : 1, items : [0, 0, 0]};
     //let mut SomeGuy = Summ1dChampion{id : 1, star : 2, items : [0, 0, 0]};
 
 }
+
+fn DistanceBetweenPoints()
