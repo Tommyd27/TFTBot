@@ -168,6 +168,12 @@ impl SummonedChampion
 		    if needNewTargetCell || self.location[0..2] == self.targetCells //optimisation?, accuracy vs performance cost
 			{
 				let mut lowestDistance : i8 = 10;
+				let mut newPosition : [i8 ; 2] = [0, 0];
+				for possibleMove in [[0, -1], [1, -1], [1, 0], [-1, 0], [-1, 1], [0, 1]] //optimisation?
+				{
+					newPosition = [self.location[0] + possibleMove[0], self.location[1] + possibleMove[1]]
+					
+				}
 
 
 
@@ -278,7 +284,7 @@ fn main() {
     const champions : [Champion ; 3] = [Champion{id : 0, cost : 1, hp : [700, 1260, 2268], sm : 0, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 7, ra : 3, aID : 0, traits : [1, 2, 0]}, 
                  						Champion{id : 1, cost : 2, hp : [900, 1620, 2916], sm : 50, mc : 100, ar : 40, mr : 40, ad : [77, 138, 248], aS : 7, ra : 3, aID : 0, traits : [2, 3, 0]}, 
                  						Champion{id : 2, cost : 3, hp : [700, 1260, 2268], sm : 35, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 7, ra : 3, aID : 0, traits : [4, 5, 0]}];
-    const possibleMoves : [[i8 ; 2] ; 6] = [[0, -1], [1, -1], [1, 0], [-1, 0], [-1, 1], [0, 1]];
+    
 	
 	
 	
@@ -288,4 +294,7 @@ fn main() {
 
 }
 
-fn DistanceBetweenPoints()
+fn DistanceBetweenPoints(point1 : [i8 ; 2], point2 : [i8 ; 2]) -> i8
+{
+	(point1[0] - point2[0]).abs() + (point1[1] - point2[1]).abs()
+}
