@@ -30,7 +30,8 @@ struct PlacedChampion
 
 struct SummonedChampion
 {
-	location : [i8 ; 4],
+	location : [i8 ; 2],
+	movementProgress : [i8 ; 2],
 	health : u16,
 	sm : u8,
 	dc : u8, //dodge chance
@@ -72,7 +73,8 @@ impl SummonedChampion
 		nAbilityID = ofChampion.aID;
 		nItems = placedChampion.items;
 		nTraits = ofChampion.traits;*/
-		SummonedChampion { location: [placedChampion.location[0] as i8, placedChampion.location[1] as i8, 0, 0],
+		SummonedChampion { location: [placedChampion.location[0] as i8, placedChampion.location[1] as i8],
+						   movementProgress : [0, 0],
 						   health: ofChampion.hp[starLevel], 
 						   sm: ofChampion.sm, 
 						   dc: 0, 
@@ -113,7 +115,7 @@ impl SummonedChampion
 
 			for (i, enemyChampion) in enemyChampions.iter().enumerate()
 			{
-				distance = (enemyChampion.location[0] - self.location[0]).abs() + (enemyChampion.location[1] - self.location[1]).abs();
+				distance = DistanceBetweenPoints(&enemyChampion.location, &self.location);
 				if distance < distanceToTarget
 				{
 					self.target = enemyChampion.id;
@@ -129,7 +131,7 @@ impl SummonedChampion
 				if enemyChampion.id == self.target
 				{
 					index = i;
-					distanceToTarget = (enemyChampion.location[0] - self.location[0]).abs() + (enemyChampion.location[1] - self.location[1]).abs();
+					distanceToTarget = DistanceBetweenPoints(&enemyChampion.location[0..2], &self.location[0..2]);
 				}
 			}	
 		}
@@ -157,21 +159,19 @@ impl SummonedChampion
 		}
 		else 
 		{
-			/*
-			
-			
-			
-			
-			
-			
-			*/
 		    if needNewTargetCell || self.location[0..2] == self.targetCells //optimisation?, accuracy vs performance cost
 			{
 				let mut lowestDistance : i8 = 10;
 				let mut newPosition : [i8 ; 2] = [0, 0];
 				for possibleMove in [[0, -1], [1, -1], [1, 0], [-1, 0], [-1, 1], [0, 1]] //optimisation?
 				{
-					newPosition = [self.location[0] + possibleMove[0], self.location[1] + possibleMove[1]]
+					newPosition = [self.location[0] + possibleMove[0], self.location[1] + possibleMove[1]];
+					distanceToTarget = DistanceBetweenPoints(&newPosition, &enemyChampions[index].location);
+					if distanceToTarget < lowestDistance
+					{
+						lowestDistance = distanceToTarget;
+						self.targetCells = newPosition;
+					}
 					
 				}
 
@@ -180,7 +180,7 @@ impl SummonedChampion
 
 
 			}
-			//follow current path
+			self.movementProgress
 		}
 	}
 }
@@ -294,7 +294,7 @@ fn main() {
 
 }
 
-fn DistanceBetweenPoints(point1 : [i8 ; 2], point2 : [i8 ; 2]) -> i8
+fn DistanceBetweenPoints(point1 : &[i8], point2 : &[i8]) -> i8
 {
 	(point1[0] - point2[0]).abs() + (point1[1] - point2[1]).abs()
 }
