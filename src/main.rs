@@ -1,5 +1,7 @@
 #![allow(non_snake_case)] //allows snake case because.
 
+use core::time;
+
 struct Champion
 {
     id : u8, //champ id
@@ -95,7 +97,7 @@ impl SummonedChampion
 						   //tIDs: Vec::new(),
 						}
 	}
-	fn takeTurn(self : &mut SummonedChampion, friendlyChampions : &Vec<SummonedChampion>, enemyChampions : &Vec<SummonedChampion>, timeUnit : u8)
+	fn takeTurn(self : &mut SummonedChampion, friendlyChampions : &Vec<SummonedChampion>, enemyChampions : &Vec<SummonedChampion>, timeUnit : u8, movementAmount : i8)
 	{
 		self.targetCountDown -= timeUnit as i8;//Reduce cooldown to check target/ find new target
 		self.autoAttackDelay -= timeUnit as i16;//Risks going out of bounds as auto attack value may not be called for some time
@@ -180,7 +182,8 @@ impl SummonedChampion
 
 
 			}
-			self.movementProgress
+			self.movementProgress[0] += movementAmount * sign(self.targetCells[0] - self.location[0]);//optimisation here
+			self.movementProgress[1] += movementAmount * sign(self.targetCells[1] - self.location[1]);
 		}
 	}
 }
@@ -240,6 +243,7 @@ struct Board
 	champMS : u8, //champ movement speed in tiles per second
 	timeUnit : u8, //time unit for board in centiseconds (1/100 of a second
 	gridSize : [u8 ; 2],
+	movementAmount : i8,
 }
 
 
@@ -259,19 +263,21 @@ impl Board
 		{
 			p2Champions.push(SummonedChampion::new(&p2Champion, &champions[p2Champion.id], i as u8));//converts into summoned champ
 		}
-
+		
 		Board{p1Champions : p1Champions,
 			  p2Champions : p2Champions,
 			  champMS : champMS,
 			  timeUnit : timeUnit,
 			  gridSize : [7, 8],
+			  movementAmount : 250 / timeUnit as i8, //optimisation
 			}
 	}
 	fn StartBattle(self : Board)
 	{
+		
 		for p1Champion in self.p1Champions
 		{
-			p1Champion.takeTurn(&self.p1Champions, &self.p2Champions, self.timeUnit)
+			p1Champion.takeTurn(&self.p1Champions, &self.p2Champions, self.timeUnit, self.movementAmount);
 		}
 
 	}
@@ -297,4 +303,20 @@ fn main() {
 fn DistanceBetweenPoints(point1 : &[i8], point2 : &[i8]) -> i8
 {
 	(point1[0] - point2[0]).abs() + (point1[1] - point2[1]).abs()
+}
+
+fn sign(num : i8) -> i8
+{
+	if num == 0
+	{
+		0
+	}
+	else if num > 0
+	{
+		1
+	}
+	else
+	{
+		-1
+	}
 }
