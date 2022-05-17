@@ -275,7 +275,7 @@ impl Board
 	fn StartBattle(self : Board)
 	{
 		
-		for p1Champion in self.p1Champions
+		for mut p1Champion in &self.p1Champions
 		{
 			p1Champion.takeTurn(&self.p1Champions, &self.p2Champions, self.timeUnit, self.movementAmount);
 		}
