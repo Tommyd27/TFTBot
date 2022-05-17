@@ -171,6 +171,7 @@ impl SummonedChampion
 					distanceToTarget = DistanceBetweenPoints(&newPosition, &enemyChampions[index].location);
 					if distanceToTarget < lowestDistance
 					{
+						for 	
 						lowestDistance = distanceToTarget;
 						self.targetCells = newPosition;
 					}
