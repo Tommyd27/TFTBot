@@ -1,6 +1,6 @@
 #![allow(non_snake_case)] //allows snake case because.
 
-use core::time;
+
 
 struct Champion
 {
@@ -97,7 +97,7 @@ impl SummonedChampion
 						   //tIDs: Vec::new(),
 						}
 	}
-	fn takeTurn(self : &mut SummonedChampion, friendlyChampions : &Vec<SummonedChampion>, enemyChampions : Vec<SummonedChampion>, timeUnit : u8, movementAmount : i8)
+	fn takeTurn(self : &mut SummonedChampion, friendlyChampions : &Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, timeUnit : u8, movementAmount : i8, gridSize : [i8 ; 3])
 	{
 		self.targetCountDown -= timeUnit as i8;//Reduce cooldown to check target/ find new target
 		self.autoAttackDelay -= timeUnit as i16;//Risks going out of bounds as auto attack value may not be called for some time
@@ -163,7 +163,7 @@ impl SummonedChampion
 		{
 		    if needNewTargetCell || self.location[0..2] == self.targetCells //optimisation?, accuracy vs performance cost
 			{
-				let mut lowestDistance : i8 = 10;
+				let mut lowestDistance : i8 = 100;
 				let mut newPosition : [i8 ; 2] = self.location;
 				for possibleMove in [[0, -1], [1, -1], [1, 0], [-1, 0], [-1, 1], [0, 1]] //optimisation?
 				{
@@ -172,6 +172,10 @@ impl SummonedChampion
 					if distanceToTarget < lowestDistance
 					{
 						let mut failed = false;
+						if ! InGrid(newPosition, gridSize)
+						{
+							continue;
+						}
 						for friendlyChampion in friendlyChampions
 						{
 							if friendlyChampion.location == newPosition
@@ -189,51 +193,12 @@ impl SummonedChampion
 					}
 					
 				}
-
-
-
-
-
 			}
 			self.movementProgress[0] += movementAmount * sign(self.targetCells[0] - self.location[0]);//optimisation here
 			self.movementProgress[1] += movementAmount * sign(self.targetCells[1] - self.location[1]);
 		}
 	}
 }
-
-/*r		greater than
-0       0	2
-1	0	2
-2	1	1
-3	1	1
-4	2	0
-five	2	0
-6	3	n/a
-
-
-
-if 2 - (r $ 2) < pos:
-	its in
-
-
-
-
-r		smaller than	
-0	0	7
-1	0	7
-2	1	6	
-3	1	6
-4	2	five
-five	2	five
-6	3	4
-
-
-if 7 - (r $ 2) > pos:
-	its in */
-
-
-
-
 
 struct Player
 {
@@ -254,7 +219,7 @@ struct Board
 	p1Champions : Vec<SummonedChampion>,
 	p2Champions : Vec<SummonedChampion>,
 	timeUnit : u8, //time unit for board in centiseconds (1/100 of a second
-	gridSize : [u8 ; 2],
+	gridSize : [i8 ; 3],
 	movementAmount : i8,
 }
 
@@ -279,16 +244,16 @@ impl Board
 		Board{p1Champions : p1Champions,
 			  p2Champions : p2Champions,
 			  timeUnit : timeUnit,
-			  gridSize : [7, 8],
+			  gridSize : [7, 8, 1],
 			  movementAmount : 250 / timeUnit as i8, //optimisation
 			}
 	}
-	fn StartBattle(self : Board)
+	fn StartBattle(mut self : Board)
 	{
 		
 		for mut p1Champion in self.p1Champions
 		{
-			p1Champion.takeTurn(mut self.p1Champions, self.p2Champions, self.timeUnit, self.movementAmount);
+			p1Champion.takeTurn(&self.p1Champions, &mut self.p2Champions, self.timeUnit, self.movementAmount, self.gridSize);
 		}
 
 	}
@@ -330,4 +295,23 @@ fn sign(num : i8) -> i8
 	{
 		-1
 	}
+}
+
+fn InGrid(pos : [i8 ; 2], gridSize : [i8 ; 3]) -> bool//need to check for correct gridsize
+{
+	if pos[0] >= 0 && pos[0] < gridSize[0] &&
+	   pos[1] >= 0 && pos[1] < gridSize[1]
+	{
+		if gridSize[2] == 1 //optimisation
+		{
+			if 2 - (pos[1] / 2) < pos[0] && //doesnt work for different grid sizes has to be changed manually
+			   7 - (pos[1] / 2) > pos[0]
+			{
+				return true
+			}
+			return false
+		}
+		return true
+	}
+	return false
 }
