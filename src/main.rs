@@ -97,7 +97,7 @@ impl SummonedChampion
 						   //tIDs: Vec::new(),
 						}
 	}
-	fn takeTurn(self : &mut SummonedChampion, friendlyChampions : &Vec<SummonedChampion>, enemyChampions : &Vec<SummonedChampion>, timeUnit : u8, movementAmount : i8)
+	fn takeTurn(self : &mut SummonedChampion, friendlyChampions : &Vec<SummonedChampion>, enemyChampions : Vec<SummonedChampion>, timeUnit : u8, movementAmount : i8)
 	{
 		self.targetCountDown -= timeUnit as i8;//Reduce cooldown to check target/ find new target
 		self.autoAttackDelay -= timeUnit as i16;//Risks going out of bounds as auto attack value may not be called for some time
@@ -164,14 +164,26 @@ impl SummonedChampion
 		    if needNewTargetCell || self.location[0..2] == self.targetCells //optimisation?, accuracy vs performance cost
 			{
 				let mut lowestDistance : i8 = 10;
-				let mut newPosition : [i8 ; 2] = [0, 0];
+				let mut newPosition : [i8 ; 2] = self.location;
 				for possibleMove in [[0, -1], [1, -1], [1, 0], [-1, 0], [-1, 1], [0, 1]] //optimisation?
 				{
 					newPosition = [self.location[0] + possibleMove[0], self.location[1] + possibleMove[1]];
 					distanceToTarget = DistanceBetweenPoints(&newPosition, &enemyChampions[index].location);
 					if distanceToTarget < lowestDistance
 					{
-						for 	
+						let mut failed = false;
+						for friendlyChampion in friendlyChampions
+						{
+							if friendlyChampion.location == newPosition
+							{
+								failed = true;
+								break
+							}
+						}
+						if failed
+						{
+							continue;
+						}
 						lowestDistance = distanceToTarget;
 						self.targetCells = newPosition;
 					}
@@ -241,7 +253,6 @@ struct Board
 {
 	p1Champions : Vec<SummonedChampion>,
 	p2Champions : Vec<SummonedChampion>,
-	champMS : u8, //champ movement speed in tiles per second
 	timeUnit : u8, //time unit for board in centiseconds (1/100 of a second
 	gridSize : [u8 ; 2],
 	movementAmount : i8,
@@ -250,7 +261,7 @@ struct Board
 
 impl Board
 {
-	fn new(p1PlacedChamps : &Vec<PlacedChampion>, p2PlacedChamps : &Vec<PlacedChampion>, champMS : u8, timeUnit : u8, champions : &[Champion]) -> Board
+	fn new(p1PlacedChamps : &Vec<PlacedChampion>, p2PlacedChamps : &Vec<PlacedChampion>, timeUnit : u8, champions : &[Champion]) -> Board
 	{
 		/*P1 and P2 placed champs to convert into Summoned Champs for  */
 		let mut p1Champions = Vec::new();
@@ -267,7 +278,6 @@ impl Board
 		
 		Board{p1Champions : p1Champions,
 			  p2Champions : p2Champions,
-			  champMS : champMS,
 			  timeUnit : timeUnit,
 			  gridSize : [7, 8],
 			  movementAmount : 250 / timeUnit as i8, //optimisation
@@ -276,9 +286,9 @@ impl Board
 	fn StartBattle(self : Board)
 	{
 		
-		for mut p1Champion in &self.p1Champions
+		for mut p1Champion in self.p1Champions
 		{
-			p1Champion.takeTurn(&self.p1Champions, &self.p2Champions, self.timeUnit, self.movementAmount);
+			p1Champion.takeTurn(mut self.p1Champions, self.p2Champions, self.timeUnit, self.movementAmount);
 		}
 
 	}
