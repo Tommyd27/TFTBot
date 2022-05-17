@@ -97,7 +97,7 @@ impl SummonedChampion
 						   //tIDs: Vec::new(),
 						}
 	}
-	fn takeTurn(self : &mut SummonedChampion, friendlyChampions : &Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, timeUnit : u8, movementAmount : i8, gridSize : [i8 ; 3])
+	fn takeTurn(self : &mut SummonedChampion, friendlyChampionsLocations : &Vec<[i8 ; 2]>, enemyChampions : &mut Vec<SummonedChampion>, timeUnit : u8, movementAmount : i8, gridSize : [i8 ; 3])
 	{
 		self.targetCountDown -= timeUnit as i8;//Reduce cooldown to check target/ find new target
 		self.autoAttackDelay -= timeUnit as i16;//Risks going out of bounds as auto attack value may not be called for some time
@@ -176,9 +176,9 @@ impl SummonedChampion
 						{
 							continue;
 						}
-						for friendlyChampion in friendlyChampions
+						for friendlyChampionLocation in friendlyChampionsLocations
 						{
-							if friendlyChampion.location == newPosition
+							if friendlyChampionLocation[0] == newPosition[0] && friendlyChampionLocation[1] == newPosition[1]
 							{
 								failed = true;
 								break
@@ -195,7 +195,19 @@ impl SummonedChampion
 				}
 			}
 			self.movementProgress[0] += movementAmount * sign(self.targetCells[0] - self.location[0]);//optimisation here
+			if self.movementProgress[0].abs() == 10
+			{
+				self.location[0] += sign(self.movementProgress[0]);
+				self.movementProgress[0] = 0;
+				
+			}
 			self.movementProgress[1] += movementAmount * sign(self.targetCells[1] - self.location[1]);
+			if self.movementProgress[1].abs() == 10
+			{
+				self.location[1] += sign(self.movementProgress[1]);
+				self.movementProgress[1] = 0;
+				
+			}
 		}
 	}
 }
@@ -245,15 +257,25 @@ impl Board
 			  p2Champions : p2Champions,
 			  timeUnit : timeUnit,
 			  gridSize : [7, 8, 1],
-			  movementAmount : 250 / timeUnit as i8, //optimisation
+			  movementAmount : 10 / timeUnit as i8, //optimisation
 			}
 	}
 	fn StartBattle(mut self : Board)
 	{
-		
+		let mut p1Positions : Vec<[i8 ; 2]> = Vec::new();
+		let mut p2Positions : Vec<[i8 ; 2]> = Vec::new();
+		for champion in &self.p1Champions
+		{
+			p1Positions.push(champion.location);
+		}
+		for champion in &self.p2Champions
+		{
+			p1Positions.push(champion.location);
+		}
+
 		for mut p1Champion in self.p1Champions
 		{
-			p1Champion.takeTurn(&self.p1Champions, &mut self.p2Champions, self.timeUnit, self.movementAmount, self.gridSize);
+			p1Champion.takeTurn(&p1Positions, &mut self.p2Champions, self.timeUnit, self.movementAmount, self.gridSize);
 		}
 
 	}
