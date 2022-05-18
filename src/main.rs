@@ -157,6 +157,11 @@ impl SummonedChampion
 				//optimisation definitely here
 
 				enemyChampions[index].health -= ((100 / (100 + enemyChampions[index].ar)) * self.ad) as u16; 
+				if enemyChampions[index].health <= 0
+				{
+					enemyChampions.swap_remove(index);
+				}
+
 			}
 		}
 		else 
@@ -264,21 +269,28 @@ impl Board
 	{
 		let mut p1Positions : Vec<[i8 ; 2]> = Vec::new();
 		let mut p2Positions : Vec<[i8 ; 2]> = Vec::new();
-		for champion in &self.p1Champions
+		while self.p1Champions.len() > 0 && self.p2Champions.len() > 0
 		{
-			p1Positions.push(champion.location);
-		}
-		for champion in &self.p2Champions
-		{
-			p1Positions.push(champion.location);
-		}
+			for champion in &self.p1Champions
+			{
+				p1Positions.push(champion.location);
+			}
+			for p1Champion in &mut self.p1Champions
+			{
+				p1Champion.takeTurn(&p1Positions, &mut self.p2Champions, self.timeUnit, self.movementAmount, self.gridSize);
+			}
 
-		for mut p1Champion in self.p1Champions
-		{
-			p1Champion.takeTurn(&p1Positions, &mut self.p2Champions, self.timeUnit, self.movementAmount, self.gridSize);
+			for champion in &self.p2Champions
+			{
+				p2Positions.push(champion.location);
+			}
+			for p2Champion in &mut self.p2Champions
+			{
+				p2Champion.takeTurn(&p2Positions, &mut self.p1Champions, self.timeUnit, self.movementAmount, self.gridSize);
+			}
 		}
-
-	}
+		}
+		
 }
 
 
