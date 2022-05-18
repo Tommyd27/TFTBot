@@ -233,11 +233,11 @@ struct Player
 
 struct Board
 {
-	p1Champions : Vec<SummonedChampion>,
-	p2Champions : Vec<SummonedChampion>,
+	p1Champions : Vec<SummonedChampion>, //Vector of player 1's champs
+	p2Champions : Vec<SummonedChampion>, //Vector of player 2's champs
 	timeUnit : u8, //time unit for board in centiseconds (1/100 of a second
-	gridSize : [i8 ; 3],
-	movementAmount : i8,
+	gridSize : [i8 ; 3], //grid size [x, y, gridType]
+	movementAmount : i8, //will be calculated, const / timeUnit
 }
 
 
@@ -289,7 +289,7 @@ impl Board
 				p2Champion.takeTurn(&p2Positions, &mut self.p1Champions, self.timeUnit, self.movementAmount, self.gridSize);
 			}
 		}
-		}
+	}
 		
 }
 
@@ -300,11 +300,10 @@ fn main() {
     const champions : [Champion ; 3] = [Champion{id : 0, cost : 1, hp : [700, 1260, 2268], sm : 0, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 7, ra : 3, aID : 0, traits : [1, 2, 0]}, 
                  						Champion{id : 1, cost : 2, hp : [900, 1620, 2916], sm : 50, mc : 100, ar : 40, mr : 40, ad : [77, 138, 248], aS : 7, ra : 3, aID : 0, traits : [2, 3, 0]}, 
                  						Champion{id : 2, cost : 3, hp : [700, 1260, 2268], sm : 35, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 7, ra : 3, aID : 0, traits : [4, 5, 0]}];
-    
-	
-	
-	
-	
+    let playerOneChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [4, 4]}];
+	let playerTwoChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [4, 4]}];
+	let board : Board = Board::new(&playerOneChamps, &playerTwoChamps, 10, &champions);
+	board.StartBattle()
 										 //let mut Chadden = Summ1dChampion{id : 0, star : 1, items : [0, 0, 0]};
     //let mut SomeGuy = Summ1dChampion{id : 1, star : 2, items : [0, 0, 0]};
 
