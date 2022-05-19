@@ -1,6 +1,6 @@
 #![allow(non_snake_case)] //allows snake case because.
 
-
+use rand::Rng;
 
 struct Champion
 {
@@ -37,6 +37,7 @@ struct SummonedChampion
 	health : i32,
 	sm : u8,
 	dc : u8, //dodge chance
+	cr : u8, // crit rate
 	mc : u8,
 	ar : u32,
 	mr : u8,
@@ -80,6 +81,7 @@ impl SummonedChampion
 						   health: ofChampion.hp[starLevel], 
 						   sm: ofChampion.sm, 
 						   dc: 0, 
+						   cr : 25,
 						   mc: ofChampion.mc, 
 						   ar: ofChampion.ar, 
 						   mr: ofChampion.mr, 
@@ -162,6 +164,7 @@ impl SummonedChampion
 				*/
 				self.autoAttackDelay = 1000 / (self.aS + self.aS * self.attackSpeedIncrease) as i16; //attack speed unclear, capped at five yet some champions let you boost beyond it?
 				//optimisation definitely here
+				if enemyChampions[index].dc > 0 && 
 				enemyChampions[index].health -= ((100 * self.ad) / (100 + enemyChampions[index].ar)) as i32; //discrepency
 				//enemyChampions[index].health -= ((100 * 75) / (100 + 25)) as u32; 
 				println!("Debug : Enemy Champion Health is {0}", enemyChampions[index].health);
@@ -307,7 +310,23 @@ impl Board
 				p2Champion.takeTurn(&p2Positions, &mut self.p1Champions, self.timeUnit, self.movementAmount, /*self.gridSize*/);
 			}
 		}
-		println!("Debug : Battle Over")
+		println!("Debug : Battle Over");
+		if self.p1Champions.len() == 0
+		{
+			println!("Debug : Player 2 Won");
+			for champion in &self.p2Champions
+			{
+				println!("Champ Remaining ID,  Health : {0} {1}", champion.id, champion.health)
+			} 
+		}
+		else 
+		{
+			println!("Debug : Player 1 Won");
+			for champion in &self.p1Champions
+			{
+				println!("Champ Remaining ID,  Health : {0} {1}", champion.id, champion.health)
+			} 
+		}
 	}
 		
 }
@@ -319,8 +338,8 @@ fn main() {
     const champions : [Champion ; 3] = [Champion{id : 0, cost : 1, hp : [700, 1260, 2268], sm : 0, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 7, ra : 3, aID : 0, traits : [1, 2, 0]}, 
                  						Champion{id : 1, cost : 2, hp : [900, 1620, 2916], sm : 50, mc : 100, ar : 40, mr : 40, ad : [77, 138, 248], aS : 7, ra : 3, aID : 0, traits : [2, 3, 0]}, 
                  						Champion{id : 2, cost : 3, hp : [700, 1260, 2268], sm : 35, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 7, ra : 3, aID : 0, traits : [4, 5, 0]}];
-    let playerOneChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 0, star : 0, items : [0, 0, 0], location : [3, 0]}];
-	let playerTwoChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 0, star : 0, items : [0, 0, 0], location : [6, 7]}];
+    let playerOneChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [3, 0]}, PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [9, 0]}];
+	let playerTwoChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 0, star : 2, items : [0, 0, 0], location : [6, 7]}];
 	let board : Board = Board::new(&playerOneChamps, &playerTwoChamps, 10, &champions);
 	println!("Debug : Starting Battle");
 	board.StartBattle()
