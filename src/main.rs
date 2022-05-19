@@ -97,7 +97,7 @@ impl SummonedChampion
 						   //tIDs: Vec::new(),
 						}
 	}
-	fn takeTurn(self : &mut SummonedChampion, friendlyChampionsLocations : &Vec<[i8 ; 2]>, enemyChampions : &mut Vec<SummonedChampion>, timeUnit : u8, movementAmount : i8, gridSize : [i8 ; 3])
+	fn takeTurn(self : &mut SummonedChampion, friendlyChampionsLocations : &Vec<[i8 ; 2]>, enemyChampions : &mut Vec<SummonedChampion>, timeUnit : u8, movementAmount : i8, /*gridSize : [i8 ; 2]*/)
 	{
 		self.targetCountDown -= timeUnit as i8;//Reduce cooldown to check target/ find new target
 		self.autoAttackDelay -= timeUnit as i16;//Risks going out of bounds as auto attack value may not be called for some time
@@ -177,7 +177,7 @@ impl SummonedChampion
 					if distanceToTarget < lowestDistance
 					{
 						let mut failed = false;
-						if ! InGrid(newPosition, gridSize)
+						if ! InGridHexagon(newPosition)
 						{
 							continue;
 						}
@@ -236,7 +236,7 @@ struct Board
 	p1Champions : Vec<SummonedChampion>, //Vector of player 1's champs
 	p2Champions : Vec<SummonedChampion>, //Vector of player 2's champs
 	timeUnit : u8, //time unit for board in centiseconds (1/100 of a second
-	gridSize : [i8 ; 3], //grid size [x, y, gridType]
+	//gridSize : [i8 ; 2], //grid size [x, y, gridType]
 	movementAmount : i8, //will be calculated, const / timeUnit
 }
 
@@ -261,7 +261,7 @@ impl Board
 		Board{p1Champions : p1Champions,
 			  p2Champions : p2Champions,
 			  timeUnit : timeUnit,
-			  gridSize : [7, 8, 1],
+			  //gridSize : [7, 8],
 			  movementAmount : 10 / timeUnit as i8, //optimisation
 			}
 	}
@@ -277,7 +277,7 @@ impl Board
 			}
 			for p1Champion in &mut self.p1Champions
 			{
-				p1Champion.takeTurn(&p1Positions, &mut self.p2Champions, self.timeUnit, self.movementAmount, self.gridSize);
+				p1Champion.takeTurn(&p1Positions, &mut self.p2Champions, self.timeUnit, self.movementAmount, /*self.gridSize*/);
 			}
 
 			for champion in &self.p2Champions
@@ -286,7 +286,7 @@ impl Board
 			}
 			for p2Champion in &mut self.p2Champions
 			{
-				p2Champion.takeTurn(&p2Positions, &mut self.p1Champions, self.timeUnit, self.movementAmount, self.gridSize);
+				p2Champion.takeTurn(&p2Positions, &mut self.p1Champions, self.timeUnit, self.movementAmount, /*self.gridSize*/);
 			}
 		}
 	}
@@ -330,7 +330,7 @@ fn sign(num : i8) -> i8
 	}
 }
 
-fn InGrid(pos : [i8 ; 2], gridSize : [i8 ; 3]) -> bool//need to check for correct gridsize
+/*fn InGridHexagon(pos : [i8 ; 2], gridSize : [i8 ; 3]) -> bool//need to check for correct gridsize
 {
 	if pos[0] >= 0 && pos[0] < gridSize[0] &&
 	   pos[1] >= 0 && pos[1] < gridSize[1]
@@ -338,13 +338,27 @@ fn InGrid(pos : [i8 ; 2], gridSize : [i8 ; 3]) -> bool//need to check for correc
 		if gridSize[2] == 1 //optimisation
 		{
 			if 2 - (pos[1] / 2) < pos[0] && //doesnt work for different grid sizes has to be changed manually
-			   7 - (pos[1] / 2) > pos[0]
+			   10 - (pos[1] / 2) > pos[0]
 			{
 				return true
 			}
 			return false
 		}
 		return true
+	}
+	return false
+}*/
+
+fn InGridHexagon(pos : [i8 ; 2]) -> bool//not going to attempt getting it working for different grid sizes yet
+{
+	if pos[0] >= 0 && pos[0] < 10 &&
+	   pos[1] >= 0 && pos[1] < 8
+	{
+		if 2 - (pos[1] / 2) < pos[0] && //doesnt work for different grid sizes has to be changed manually
+		   10 - (pos[1] / 2) > pos[0]
+		{
+			return true
+		}
 	}
 	return false
 }
