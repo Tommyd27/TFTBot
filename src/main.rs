@@ -7,12 +7,12 @@ struct Champion
     id : u8, //champ id
     cost : u8, //gold cost
     
-    hp : [u16; 3], //health points (scales with star level)
+    hp : [i32; 3], //health points (scales with star level)
     sm : u8, //starting mana
     mc : u8, //ability mana cost
-    ar : u8, //armor
+    ar : u32, //armor
     mr : u8, //magic resist
-    ad : [u8; 3], //attack damage (scales with star level)
+    ad : [u32; 3], //attack damage (scales with star level)
     aS : u8, //attack speed, divide by ten
     ra : u8, //auto attack range
     
@@ -34,13 +34,13 @@ struct SummonedChampion
 {
 	location : [i8 ; 2],
 	movementProgress : [i8 ; 2],
-	health : u16,
+	health : i32,
 	sm : u8,
 	dc : u8, //dodge chance
 	mc : u8,
-	ar : u8,
+	ar : u32,
 	mr : u8,
-	ad : u8,
+	ad : u32,
 	aS : u8,
 	ra : u8,
 	aID : u8,
@@ -105,12 +105,26 @@ impl SummonedChampion
 		//does auto attack delay need to reset on pathing? does attack instantly after reaching path/ in range
 
 
-		let mut index : usize = 0;//Cache index of target in enemyChampions
+		let mut index : usize = 99;//Cache index of target in enemyChampions
 		let mut distanceToTarget : i8 = 127;//Distance to target (is set either while finding target or when target found)
 		let mut needNewTargetCell : bool = false;//Bool to store whether new path is needed
-		if self.targetCountDown <= 0
+		if self.targetCountDown > 0
 		{
-			self.targetCountDown = 25;
+			for (i, enemyChampion) in enemyChampions.iter().enumerate()// potential bug if target champion gets killed and therefore not in enemyChampions
+			{
+				if enemyChampion.id == self.target
+				{
+					println!("Debug : Found Target");
+					index = i;
+					distanceToTarget = DistanceBetweenPoints(&enemyChampion.location[0..2], &self.location[0..2]);
+					break;
+				}
+			}	
+		}
+		if index == 99
+		{
+			println!("Debug : Looking for Target");
+			self.targetCountDown = 100;
 			self.target = 0;
 			let mut distance : i8 = 0;
 			needNewTargetCell = true;
@@ -126,21 +140,14 @@ impl SummonedChampion
 				}
 			}
 		}
-		else 
-		{
-			for (i, enemyChampion) in enemyChampions.iter().enumerate()// potential bug if target champion gets killed and therefore not in enemyChampions
-			{
-				if enemyChampion.id == self.target
-				{
-					index = i;
-					distanceToTarget = DistanceBetweenPoints(&enemyChampion.location[0..2], &self.location[0..2]);
-				}
-			}	
-		}
+		
 		if distanceToTarget <= self.ra as i8
 		{
+			println!("Debug : Target in Range");
+			println!("Debug : Auto Attack Delay Remaining {0}", self.autoAttackDelay);
 			if self.autoAttackDelay <= 0
 			{
+				println!("Debug : Delay Smaller than 0 - Attacking");
 				/* 
 				self.aS = attacks per 10 seconds
 				self.autoAttackDelay = time in 1/10 of second until next attack
@@ -155,10 +162,12 @@ impl SummonedChampion
 				*/
 				self.autoAttackDelay = 1000 / (self.aS + self.aS * self.attackSpeedIncrease) as i16; //attack speed unclear, capped at five yet some champions let you boost beyond it?
 				//optimisation definitely here
-
-				enemyChampions[index].health -= ((100 / (100 + enemyChampions[index].ar)) * self.ad) as u16; 
+				enemyChampions[index].health -= ((100 * self.ad) / (100 + enemyChampions[index].ar)) as i32; //discrepency
+				//enemyChampions[index].health -= ((100 * 75) / (100 + 25)) as u32; 
+				println!("Debug : Enemy Champion Health is {0}", enemyChampions[index].health);
 				if enemyChampions[index].health <= 0
 				{
+					println!("Debug : Health Lower than 0 - Removing");
 					enemyChampions.swap_remove(index);
 				}
 
@@ -166,8 +175,10 @@ impl SummonedChampion
 		}
 		else 
 		{
+			println!("Debug : Not in Range");
 		    if needNewTargetCell || self.location[0..2] == self.targetCells //optimisation?, accuracy vs performance cost
 			{
+				println!("Debug : Need Target Cell");
 				let mut lowestDistance : i8 = 100;
 				let mut newPosition : [i8 ; 2] = self.location;
 				for possibleMove in [[0, -1], [1, -1], [1, 0], [-1, 0], [-1, 1], [0, 1]] //optimisation?
@@ -193,13 +204,17 @@ impl SummonedChampion
 						{
 							continue;
 						}
+						println!("Debug : Found a Target Cell");
 						lowestDistance = distanceToTarget;
 						self.targetCells = newPosition;
 					}
 					
 				}
 			}
+			
+			println!("Debug : Moving to Target Cell");
 			self.movementProgress[0] += movementAmount * sign(self.targetCells[0] - self.location[0]);//optimisation here
+			println!("Debug : Position ({0},{1}) -- Movement Progress ({2},{3})", self.location[0], self.location[1], self.movementProgress[0], self.movementProgress[1]);
 			if self.movementProgress[0].abs() == 10
 			{
 				self.location[0] += sign(self.movementProgress[0]);
@@ -269,8 +284,11 @@ impl Board
 	{
 		let mut p1Positions : Vec<[i8 ; 2]> = Vec::new();
 		let mut p2Positions : Vec<[i8 ; 2]> = Vec::new();
+		let mut debugCount : u32 = 0;
 		while self.p1Champions.len() > 0 && self.p2Champions.len() > 0
 		{
+			println!("Debug : Iteration {}", debugCount);
+			debugCount += 1;
 			for champion in &self.p1Champions
 			{
 				p1Positions.push(champion.location);
@@ -289,6 +307,7 @@ impl Board
 				p2Champion.takeTurn(&p2Positions, &mut self.p1Champions, self.timeUnit, self.movementAmount, /*self.gridSize*/);
 			}
 		}
+		println!("Debug : Battle Over")
 	}
 		
 }
@@ -300,9 +319,10 @@ fn main() {
     const champions : [Champion ; 3] = [Champion{id : 0, cost : 1, hp : [700, 1260, 2268], sm : 0, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 7, ra : 3, aID : 0, traits : [1, 2, 0]}, 
                  						Champion{id : 1, cost : 2, hp : [900, 1620, 2916], sm : 50, mc : 100, ar : 40, mr : 40, ad : [77, 138, 248], aS : 7, ra : 3, aID : 0, traits : [2, 3, 0]}, 
                  						Champion{id : 2, cost : 3, hp : [700, 1260, 2268], sm : 35, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 7, ra : 3, aID : 0, traits : [4, 5, 0]}];
-    let playerOneChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [3, 0]}];
-	let playerTwoChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [6, 6]}];
+    let playerOneChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 0, star : 0, items : [0, 0, 0], location : [3, 0]}];
+	let playerTwoChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 0, star : 0, items : [0, 0, 0], location : [6, 7]}];
 	let board : Board = Board::new(&playerOneChamps, &playerTwoChamps, 10, &champions);
+	println!("Debug : Starting Battle");
 	board.StartBattle()
 										 //let mut Chadden = Summ1dChampion{id : 0, star : 1, items : [0, 0, 0]};
     //let mut SomeGuy = Summ1dChampion{id : 1, star : 2, items : [0, 0, 0]};
