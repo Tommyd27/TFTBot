@@ -1,18 +1,17 @@
 #![allow(non_snake_case)] //allows snake case because.
 
 
-
 struct Champion //Basic structure to store the base stats of a champ
 {
     id : u8, //champ id
     cost : u8, //gold cost
     
-    hp : [u16; 3], //health points (scales with star level)
+    hp : [i32; 3], //health points (scales with star level)
     sm : u8, //starting mana
     mc : u8, //ability mana cost
-    ar : u8, //armor
+    ar : u32, //armor
     mr : u8, //magic resist
-    ad : [u8; 3], //attack damage (scales with star level)
+    ad : [u32; 3], //attack damage (scales with star level)
     aS : u8, //attack speed, divide by ten
     ra : u8, //auto attack range
     
@@ -32,24 +31,25 @@ struct PlacedChampion //Structure for champions placed on the board (but not in 
 
 struct SummonedChampion //Structure for chapions on board in battle
 {
-	location : [i8 ; 2], //location (x, y) on board
-	movementProgress : [i8 ; 2], //progress before moving to next square (range +-10)
-	health : u16, //health
-	cm : u8, //current mana
+	location : [i8 ; 2],
+	movementProgress : [i8 ; 2],
+	health : i32,
+	cm : u8,
 	dc : u8, //dodge chance
-	mc : u8, //mana cost
-	ar : u8, //armor
-	mr : u8, //magic resist
-	ad : u8, //attack damage
-	aS : u8, //attack speed
-	ra : u8, //range
-	aID : u8, //ability ID
-	id : u8, //id 
-	targetCountDown : i8, //cooldown before change target
-	autoAttackDelay : i16, //cooldown before next auto
-	attackSpeedIncrease : u8, //increase of base attack speed
-	target : u8, //id of target
-	targetCells : [i8 ; 2], //target cell to move to
+	cr : u8, // crit rate
+	mc : u8,
+	ar : u32,
+	mr : u8,
+	ad : u32,
+	aS : u8,
+	ra : u8,
+	aID : u8,
+	id : u8,
+	targetCountDown : i8,
+	autoAttackDelay : i16,
+	attackSpeedIncrease : u8,
+	target : u8,
+	targetCells : [i8 ; 2],
 	items : [u8 ; 3], //item abilities 
 	//tIDs : Vec<[u8; 2]>, //trait abilities
 }
@@ -65,6 +65,7 @@ impl SummonedChampion
 						   health: ofChampion.hp[starLevel], 
 						   cm: ofChampion.sm, //update current mana to starting mana
 						   dc: 0, 
+						   cr : 25,
 						   mc: ofChampion.mc, 
 						   ar: ofChampion.ar, 
 						   mr: ofChampion.mr, 
@@ -82,7 +83,7 @@ impl SummonedChampion
 						   //tIDs: Vec::new(),
 						}
 	}
-	fn takeTurn(self : &mut SummonedChampion, friendlyChampionsLocations : &Vec<[i8 ; 2]>, enemyChampions : &mut Vec<SummonedChampion>, timeUnit : u8, movementAmount : i8, gridSize : [i8 ; 3])
+	fn takeTurn(self : &mut SummonedChampion, friendlyChampionsLocations : &Vec<[i8 ; 2]>, enemyChampions : &mut Vec<SummonedChampion>, timeUnit : u8, movementAmount : i8, /*gridSize : [i8 ; 2]*/)
 	{
 		/*
 		self : this champion
@@ -98,15 +99,29 @@ impl SummonedChampion
 		//does auto attack delay need to reset on pathing? does attack instantly after reaching path/ in range
 
 
-		let mut index : usize = 0;//Cache index of target in enemyChampions
+		let mut index : usize = 99;//Cache index of target in enemyChampions
 		let mut distanceToTarget : i8 = 127;//Distance to target (is set either while finding target or when target found)
 		let mut needNewTargetCell : bool = false;//Bool to store whether new path is needed
-		if self.targetCountDown <= 0 //find new target
+		if self.targetCountDown > 0
 		{
-			self.targetCountDown = 25; //resetting targetCoolDown
-			self.target = 0; //setting target to default value of 0 (first enemy champ)
-			let mut distance : i8 = 0; //setting distance to any value (will be overwritten)
-			needNewTargetCell = true; //setting this to true for later, will reset pathfinding
+			for (i, enemyChampion) in enemyChampions.iter().enumerate()// potential bug if target champion gets killed and therefore not in enemyChampions
+			{
+				if enemyChampion.id == self.target
+				{
+					println!("Debug : Found Target");
+					index = i;
+					distanceToTarget = DistanceBetweenPoints(&enemyChampion.location[0..2], &self.location[0..2]);
+					break;
+				}
+			}	
+		}
+		if index == 99
+		{
+			println!("Debug : Looking for Target");
+			self.targetCountDown = 100;
+			self.target = 0;
+			let mut distance : i8 = 0;
+			needNewTargetCell = true;
 
 			for (i, enemyChampion) in enemyChampions.iter().enumerate() //for every champ
 			{
@@ -119,28 +134,35 @@ impl SummonedChampion
 				}
 			}
 		}
-		else 
+		
+		if distanceToTarget <= self.ra as i8
 		{
-			for (i, enemyChampion) in enemyChampions.iter().enumerate()// //finding target in enemy champs, cannot be done by index as index may have changed from death, maybe optimisation if accepting changing target when one dies.
+			println!("Debug : Target in Range");
+			println!("Debug : Auto Attack Delay Remaining {0}", self.autoAttackDelay);
+			if self.autoAttackDelay <= 0
 			{
-				if enemyChampion.id == self.target //if correct id
-				{
-					index = i;
-					distanceToTarget = DistanceBetweenPoints(&enemyChampion.location, &self.location);//setting distance to correct distance
-				}
-			}	
-		}
-		if distanceToTarget <= self.ra as i8 //if target in range
-		{
-			if self.autoAttackDelay <= 0 //if auto attack ready
-			{
-				self.autoAttackDelay = 1000 / (self.aS + self.aS * self.attackSpeedIncrease) as i16; //sets attack delay to valid account dependant on base and % increase
-				//attack speed unclear, capped at five yet some champions let you boost beyond it?
-				//optimisation definitely here
+				println!("Debug : Delay Smaller than 0 - Attacking");
+				/* 
+				self.aS = attacks per 10 seconds
+				self.autoAttackDelay = time in 1/10 of second until next attack
+				self.attackSpeedIncrease = percentage increase in attack speed
+				
+				
 
-				enemyChampions[index].health -= ((100 / (100 + enemyChampions[index].ar)) * self.ad) as u16; 
+				autoAttacKDelay (seconds) = 1 (second) / 0.7 (attacks per seconds)
+				autoAttackDelay (centiseconds) = 100 (centisecond) / 0.7 (attacks per second)
+				autoAttackDelay (centiseconds) = 1000 (centisecond * 10) / 7 (attacks per 10 seconds) + 7 * attackSpeedIncrease
+				
+				*/
+				self.autoAttackDelay = 1000 / (self.aS + self.aS * self.attackSpeedIncrease) as i16; //attack speed unclear, capped at five yet some champions let you boost beyond it?
+				//optimisation definitely here
+				if enemyChampions[index].dc > 0 && 
+				enemyChampions[index].health -= ((100 * self.ad) / (100 + enemyChampions[index].ar)) as i32; //discrepency
+				//enemyChampions[index].health -= ((100 * 75) / (100 + 25)) as u32; 
+				println!("Debug : Enemy Champion Health is {0}", enemyChampions[index].health);
 				if enemyChampions[index].health <= 0
 				{
+					println!("Debug : Health Lower than 0 - Removing");
 					enemyChampions.swap_remove(index);
 				}
 
@@ -148,8 +170,10 @@ impl SummonedChampion
 		}
 		else 
 		{
+			println!("Debug : Not in Range");
 		    if needNewTargetCell || self.location[0..2] == self.targetCells //optimisation?, accuracy vs performance cost
 			{
+				println!("Debug : Need Target Cell");
 				let mut lowestDistance : i8 = 100;
 				let mut newPosition : [i8 ; 2] = self.location;
 				for possibleMove in [[0, -1], [1, -1], [1, 0], [-1, 0], [-1, 1], [0, 1]] //optimisation?
@@ -159,7 +183,7 @@ impl SummonedChampion
 					if distanceToTarget < lowestDistance
 					{
 						let mut failed = false;
-						if ! InGrid(newPosition, gridSize)
+						if ! InGridHexagon(newPosition)
 						{
 							continue;
 						}
@@ -175,13 +199,17 @@ impl SummonedChampion
 						{
 							continue;
 						}
+						println!("Debug : Found a Target Cell");
 						lowestDistance = distanceToTarget;
 						self.targetCells = newPosition;
 					}
 					
 				}
 			}
+			
+			println!("Debug : Moving to Target Cell");
 			self.movementProgress[0] += movementAmount * sign(self.targetCells[0] - self.location[0]);//optimisation here
+			println!("Debug : Position ({0},{1}) -- Movement Progress ({2},{3})", self.location[0], self.location[1], self.movementProgress[0], self.movementProgress[1]);
 			if self.movementProgress[0].abs() == 10
 			{
 				self.location[0] += sign(self.movementProgress[0]);
@@ -218,7 +246,7 @@ struct Board
 	p1Champions : Vec<SummonedChampion>, //Vector of player 1's champs
 	p2Champions : Vec<SummonedChampion>, //Vector of player 2's champs
 	timeUnit : u8, //time unit for board in centiseconds (1/100 of a second
-	gridSize : [i8 ; 3], //grid size [x, y, gridType]
+	//gridSize : [i8 ; 2], //grid size [x, y, gridType]
 	movementAmount : i8, //will be calculated, const / timeUnit
 }
 
@@ -243,7 +271,7 @@ impl Board
 		Board{p1Champions : p1Champions,
 			  p2Champions : p2Champions,
 			  timeUnit : timeUnit,
-			  gridSize : [7, 8, 1],
+			  //gridSize : [7, 8],
 			  movementAmount : 10 / timeUnit as i8, //optimisation
 			}
 	}
@@ -251,15 +279,18 @@ impl Board
 	{
 		let mut p1Positions : Vec<[i8 ; 2]> = Vec::new();
 		let mut p2Positions : Vec<[i8 ; 2]> = Vec::new();
+		let mut debugCount : u32 = 0;
 		while self.p1Champions.len() > 0 && self.p2Champions.len() > 0
 		{
+			println!("Debug : Iteration {}", debugCount);
+			debugCount += 1;
 			for champion in &self.p1Champions
 			{
 				p1Positions.push(champion.location);
 			}
 			for p1Champion in &mut self.p1Champions
 			{
-				p1Champion.takeTurn(&p1Positions, &mut self.p2Champions, self.timeUnit, self.movementAmount, self.gridSize);
+				p1Champion.takeTurn(&p1Positions, &mut self.p2Champions, self.timeUnit, self.movementAmount, /*self.gridSize*/);
 			}
 
 			for champion in &self.p2Champions
@@ -268,8 +299,25 @@ impl Board
 			}
 			for p2Champion in &mut self.p2Champions
 			{
-				p2Champion.takeTurn(&p2Positions, &mut self.p1Champions, self.timeUnit, self.movementAmount, self.gridSize);
+				p2Champion.takeTurn(&p2Positions, &mut self.p1Champions, self.timeUnit, self.movementAmount, /*self.gridSize*/);
 			}
+		}
+		println!("Debug : Battle Over");
+		if self.p1Champions.len() == 0
+		{
+			println!("Debug : Player 2 Won");
+			for champion in &self.p2Champions
+			{
+				println!("Champ Remaining ID,  Health : {0} {1}", champion.id, champion.health)
+			} 
+		}
+		else 
+		{
+			println!("Debug : Player 1 Won");
+			for champion in &self.p1Champions
+			{
+				println!("Champ Remaining ID,  Health : {0} {1}", champion.id, champion.health)
+			} 
 		}
 	}
 		
@@ -282,9 +330,10 @@ fn main() {
     const champions : [Champion ; 3] = [Champion{id : 0, cost : 1, hp : [700, 1260, 2268], sm : 0, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 7, ra : 3, aID : 0, traits : [1, 2, 0]}, 
                  						Champion{id : 1, cost : 2, hp : [900, 1620, 2916], sm : 50, mc : 100, ar : 40, mr : 40, ad : [77, 138, 248], aS : 7, ra : 3, aID : 0, traits : [2, 3, 0]}, 
                  						Champion{id : 2, cost : 3, hp : [700, 1260, 2268], sm : 35, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 7, ra : 3, aID : 0, traits : [4, 5, 0]}];
-    let playerOneChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [3, 0]}];
-	let playerTwoChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [6, 6]}];
+    let playerOneChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [3, 0]}, PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [9, 0]}];
+	let playerTwoChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 0, star : 2, items : [0, 0, 0], location : [6, 7]}];
 	let board : Board = Board::new(&playerOneChamps, &playerTwoChamps, 10, &champions);
+	println!("Debug : Starting Battle");
 	board.StartBattle()
 										 //let mut Chadden = Summ1dChampion{id : 0, star : 1, items : [0, 0, 0]};
     //let mut SomeGuy = Summ1dChampion{id : 1, star : 2, items : [0, 0, 0]};
@@ -312,7 +361,7 @@ fn sign(num : i8) -> i8
 	}
 }
 
-fn InGrid(pos : [i8 ; 2], gridSize : [i8 ; 3]) -> bool//need to check for correct gridsize
+/*fn InGridHexagon(pos : [i8 ; 2], gridSize : [i8 ; 3]) -> bool//need to check for correct gridsize
 {
 	if pos[0] >= 0 && pos[0] < gridSize[0] &&
 	   pos[1] >= 0 && pos[1] < gridSize[1]
@@ -320,13 +369,27 @@ fn InGrid(pos : [i8 ; 2], gridSize : [i8 ; 3]) -> bool//need to check for correc
 		if gridSize[2] == 1 //optimisation
 		{
 			if 2 - (pos[1] / 2) < pos[0] && //doesnt work for different grid sizes has to be changed manually
-			   7 - (pos[1] / 2) > pos[0]
+			   10 - (pos[1] / 2) > pos[0]
 			{
 				return true
 			}
 			return false
 		}
 		return true
+	}
+	return false
+}*/
+
+fn InGridHexagon(pos : [i8 ; 2]) -> bool//not going to attempt getting it working for different grid sizes yet
+{
+	if pos[0] >= 0 && pos[0] < 10 &&
+	   pos[1] >= 0 && pos[1] < 8
+	{
+		if 2 - (pos[1] / 2) < pos[0] && //doesnt work for different grid sizes has to be changed manually
+		   10 - (pos[1] / 2) > pos[0]
+		{
+			return true
+		}
 	}
 	return false
 }
