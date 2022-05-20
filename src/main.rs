@@ -2,7 +2,7 @@
 
 
 
-struct Champion
+struct Champion //Basic structure to store the base stats of a champ
 {
     id : u8, //champ id
     cost : u8, //gold cost
@@ -21,35 +21,35 @@ struct Champion
     traits : [u8 ; 3], //traits
 }
 //
-struct PlacedChampion
+struct PlacedChampion //Structure for champions placed on the board (but not in a battle), includes bench
 {
     id : usize, //champ id
 
     star : usize, //star level
     items : [u8 ; 3], //items given
-    location : [u8; 2] //location on board
+    location : [i8; 2] //location on board
 }
 
-struct SummonedChampion
+struct SummonedChampion //Structure for chapions on board in battle
 {
-	location : [i8 ; 2],
-	movementProgress : [i8 ; 2],
-	health : u16,
-	sm : u8,
+	location : [i8 ; 2], //location (x, y) on board
+	movementProgress : [i8 ; 2], //progress before moving to next square (range +-10)
+	health : u16, //health
+	cm : u8, //current mana
 	dc : u8, //dodge chance
-	mc : u8,
-	ar : u8,
-	mr : u8,
-	ad : u8,
-	aS : u8,
-	ra : u8,
-	aID : u8,
-	id : u8,
-	targetCountDown : i8,
-	autoAttackDelay : i16,
-	attackSpeedIncrease : u8,
-	target : u8,
-	targetCells : [i8 ; 2],
+	mc : u8, //mana cost
+	ar : u8, //armor
+	mr : u8, //magic resist
+	ad : u8, //attack damage
+	aS : u8, //attack speed
+	ra : u8, //range
+	aID : u8, //ability ID
+	id : u8, //id 
+	targetCountDown : i8, //cooldown before change target
+	autoAttackDelay : i16, //cooldown before next auto
+	attackSpeedIncrease : u8, //increase of base attack speed
+	target : u8, //id of target
+	targetCells : [i8 ; 2], //target cell to move to
 	items : [u8 ; 3], //item abilities 
 	//tIDs : Vec<[u8; 2]>, //trait abilities
 }
@@ -59,26 +59,11 @@ impl SummonedChampion
 	//Method for converting PlacedChampion into SummonChampion
 	fn new(placedChampion : &PlacedChampion, ofChampion : &Champion, id : u8) -> SummonedChampion
 	{
-		// Pass in grid of friendly champions rather than list of placed champions that will not be used
-		let starLevel = placedChampion.star;
-		/*nLocation = [placedChampion.location[0], placedChampion.location[1], 0, 0];
-		
-		nHealth = ofChampion.hp[starLevel];
-		nStartingMana = ofChampion.sm;
-		nDodgeChance = 0;
-		nManaCost = ofChampion.mc;
-		nArmour = ofChampion.ar;
-		nMagicResist = ofChampion.mr;
-		nAttackDamage = ofChampion.ad[starLevel];
-		nAttackSpeed = ofChampion.aS;
-		nRange = ofChampion.ra;
-		nAbilityID = ofChampion.aID;
-		nItems = placedChampion.items;
-		nTraits = ofChampion.traits;*/
-		SummonedChampion { location: [placedChampion.location[0] as i8, placedChampion.location[1] as i8],
+		let starLevel = placedChampion.star; //Get STart Level
+		SummonedChampion { location: [placedChampion.location[0], placedChampion.location[1]], //create summoned champ with all details
 						   movementProgress : [0, 0],
 						   health: ofChampion.hp[starLevel], 
-						   sm: ofChampion.sm, 
+						   cm: ofChampion.sm, //update current mana to starting mana
 						   dc: 0, 
 						   mc: ofChampion.mc, 
 						   ar: ofChampion.ar, 
@@ -99,6 +84,14 @@ impl SummonedChampion
 	}
 	fn takeTurn(self : &mut SummonedChampion, friendlyChampionsLocations : &Vec<[i8 ; 2]>, enemyChampions : &mut Vec<SummonedChampion>, timeUnit : u8, movementAmount : i8, gridSize : [i8 ; 3])
 	{
+		/*
+		self : this champion
+		friendlyChampionsLocations : location of all friend champs (array of positions), for pathfinding
+		enemyChampions : all enemy champions, for targetting
+		timeUnit : time unit of a frame, in centiseconds
+		movementAmount : precalculated movement distance for 1 frame
+		gridSize : currently unused
+		 */
 		self.targetCountDown -= timeUnit as i8;//Reduce cooldown to check target/ find new target
 		self.autoAttackDelay -= timeUnit as i16;//Risks going out of bounds as auto attack value may not be called for some time
 
@@ -108,52 +101,41 @@ impl SummonedChampion
 		let mut index : usize = 0;//Cache index of target in enemyChampions
 		let mut distanceToTarget : i8 = 127;//Distance to target (is set either while finding target or when target found)
 		let mut needNewTargetCell : bool = false;//Bool to store whether new path is needed
-		if self.targetCountDown <= 0
+		if self.targetCountDown <= 0 //find new target
 		{
-			self.targetCountDown = 25;
-			self.target = 0;
-			let mut distance : i8 = 0;
-			needNewTargetCell = true;
+			self.targetCountDown = 25; //resetting targetCoolDown
+			self.target = 0; //setting target to default value of 0 (first enemy champ)
+			let mut distance : i8 = 0; //setting distance to any value (will be overwritten)
+			needNewTargetCell = true; //setting this to true for later, will reset pathfinding
 
-			for (i, enemyChampion) in enemyChampions.iter().enumerate()
+			for (i, enemyChampion) in enemyChampions.iter().enumerate() //for every champ
 			{
-				distance = DistanceBetweenPoints(&enemyChampion.location, &self.location);
-				if distance < distanceToTarget
+				distance = DistanceBetweenPoints(&enemyChampion.location, &self.location); //calculate distance
+				if distance < distanceToTarget //if distance to current enemy champion in loop is lower than distance to current target
 				{
-					self.target = enemyChampion.id;
+					self.target = enemyChampion.id; //change target
 					distanceToTarget = distance;
-					index = i;
+					index = i; //setting index
 				}
 			}
 		}
 		else 
 		{
-			for (i, enemyChampion) in enemyChampions.iter().enumerate()// potential bug if target champion gets killed and therefore not in enemyChampions
+			for (i, enemyChampion) in enemyChampions.iter().enumerate()// //finding target in enemy champs, cannot be done by index as index may have changed from death, maybe optimisation if accepting changing target when one dies.
 			{
-				if enemyChampion.id == self.target
+				if enemyChampion.id == self.target //if correct id
 				{
 					index = i;
-					distanceToTarget = DistanceBetweenPoints(&enemyChampion.location[0..2], &self.location[0..2]);
+					distanceToTarget = DistanceBetweenPoints(&enemyChampion.location, &self.location);//setting distance to correct distance
 				}
 			}	
 		}
-		if distanceToTarget <= self.ra as i8
+		if distanceToTarget <= self.ra as i8 //if target in range
 		{
-			if self.autoAttackDelay <= 0
+			if self.autoAttackDelay <= 0 //if auto attack ready
 			{
-				/* 
-				self.aS = attacks per 10 seconds
-				self.autoAttackDelay = time in 1/10 of second until next attack
-				self.attackSpeedIncrease = percentage increase in attack speed
-				
-				
-
-				autoAttacKDelay (seconds) = 1 (second) / 0.7 (attacks per seconds)
-				autoAttackDelay (centiseconds) = 100 (centisecond) / 0.7 (attacks per second)
-				autoAttackDelay (centiseconds) = 1000 (centisecond * 10) / 7 (attacks per 10 seconds) + 7 * attackSpeedIncrease
-				
-				*/
-				self.autoAttackDelay = 1000 / (self.aS + self.aS * self.attackSpeedIncrease) as i16; //attack speed unclear, capped at five yet some champions let you boost beyond it?
+				self.autoAttackDelay = 1000 / (self.aS + self.aS * self.attackSpeedIncrease) as i16; //sets attack delay to valid account dependant on base and % increase
+				//attack speed unclear, capped at five yet some champions let you boost beyond it?
 				//optimisation definitely here
 
 				enemyChampions[index].health -= ((100 / (100 + enemyChampions[index].ar)) * self.ad) as u16; 
