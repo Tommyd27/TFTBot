@@ -1,6 +1,6 @@
 #![allow(non_snake_case)] //allows snake case because.
 
-
+use rand::Rng;
 struct Champion //Basic structure to store the base stats of a champ
 {
     id : u8, //champ id
@@ -83,7 +83,7 @@ impl SummonedChampion
 						   //tIDs: Vec::new(),
 						}
 	}
-	fn takeTurn(self : &mut SummonedChampion, friendlyChampionsLocations : &Vec<[i8 ; 2]>, enemyChampions : &mut Vec<SummonedChampion>, timeUnit : u8, movementAmount : i8, /*gridSize : [i8 ; 2]*/)
+	fn takeTurn(self : &mut SummonedChampion, friendlyChampionsLocations : &Vec<[i8 ; 2]>, enemyChampions : &mut Vec<SummonedChampion>, timeUnit : u8, movementAmount : i8, randomGen : &mut rand::rngs::ThreadRng/*gridSize : [i8 ; 2]*/)
 	{
 		/*
 		self : this champion
@@ -156,15 +156,27 @@ impl SummonedChampion
 				*/
 				self.autoAttackDelay = 1000 / (self.aS + self.aS * self.attackSpeedIncrease) as i16; //attack speed unclear, capped at five yet some champions let you boost beyond it?
 				//optimisation definitely here
-				if enemyChampions[index].dc > 0 && 
-				enemyChampions[index].health -= ((100 * self.ad) / (100 + enemyChampions[index].ar)) as i32; //discrepency
-				//enemyChampions[index].health -= ((100 * 75) / (100 + 25)) as u32; 
-				println!("Debug : Enemy Champion Health is {0}", enemyChampions[index].health);
-				if enemyChampions[index].health <= 0
+				if enemyChampions[index].dc > 0 && enemyChampions[index].dc < randomGen.gen_range(0..100)
 				{
-					println!("Debug : Health Lower than 0 - Removing");
-					enemyChampions.swap_remove(index);
+					let damage : i32 = ((100 * self.ad) / (100 + enemyChampions[index].ar)).try_into().unwrap();
+					enemyChampions[index].health -=  damage; //discrepency
+					if self.cr > randomGen.gen_range(0..100)
+					{
+						enemyChampions[index].health -= damage * 3 / 10;
+						println!("Debug : Critical Hit");
+					}
+					println!("Debug : Enemy Champion Health is {0}", enemyChampions[index].health);
+					if enemyChampions[index].health <= 0
+					{
+						println!("Debug : Health Lower than 0 - Removing");
+						enemyChampions.swap_remove(index);
+					}
 				}
+				else 
+				{
+					println!("Debug : Dodged Attack");
+				}
+				
 
 			}
 		}
@@ -280,6 +292,7 @@ impl Board
 		let mut p1Positions : Vec<[i8 ; 2]> = Vec::new();
 		let mut p2Positions : Vec<[i8 ; 2]> = Vec::new();
 		let mut debugCount : u32 = 0;
+		let mut randomGen = rand::thread_rng();
 		while self.p1Champions.len() > 0 && self.p2Champions.len() > 0
 		{
 			println!("Debug : Iteration {}", debugCount);
@@ -290,7 +303,7 @@ impl Board
 			}
 			for p1Champion in &mut self.p1Champions
 			{
-				p1Champion.takeTurn(&p1Positions, &mut self.p2Champions, self.timeUnit, self.movementAmount, /*self.gridSize*/);
+				p1Champion.takeTurn(&p1Positions, &mut self.p2Champions, self.timeUnit, self.movementAmount, &mut randomGen/*self.gridSize*/);
 			}
 
 			for champion in &self.p2Champions
@@ -299,7 +312,7 @@ impl Board
 			}
 			for p2Champion in &mut self.p2Champions
 			{
-				p2Champion.takeTurn(&p2Positions, &mut self.p1Champions, self.timeUnit, self.movementAmount, /*self.gridSize*/);
+				p2Champion.takeTurn(&p2Positions, &mut self.p1Champions, self.timeUnit, self.movementAmount, &mut randomGen/*self.gridSize*/);
 			}
 		}
 		println!("Debug : Battle Over");
@@ -327,12 +340,12 @@ impl Board
 
 
 fn main() {
-    const champions : [Champion ; 3] = [Champion{id : 0, cost : 1, hp : [700, 1260, 2268], sm : 0, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 7, ra : 3, aID : 0, traits : [1, 2, 0]}, 
+    const CHAMPIONS : [Champion ; 3] = [Champion{id : 0, cost : 1, hp : [700, 1260, 2268], sm : 0, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 7, ra : 3, aID : 0, traits : [1, 2, 0]}, 
                  						Champion{id : 1, cost : 2, hp : [900, 1620, 2916], sm : 50, mc : 100, ar : 40, mr : 40, ad : [77, 138, 248], aS : 7, ra : 3, aID : 0, traits : [2, 3, 0]}, 
                  						Champion{id : 2, cost : 3, hp : [700, 1260, 2268], sm : 35, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 7, ra : 3, aID : 0, traits : [4, 5, 0]}];
     let playerOneChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [3, 0]}, PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [9, 0]}];
 	let playerTwoChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 0, star : 2, items : [0, 0, 0], location : [6, 7]}];
-	let board : Board = Board::new(&playerOneChamps, &playerTwoChamps, 10, &champions);
+	let board : Board = Board::new(&playerOneChamps, &playerTwoChamps, 10, &CHAMPIONS);
 	println!("Debug : Starting Battle");
 	board.StartBattle()
 										 //let mut Chadden = Summ1dChampion{id : 0, star : 1, items : [0, 0, 0]};
