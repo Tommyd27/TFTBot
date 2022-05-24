@@ -1,6 +1,6 @@
-#![allow(non_snake_case)] //allows snake case because.
+#![allow(non_snake_case)] //Allows snake case
 
-use rand::Rng;
+use rand::Rng; //Used for generating random numbers for crits
 struct Champion //Basic structure to store the base stats of a champ
 {
     id : u8, //champ id
@@ -12,7 +12,7 @@ struct Champion //Basic structure to store the base stats of a champ
     ar : u32, //armor
     mr : u8, //magic resist
     ad : [u32; 3], //attack damage (scales with star level)
-    aS : u8, //attack speed, divide by ten
+    aS : u8, //attack speed in attacks per 10 seconds
     ra : u8, //auto attack range
     
     aID : u8, //ability ID
@@ -31,25 +31,25 @@ struct PlacedChampion //Structure for champions placed on the board (but not in 
 
 struct SummonedChampion //Structure for chapions on board in battle
 {
-	location : [i8 ; 2],
-	movementProgress : [i8 ; 2],
-	health : i32,
-	cm : u8,
+	location : [i8 ; 2], //array of p, q coordinates, r can be calculated with r = -p - q
+	movementProgress : [i8 ; 2], //progress of movement before moving to a new square, goes to 10 before moving
+	health : i32, //health
+	cm : u8, //current mana
 	dc : u8, //dodge chance
-	cr : u8, // crit rate
-	mc : u8,
-	ar : u32,
-	mr : u8,
-	ad : u32,
-	aS : u8,
-	ra : u8,
-	aID : u8,
-	id : u8,
-	targetCountDown : i8,
-	autoAttackDelay : i16,
-	attackSpeedIncrease : u8,
-	target : u8,
-	targetCells : [i8 ; 2],
+	cr : u8, //crit rate
+	mc : u8, //mana/ ability cost
+	ar : u32, //armor
+	mr : u8,  //magic resist
+	ad : u32, //attack damage
+	aS : u8, //attacks per 10 seconds
+	ra : u8, //auto attack range
+	aID : u8, //ability ID
+	id : u8, //id
+	targetCountDown : i8, //cooldown before target change
+	autoAttackDelay : i16, //cooldown before auto attackng again
+	attackSpeedIncrease : u8, //increase from items/ from base attack speed
+	target : u8, //ID of target
+	targetCells : [i8 ; 2], //pathfinding target cell
 	items : [u8 ; 3], //item abilities 
 	//tIDs : Vec<[u8; 2]>, //trait abilities
 }
@@ -67,7 +67,7 @@ impl SummonedChampion
 						   dc: 0, 
 						   cr : 25,
 						   mc: ofChampion.mc, 
-						   ar: ofChampion.ar, 
+						   ar: ofChampion.ar * 2, //when calculating distances in cube grid, 1 adjacent hex is calculated as "2" away due to the p, q, r coordinate system, thus attack range is doubled.
 						   mr: ofChampion.mr, 
 						   ad: ofChampion.ad[starLevel], 
 						   aS: ofChampion.aS, 
@@ -91,7 +91,7 @@ impl SummonedChampion
 		enemyChampions : all enemy champions, for targetting
 		timeUnit : time unit of a frame, in centiseconds
 		movementAmount : precalculated movement distance for 1 frame
-		gridSize : currently unused
+		gridSize : depreciated
 		 */
 		self.targetCountDown -= timeUnit as i8;//Reduce cooldown to check target/ find new target
 		self.autoAttackDelay -= timeUnit as i16;//Risks going out of bounds as auto attack value may not be called for some time
@@ -102,26 +102,26 @@ impl SummonedChampion
 		let mut index : usize = 99;//Cache index of target in enemyChampions
 		let mut distanceToTarget : i8 = 127;//Distance to target (is set either while finding target or when target found)
 		let mut needNewTargetCell : bool = false;//Bool to store whether new path is needed
-		if self.targetCountDown > 0
+		if self.targetCountDown > 0 //if already has target and doesnt want to change targets 
 		{
-			for (i, enemyChampion) in enemyChampions.iter().enumerate()// potential bug if target champion gets killed and therefore not in enemyChampions
+			for (i, enemyChampion) in enemyChampions.iter().enumerate() //every enemy champ
 			{
-				if enemyChampion.id == self.target
+				if enemyChampion.id == self.target //if they share id
 				{
 					println!("Debug : Found Target");
-					index = i;
-					distanceToTarget = DistanceBetweenPoints(&enemyChampion.location[0..2], &self.location[0..2]);
+					index = i;//set index
+					distanceToTarget = DistanceBetweenPoints(&enemyChampion.location, &self.location);//calculate distance
 					break;
 				}
 			}	
 		}
-		if index == 99
+		if index == 99 //index not updating from initial intilialisation of 99, therefore need new target
 		{
 			println!("Debug : Looking for Target");
-			self.targetCountDown = 100;
-			self.target = 0;
-			let mut distance : i8 = 0;
-			needNewTargetCell = true;
+			self.targetCountDown = 100;//reset target cooldown
+			self.target = 0;//reset target
+			let mut distance; //cache to store distance between enemy and location
+			needNewTargetCell = true; //tells us to recalculate pathfinding later
 
 			for (i, enemyChampion) in enemyChampions.iter().enumerate() //for every champ
 			{
@@ -129,17 +129,17 @@ impl SummonedChampion
 				if distance < distanceToTarget //if distance to current enemy champion in loop is lower than distance to current target
 				{
 					self.target = enemyChampion.id; //change target
-					distanceToTarget = distance;
+					distanceToTarget = distance; //updating distance to new lower value
 					index = i; //setting index
 				}
 			}
 		}
 		
-		if distanceToTarget <= self.ra as i8
+		if distanceToTarget <= self.ra as i8//if target in range
 		{
 			println!("Debug : Target in Range");
 			println!("Debug : Auto Attack Delay Remaining {0}", self.autoAttackDelay);
-			if self.autoAttackDelay <= 0
+			if self.autoAttackDelay <= 0//if autoattack ready
 			{
 				println!("Debug : Delay Smaller than 0 - Attacking");
 				/* 
@@ -154,19 +154,21 @@ impl SummonedChampion
 				autoAttackDelay (centiseconds) = 1000 (centisecond * 10) / 7 (attacks per 10 seconds) + 7 * attackSpeedIncrease
 				
 				*/
-				self.autoAttackDelay = 1000 / (self.aS + self.aS * self.attackSpeedIncrease) as i16; //attack speed unclear, capped at five yet some champions let you boost beyond it?
+				self.autoAttackDelay = 1000 / (self.aS + self.aS * self.attackSpeedIncrease) as i16; //calculating auto attack delay
+				//attack speed unclear, capped at five yet some champions let you boost beyond it?
 				//optimisation definitely here
-				if enemyChampions[index].dc > 0 && enemyChampions[index].dc < randomGen.gen_range(0..100)
+				if enemyChampions[index].dc > 0 && enemyChampions[index].dc < randomGen.gen_range(0..100) //calculating whether to dodge
 				{
-					let damage : i32 = ((100 * self.ad) / (100 + enemyChampions[index].ar)).try_into().unwrap();
-					enemyChampions[index].health -=  damage; //discrepency
-					if self.cr > randomGen.gen_range(0..100)
+					let damage : i32 = ((100 * self.ad) / (100 + enemyChampions[index].ar)).try_into().unwrap(); //calculating damage
+					enemyChampions[index].health -=  damage; 
+					//discrepency
+					if self.cr > randomGen.gen_range(0..100)//calculating crit
 					{
 						enemyChampions[index].health -= damage * 3 / 10;
 						println!("Debug : Critical Hit");
 					}
 					println!("Debug : Enemy Champion Health is {0}", enemyChampions[index].health);
-					if enemyChampions[index].health <= 0
+					if enemyChampions[index].health <= 0 //if enemy champion dead
 					{
 						println!("Debug : Health Lower than 0 - Removing");
 						enemyChampions.swap_remove(index);
@@ -183,12 +185,17 @@ impl SummonedChampion
 		else 
 		{
 			println!("Debug : Not in Range");
-		    if needNewTargetCell || self.location[0..2] == self.targetCells //optimisation?, accuracy vs performance cost
+		    if needNewTargetCell || self.location == self.targetCells //if need to update pathfinding or at pathfinding target
+			//optimisation?, accuracy vs performance cost
 			{
 				println!("Debug : Need Target Cell");
-				let mut lowestDistance : i8 = 100;
-				let mut newPosition : [i8 ; 2] = self.location;
-				for possibleMove in [[0, -1], [1, -1], [1, 0], [-1, 0], [-1, 1], [0, 1]] //optimisation?
+				self.targetCells = self.location; //setting target cells to location so if it does not find a target this frame will try to do it again
+				//optimisation does not need to check every frame
+
+				let mut lowestDistance : i8 = 100; //setting lowestDistance to high value
+				let mut newPosition;
+				for possibleMove in [[0, -1], [1, -1], [1, 0], [-1, 0], [-1, 1], [0, 1]] //for every possible move
+				//optimisation
 				{
 					newPosition = [self.location[0] + possibleMove[0], self.location[1] + possibleMove[1]];
 					distanceToTarget = DistanceBetweenPoints(&newPosition, &enemyChampions[index].location);
@@ -355,7 +362,8 @@ fn main() {
 
 fn DistanceBetweenPoints(point1 : &[i8], point2 : &[i8]) -> i8
 {
-	(point1[0] - point2[0]).abs() + (point1[1] - point2[1]).abs()
+	let zPoints : [i8 ; 2] = [-point1[0] - point1[1], -point2[0] - point2[1]];
+	(point1[0] - point2[0]).abs() + (point1[1] - point2[1]).abs() + (zPoints[0] - zPoints[1]).abs()
 }
 
 fn sign(num : i8) -> i8
