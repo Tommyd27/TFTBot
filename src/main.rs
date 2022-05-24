@@ -157,7 +157,7 @@ impl SummonedChampion
 				self.autoAttackDelay = 1000 / (self.aS + self.aS * self.attackSpeedIncrease) as i16; //calculating auto attack delay
 				//attack speed unclear, capped at five yet some champions let you boost beyond it?
 				//optimisation definitely here
-				if enemyChampions[index].dc > 0 && enemyChampions[index].dc < randomGen.gen_range(0..100) //calculating whether to dodge
+				if enemyChampions[index].dc <= 0 || enemyChampions[index].dc < randomGen.gen_range(0..100) //calculating whether to dodge
 				{
 					let damage : i32 = ((100 * self.ad) / (100 + enemyChampions[index].ar)).try_into().unwrap(); //calculating damage
 					enemyChampions[index].health -=  damage; 
@@ -294,7 +294,7 @@ impl Board
 			  movementAmount : 10 / timeUnit as i8, //optimisation
 			}
 	}
-	fn StartBattle(mut self : Board)
+	fn StartBattle(mut self : Board) -> i8
 	{
 		let mut p1Positions : Vec<[i8 ; 2]> = Vec::new();
 		let mut p2Positions : Vec<[i8 ; 2]> = Vec::new();
@@ -329,7 +329,8 @@ impl Board
 			for champion in &self.p2Champions
 			{
 				println!("Champ Remaining ID,  Health : {0} {1}", champion.id, champion.health)
-			} 
+			}
+			return 2;
 		}
 		else 
 		{
@@ -337,7 +338,8 @@ impl Board
 			for champion in &self.p1Champions
 			{
 				println!("Champ Remaining ID,  Health : {0} {1}", champion.id, champion.health)
-			} 
+			}
+			return 1;
 		}
 	}
 		
@@ -350,11 +352,20 @@ fn main() {
     const CHAMPIONS : [Champion ; 3] = [Champion{id : 0, cost : 1, hp : [700, 1260, 2268], sm : 0, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 7, ra : 3, aID : 0, traits : [1, 2, 0]}, 
                  						Champion{id : 1, cost : 2, hp : [900, 1620, 2916], sm : 50, mc : 100, ar : 40, mr : 40, ad : [77, 138, 248], aS : 7, ra : 3, aID : 0, traits : [2, 3, 0]}, 
                  						Champion{id : 2, cost : 3, hp : [700, 1260, 2268], sm : 35, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 7, ra : 3, aID : 0, traits : [4, 5, 0]}];
-    let playerOneChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [3, 0]}, PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [9, 0]}];
+    let playerOneChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [3, 0]}, PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [9, 0]}, PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [6, 0]}];
 	let playerTwoChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 0, star : 2, items : [0, 0, 0], location : [6, 7]}];
-	let board : Board = Board::new(&playerOneChamps, &playerTwoChamps, 10, &CHAMPIONS);
-	println!("Debug : Starting Battle");
-	board.StartBattle()
+	let mut boardOutcome = 1;
+	let mut iterationCount = 0;
+	while boardOutcome != 2
+	{
+		iterationCount += 1;
+		let board : Board = Board::new(&playerOneChamps, &playerTwoChamps, 10, &CHAMPIONS);
+		println!("Debug : Starting Battle");
+		boardOutcome = board.StartBattle()
+		
+	}
+	println!("Debug : Iteration Count {}", iterationCount);
+	
 										 //let mut Chadden = Summ1dChampion{id : 0, star : 1, items : [0, 0, 0]};
     //let mut SomeGuy = Summ1dChampion{id : 1, star : 2, items : [0, 0, 0]};
 
