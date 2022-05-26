@@ -83,7 +83,8 @@ impl SummonedChampion
 						   //tIDs: Vec::new(),
 						}
 	}
-	fn takeTurn(self : &mut SummonedChampion, friendlyChampionsLocations : &Vec<[i8 ; 2]>, enemyChampions : &mut Vec<SummonedChampion>, timeUnit : u8, movementAmount : i8, randomGen : &mut rand::rngs::ThreadRng/*gridSize : [i8 ; 2]*/)
+	//fn takeTurn(self : &mut SummonedChampion, friendlyChampionsLocations : &Vec<[i8 ; 2]>, enemyChampions : &mut Vec<SummonedChampion>, timeUnit : u8, movementAmount : i8, randomGen : &mut rand::rngs::ThreadRng/*gridSize : [i8 ; 2]*/)
+	fn takeTurn(self : &mut SummonedChampion, friendlyChampionsLocations : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, timeUnit : u8, movementAmount : i8, randomGen : &mut rand::rngs::ThreadRng/*gridSize : [i8 ; 2]*/)
 	{
 		/*
 		self : this champion
@@ -302,7 +303,9 @@ impl Board
 		let mut randomGen = rand::thread_rng();
 		while self.p1Champions.len() > 0 && self.p2Champions.len() > 0
 		{
-			println!("Debug : Iteration {}", debugCount);
+			let mut someChamp = &mut self.p1Champions[0];
+			someChamp.takeTurn(&mut self.p1Champions, &mut self.p2Champions, timeUnit, movementAmount, &mut randomGen)
+			/*println!("Debug : Iteration {}", debugCount);
 			debugCount += 1;
 			for champion in &self.p1Champions
 			{
@@ -320,7 +323,7 @@ impl Board
 			for p2Champion in &mut self.p2Champions
 			{
 				p2Champion.takeTurn(&p2Positions, &mut self.p1Champions, self.timeUnit, self.movementAmount, &mut randomGen/*self.gridSize*/);
-			}
+			}*/
 		}
 		println!("Debug : Battle Over");
 		if self.p1Champions.len() == 0
