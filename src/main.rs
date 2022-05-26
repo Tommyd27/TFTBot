@@ -209,7 +209,7 @@ impl SummonedChampion
 						}
 						for friendlyChampionLocation in friendlyChampionsLocations
 						{
-							if friendlyChampionLocation[0] == newPosition[0] && friendlyChampionLocation[1] == newPosition[1]
+							if friendlyChampionLocation.location[0] == newPosition[0] && friendlyChampionLocation.location[1] == newPosition[1]
 							{
 								failed = true;
 								break
@@ -297,33 +297,24 @@ impl Board
 	}
 	fn StartBattle(mut self : Board) -> i8
 	{
-		let mut p1Positions : Vec<[i8 ; 2]> = Vec::new();
-		let mut p2Positions : Vec<[i8 ; 2]> = Vec::new();
 		let mut debugCount : u32 = 0;
 		let mut randomGen = rand::thread_rng();
 		while self.p1Champions.len() > 0 && self.p2Champions.len() > 0
 		{
-			let mut someChamp = &mut self.p1Champions[0];
-			someChamp.takeTurn(&mut self.p1Champions, &mut self.p2Champions, timeUnit, movementAmount, &mut randomGen)
-			/*println!("Debug : Iteration {}", debugCount);
+			println!("Debug : Iteration {}", debugCount);
 			debugCount += 1;
-			for champion in &self.p1Champions
+			/*for p1ChampionIndex in [0..self.p1Champions.len()]
 			{
-				p1Positions.push(champion.location);
+				self.p1Champions[p1ChampionIndex].takeTurn(&mut self.p1Champions, &mut self.p2Champions, self.timeUnit, self.movementAmount, &mut randomGen/*self.gridSize*/);
 			}
-			for p1Champion in &mut self.p1Champions
+			for p2ChampionIndex in [0..self.p2Champions.len()]
 			{
-				p1Champion.takeTurn(&p1Positions, &mut self.p2Champions, self.timeUnit, self.movementAmount, &mut randomGen/*self.gridSize*/);
-			}
-
-			for champion in &self.p2Champions
-			{
-				p2Positions.push(champion.location);
-			}
-			for p2Champion in &mut self.p2Champions
-			{
-				p2Champion.takeTurn(&p2Positions, &mut self.p1Champions, self.timeUnit, self.movementAmount, &mut randomGen/*self.gridSize*/);
+				self.p2Champions[p2ChampionIndex].takeTurn(&mut self.p2Champions, &mut self.p2Champions, self.timeUnit, self.movementAmount, &mut randomGen/*self.gridSize*/);
 			}*/
+			for p1Champion in self.p1Champions.iter()
+			{
+				p1Champion.takeTurn(&mut self.p1Champions, &mut self.p2Champions, self.timeUnit, self.movementAmount, &mut randomGen)
+			}
 		}
 		println!("Debug : Battle Over");
 		if self.p1Champions.len() == 0
