@@ -84,7 +84,7 @@ impl SummonedChampion
 						}
 	}
 	//fn takeTurn(self : &mut SummonedChampion, friendlyChampionsLocations : &Vec<[i8 ; 2]>, enemyChampions : &mut Vec<SummonedChampion>, timeUnit : u8, movementAmount : i8, randomGen : &mut rand::rngs::ThreadRng/*gridSize : [i8 ; 2]*/)
-	fn takeTurn(self : &mut SummonedChampion, friendlyChampionsLocations : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, timeUnit : u8, movementAmount : i8, randomGen : &mut rand::rngs::ThreadRng/*gridSize : [i8 ; 2]*/)
+	fn takeTurn(self : &mut SummonedChampion, friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, timeUnit : u8, movementAmount : i8, randomGen : &mut rand::rngs::ThreadRng/*gridSize : [i8 ; 2]*/)
 	{
 		/*
 		self : this champion
@@ -207,7 +207,7 @@ impl SummonedChampion
 						{
 							continue;
 						}
-						for friendlyChampionLocation in friendlyChampionsLocations
+						for friendlyChampionLocation in friendlyChampions
 						{
 							if friendlyChampionLocation.location[0] == newPosition[0] && friendlyChampionLocation.location[1] == newPosition[1]
 							{
@@ -303,18 +303,18 @@ impl Board
 		{
 			println!("Debug : Iteration {}", debugCount);
 			debugCount += 1;
-			/*for p1ChampionIndex in [0..self.p1Champions.len()]
+			/*for p1ChampionIndex in 0..self.p1Champions.len()
 			{
 				self.p1Champions[p1ChampionIndex].takeTurn(&mut self.p1Champions, &mut self.p2Champions, self.timeUnit, self.movementAmount, &mut randomGen/*self.gridSize*/);
 			}
-			for p2ChampionIndex in [0..self.p2Champions.len()]
+			for p2ChampionIndex in 0..self.p2Champions.len()
 			{
 				self.p2Champions[p2ChampionIndex].takeTurn(&mut self.p2Champions, &mut self.p2Champions, self.timeUnit, self.movementAmount, &mut randomGen/*self.gridSize*/);
 			}*/
-			for p1Champion in self.p1Champions.iter()
+			/*for p1Champion in &mut *self.p1Champions
 			{
 				p1Champion.takeTurn(&mut self.p1Champions, &mut self.p2Champions, self.timeUnit, self.movementAmount, &mut randomGen)
-			}
+			}*/
 		}
 		println!("Debug : Battle Over");
 		if self.p1Champions.len() == 0
