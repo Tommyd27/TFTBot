@@ -9,13 +9,13 @@ struct Champion //Basic structure to store the base stats of a champ
     hp : [i32; 3], //health points (scales with star level)
     sm : u8, //starting mana
     mc : u8, //ability mana cost
-    ar : u32, //armor
-    mr : u8, //magic resist
-    ad : [u32; 3], //attack damage (scales with star level)
+    ar : i32, //armor
+    mr : i8, //magic resist
+    ad : [i32; 3], //attack damage (scales with star level)
     aS : u8, //attack speed in attacks per 10 seconds
     ra : u8, //auto attack range
     
-    aID : u8, //ability ID
+    aID : usize, //ability ID
 
     traits : [u8 ; 3], //traits
 }
@@ -25,8 +25,32 @@ const CHAMPIONS : [Champion ; 3] = [Champion{id : 0, cost : 1, hp : [700, 1260, 
                  						Champion{id : 1, cost : 2, hp : [900, 1620, 2916], sm : 50, mc : 100, ar : 40, mr : 40, ad : [77, 138, 248], aS : 7, ra : 3, aID : 0, traits : [2, 3, 0]}, 
                  						Champion{id : 2, cost : 3, hp : [700, 1260, 2268], sm : 35, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 7, ra : 3, aID : 0, traits : [4, 5, 0]}];
 
-fn 
+fn LuluAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize)
+{
 
+}
+
+fn AatroxAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize)
+{
+	let starLevel = friendlyChampions[selfIndex].starLevel;
+	//can strike from out of range
+	let mut targetIndex = friendlyChampions[selfIndex].target;
+	if targetIndex != enemyChampions[friendlyChampions[selfIndex].target as usize].id
+	{
+		for (i, champ) in enemyChampions.iter().enumerate()
+		{
+			if champ.id == targetIndex
+			{
+				targetIndex == i;
+			}
+		}
+	}
+	friendlyChampions[selfIndex].health += ((300 + 50 * starLevel as i32) * friendlyChampions[selfIndex].ap) / 100;
+
+	enemyChampions[targetIndex].health -= (100 / 100 + enemyChampions[targetIndex].ar) * (300 + 5 * starLevel as i32) * friendlyChampions[selfIndex].ad;
+}
+const CHAMPIONABILITIES : [fn(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize) ; 2]	= 
+	[LuluAbility, AatroxAbility];
 
 
 
@@ -53,26 +77,30 @@ struct SummonedChampion //Structure for chapions on board in battle
 	dc : u8, //dodge chance
 	cr : u8, //crit rate
 	mc : u8, //mana/ ability cost
-	ar : u32, //armor
-	mr : u8,  //magic resist
-	ad : u32, //attack damage
+	ar : i32, //armor
+	mr : i8,  //magic resist
+	ad : i32, //attack damage
 	aS : u8, //attacks per 10 seconds
 	ra : u8, //auto attack range
-	aID : u8, //ability ID
-	id : u8, //id
+	aID : usize, //ability ID
+	id : usize, //id
 	targetCountDown : i8, //cooldown before target change
 	autoAttackDelay : i16, //cooldown before auto attackng again
 	attackSpeedIncrease : u8, //increase from items/ from base attack speed
-	target : u8, //ID of target
+	target : usize, //ID of target
 	targetCells : [i8 ; 2], //pathfinding target cell
 	items : [u8 ; 3], //item abilities 
+	ap : i32, //ability power
+	cc : u8, //crowd control/ stun remaining
+	gMD : i8, //generate mana delay, after abilities 1 second before can start generating mana again
+	starLevel : usize,
 	//tIDs : Vec<[u8; 2]>, //trait abilities
 }
 
 impl SummonedChampion 
 {
 	//Method for converting PlacedChampion into SummonChampion
-	fn new(placedChampion : &PlacedChampion, id : u8) -> SummonedChampion
+	fn new(placedChampion : &PlacedChampion, id : usize) -> SummonedChampion
 	{
 		let starLevel = placedChampion.star; //Get STart Level
 		let ofChampion = &CHAMPIONS[placedChampion.id];
@@ -95,7 +123,11 @@ impl SummonedChampion
 						   target : 255,
 						   targetCells : [-1, -1], //Optimisation, list in path
 						   aID: ofChampion.aID, 
-						   items: placedChampion.items, 
+						   items: placedChampion.items,
+						   ap : 100,
+						   cc : 0,
+						   gMD : 0,
+						   starLevel : starLevel,
 						   //tIDs: Vec::new(),
 						}
 	}
@@ -136,12 +168,12 @@ impl Board
 		let mut p2Champions = Vec::new();
 		for (i, p1Champion) in p1PlacedChamps.iter().enumerate()//place for optimisation
 		{
-			p1Champions.push(SummonedChampion::new(&p1Champion, i as u8));//converts into summoned champ
+			p1Champions.push(SummonedChampion::new(&p1Champion, i));//converts into summoned champ
 		}
 
 		for (i, p2Champion) in p2PlacedChamps.iter().enumerate()//place for optimisation
 		{
-			p2Champions.push(SummonedChampion::new(&p2Champion, i as u8));//converts into summoned champ
+			p2Champions.push(SummonedChampion::new(&p2Champion, i));//converts into summoned champ
 		}
 		
 		Board{p1Champions : p1Champions,
@@ -286,7 +318,7 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 	let mut thisChamp = &mut friendlyChampions[selfIndex];
 	friendlyChampions[selfIndex].targetCountDown -= timeUnit as i8;//Reduce cooldown to check target/ find new target
 	friendlyChampions[selfIndex].autoAttackDelay -= timeUnit as i16;//Risks going out of bounds as auto attack value may not be called for some time
-
+	friendlyChampions[selfIndex].gMD -= timeUnit as i8;
 	//does auto attack delay need to reset on pathing? does attack instantly after reaching path/ in range
 
 
@@ -348,12 +380,20 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 			friendlyChampions[selfIndex].autoAttackDelay = 1000 / (friendlyChampions[selfIndex].aS + friendlyChampions[selfIndex].aS * friendlyChampions[selfIndex].attackSpeedIncrease) as i16; //calculating auto attack delay
 			//attack speed unclear, capped at five yet some champions let you boost beyond it?
 			//optimisation definitely here
-			friendlyChampions[selfIndex].cm += 10;
+			if friendlyChampions[selfIndex].gMD <= 0
+			{
+				friendlyChampions[selfIndex].cm += 10;
+			}
+			
 			if enemyChampions[index].dc <= 0 || enemyChampions[index].dc < randomGen.gen_range(0..100) //calculating whether to dodge
 			{
 				let damage : i32 = ((100 * friendlyChampions[selfIndex].ad) / (100 + enemyChampions[index].ar)).try_into().unwrap(); //calculating damage
 				enemyChampions[index].health -=  damage;
-				enemyChampions[index].cm += (damage / 100 * 7) as u8; //discrepency, should be 1% of premitigation and 7% of post.
+				if enemyChampions[index].gMD <= 0
+				{
+					enemyChampions[index].cm += (damage / 100 * 7) as u8; //discrepency, should be 1% of premitigation and 7% of post.
+				}
+				
 				//discrepency
 				if friendlyChampions[selfIndex].cr > randomGen.gen_range(0..100)//calculating crit
 				{
@@ -439,6 +479,7 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 	if friendlyChampions[selfIndex].cm >= friendlyChampions[selfIndex].mc
 	{
 		friendlyChampions[selfIndex].cm = 0;
+		CHAMPIONABILITIES[friendlyChampions[selfIndex].aID](friendlyChampions, enemyChampions, selfIndex);
 	}
 }
 
