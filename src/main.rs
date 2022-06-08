@@ -22,12 +22,29 @@ struct Champion //Basic structure to store the base stats of a champ
 
 
 const CHAMPIONS : [Champion ; 3] = [Champion{id : 0, cost : 1, hp : [700, 1260, 2268], sm : 0, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 7, ra : 3, aID : 0, traits : [1, 2, 0]}, 
-                 						Champion{id : 1, cost : 2, hp : [900, 1620, 2916], sm : 50, mc : 100, ar : 40, mr : 40, ad : [77, 138, 248], aS : 7, ra : 3, aID : 0, traits : [2, 3, 0]}, 
-                 						Champion{id : 2, cost : 3, hp : [700, 1260, 2268], sm : 35, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 7, ra : 3, aID : 0, traits : [4, 5, 0]}];
+                 					Champion{id : 1, cost : 2, hp : [900, 1620, 2916], sm : 50, mc : 100, ar : 40, mr : 40, ad : [77, 138, 248], aS : 7, ra : 3, aID : 0, traits : [2, 3, 0]}, 
+                 					Champion{id : 2, cost : 3, hp : [700, 1260, 2268], sm : 35, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 7, ra : 3, aID : 0, traits : [4, 5, 0]}];
 
 fn LuluAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize)
 {
-
+	let mut playerDistances : Vec<[i8 ; 2]> = Vec::new();
+	for (index, champ) in friendlyChampions.iter().enumerate()
+	{
+		if index == selfIndex
+		{
+			continue;
+		}
+		playerDistances.push([DistanceBetweenPoints(&champ.location, &friendlyChampions[selfIndex].location), index as i8])//optimisation
+	}
+	for (index, champ) in enemyChampions.iter().enumerate()
+	{
+		if index == selfIndex
+		{
+			continue;
+		}
+		playerDistances.push([DistanceBetweenPoints(&champ.location, &friendlyChampions[selfIndex].location), -(index as i8)])//optimisation
+	}
+	playerDistances.sort_unstable_by_key(|a| a[0]);
 }
 
 fn AatroxAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize)
@@ -94,7 +111,7 @@ struct SummonedChampion //Structure for champions on board in battle
 	cc : u8, //crowd control/ stun remaining
 	gMD : i8, //generate mana delay, after abilities 1 second before can start generating mana again
 	starLevel : usize,
-	sortBy : i8,
+	//sortBy : i8,
 	//tIDs : Vec<[u8; 2]>, //trait abilities
 }
 
@@ -129,12 +146,16 @@ impl SummonedChampion
 						   cc : 0,
 						   gMD : 0,
 						   starLevel : starLevel,
-						   sortBy : 0,
+						   //sortBy : 0,
 						   //tIDs: Vec::new(),
 						}
 	}
 	//fn takeTurn(self : &mut SummonedChampion, friendlyChampionsLocations : &Vec<[i8 ; 2]>, enemyChampions : &mut Vec<SummonedChampion>, timeUnit : u8, movementAmount : i8, randomGen : &mut rand::rngs::ThreadRng/*gridSize : [i8 ; 2]*/)
-	
+/*
+Summoned Champions Status Effects
+[statusID , statusDuration, statusEffectLevel]
+
+*/
 }
 
 struct Player
