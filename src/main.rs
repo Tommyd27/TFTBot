@@ -68,7 +68,7 @@ struct PlacedChampion //Structure for champions placed on the board (but not in 
     location : [i8; 2] //location on board
 }
 
-struct SummonedChampion //Structure for chapions on board in battle
+struct SummonedChampion //Structure for champions on board in battle
 {
 	location : [i8 ; 2], //array of p, q coordinates, r can be calculated with r = -p - q
 	movementProgress : [i8 ; 2], //progress of movement before moving to a new square, goes to 10 before moving
@@ -94,6 +94,7 @@ struct SummonedChampion //Structure for chapions on board in battle
 	cc : u8, //crowd control/ stun remaining
 	gMD : i8, //generate mana delay, after abilities 1 second before can start generating mana again
 	starLevel : usize,
+	sortBy : i8,
 	//tIDs : Vec<[u8; 2]>, //trait abilities
 }
 
@@ -128,6 +129,7 @@ impl SummonedChampion
 						   cc : 0,
 						   gMD : 0,
 						   starLevel : starLevel,
+						   sortBy : 0,
 						   //tIDs: Vec::new(),
 						}
 	}
