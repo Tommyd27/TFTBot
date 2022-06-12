@@ -28,13 +28,14 @@ const CHAMPIONS : [Champion ; 3] = [Champion{id : 0, cost : 1, hp : [700, 1260, 
 fn LuluAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize)
 {
 	let mut playerDistances : Vec<[i8 ; 2]> = Vec::new();
+	let starLevel = friendlyChampions[selfIndex].starLevel;
 	for (index, champ) in friendlyChampions.iter().enumerate()
 	{
 		if index == selfIndex
 		{
 			continue;
 		}
-		playerDistances.push([DistanceBetweenPoints(&champ.location, &friendlyChampions[selfIndex].location), index as i8])//optimisation
+		playerDistances.push([DistanceBetweenPoints(&champ.location, &friendlyChampions[selfIndex].location), (index + 1) as i8])//optimisation
 	}
 	for (index, champ) in enemyChampions.iter().enumerate()
 	{
@@ -42,9 +43,30 @@ fn LuluAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : 
 		{
 			continue;
 		}
-		playerDistances.push([DistanceBetweenPoints(&champ.location, &friendlyChampions[selfIndex].location), -(index as i8)])//optimisation
+		playerDistances.push([DistanceBetweenPoints(&champ.location, &friendlyChampions[selfIndex].location), -((index + 1) as i8)])//optimisation
 	}
 	playerDistances.sort_unstable_by_key(|a| a[0]);
+	let champCount : usize = [3, 4, 5][starLevel];
+	let mut i = 0;//optimisation
+	for [_distance, champIndex] in playerDistances
+	{
+		if i >= champCount
+		{
+			break;
+		}
+		if champIndex > 0
+		{//champIndex - 1
+			//give allies attack speed for 5 seconds
+		}
+		else //-(champ index + 1)
+		{
+			//stun enemies for 1.5 seconds and increase damage for 20%
+		}
+	}
+	if i < champCount - 1
+	{
+		//enchant herself
+	}
 }
 
 fn AatroxAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize)
@@ -108,12 +130,17 @@ struct SummonedChampion //Structure for champions on board in battle
 	targetCells : [i8 ; 2], //pathfinding target cell
 	items : [u8 ; 3], //item abilities 
 	ap : i32, //ability power
-	cc : u8, //crowd control/ stun remaining
+	se : [[u8; 2 ]; 3], //status effects
 	gMD : i8, //generate mana delay, after abilities 1 second before can start generating mana again
 	starLevel : usize,
 	//sortBy : i8,
 	//tIDs : Vec<[u8; 2]>, //trait abilities
 }
+/*
+Summoned Champions Status Effects
+index : [statusDuration, statusEffectLevel]
+
+*/
 
 impl SummonedChampion 
 {
@@ -143,7 +170,7 @@ impl SummonedChampion
 						   aID: ofChampion.aID, 
 						   items: placedChampion.items,
 						   ap : 100,
-						   cc : 0,
+						   se : [[0, 0], [0, 0], [0, 0]],
 						   gMD : 0,
 						   starLevel : starLevel,
 						   //sortBy : 0,
@@ -151,11 +178,7 @@ impl SummonedChampion
 						}
 	}
 	//fn takeTurn(self : &mut SummonedChampion, friendlyChampionsLocations : &Vec<[i8 ; 2]>, enemyChampions : &mut Vec<SummonedChampion>, timeUnit : u8, movementAmount : i8, randomGen : &mut rand::rngs::ThreadRng/*gridSize : [i8 ; 2]*/)
-/*
-Summoned Champions Status Effects
-[statusID , statusDuration, statusEffectLevel]
 
-*/
 }
 
 struct Player
@@ -273,7 +296,7 @@ fn main() {
 
 }
 
-fn DistanceBetweenPoints(point1 : &[i8], point2 : &[i8]) -> i8
+fn DistanceBetweenPoints(point1 : &[i8], point2 : &[i8]) -> i8//optimisation doesnt need to borrow?
 {
 	let zPoints : [i8 ; 2] = [-point1[0] - point1[1], -point2[0] - point2[1]];
 	(point1[0] - point2[0]).abs() + (point1[1] - point2[1]).abs() + (zPoints[0] - zPoints[1]).abs()
