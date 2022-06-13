@@ -369,9 +369,12 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 	friendlyChampions[selfIndex].targetCountDown -= timeUnit as i8;//Reduce cooldown to check target/ find new target
 	friendlyChampions[selfIndex].autoAttackDelay -= timeUnit as i16;//Risks going out of bounds as auto attack value may not be called for some time
 	friendlyChampions[selfIndex].gMD -= timeUnit as i8;
-	for statusEffect in friendlyChampions[selfIndex].se
+	for statusEffect in &mut friendlyChampions[selfIndex].se
 	{
-
+		match statusEffect[0]
+		{
+			_ => println!("Unimplemented")
+		}
 	}
 	//does auto attack delay need to reset on pathing? does attack instantly after reaching path/ in range
 
