@@ -131,7 +131,7 @@ struct SummonedChampion //Structure for champions on board in battle
 	targetCells : [i8 ; 2], //pathfinding target cell
 	items : [u8 ; 3], //item abilities 
 	ap : i32, //ability power
-	se : Vec<[u8; 2 ]>, //status effects
+	se : Vec<[u8; 4]>, //status effects
 	gMD : i8, //generate mana delay, after abilities 1 second before can start generating mana again
 	starLevel : usize,
 	//sortBy : i8,
@@ -143,8 +143,10 @@ Need to Implement:
 -Attack Speed Increase
 -CC/ Stunlock
 -Self Damage Increase
-index : [statusDuration, statusEffectLevel]
 
+
+Implementation Type:
+[statusID, statusDuration, statusStrength, statusPerformed]
 */
 
 impl SummonedChampion 
@@ -278,9 +280,6 @@ impl Board
 		
 }
 
-
-
-
 fn main() {
     let playerOneChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [3, 0]}, PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [9, 0]}, PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [6, 0]}];
 	let playerTwoChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 0, star : 2, items : [0, 0, 0], location : [6, 7]}];
@@ -370,6 +369,10 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 	friendlyChampions[selfIndex].targetCountDown -= timeUnit as i8;//Reduce cooldown to check target/ find new target
 	friendlyChampions[selfIndex].autoAttackDelay -= timeUnit as i16;//Risks going out of bounds as auto attack value may not be called for some time
 	friendlyChampions[selfIndex].gMD -= timeUnit as i8;
+	for statusEffect in friendlyChampions[selfIndex].se
+	{
+
+	}
 	//does auto attack delay need to reset on pathing? does attack instantly after reaching path/ in range
 
 
