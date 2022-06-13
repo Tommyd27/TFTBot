@@ -12,7 +12,7 @@ struct Champion //Basic structure to store the base stats of a champ
     ar : i32, //armor
     mr : i8, //magic resist
     ad : [i32; 3], //attack damage (scales with star level)
-    aS : u8, //attack speed in attacks per 10 seconds
+    aS : f32, //attack speed in attacks per 1 second
     ra : u8, //auto attack range
     
     aID : usize, //ability ID
@@ -21,9 +21,9 @@ struct Champion //Basic structure to store the base stats of a champ
 }
 //
 
-const CHAMPIONS : [Champion ; 3] = [Champion{id : 0, cost : 1, hp : [700, 1260, 2268], sm : 0, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 7, ra : 3, aID : 0, traits : [1, 2, 0]}, 
-                 					Champion{id : 1, cost : 2, hp : [900, 1620, 2916], sm : 50, mc : 100, ar : 40, mr : 40, ad : [77, 138, 248], aS : 7, ra : 3, aID : 0, traits : [2, 3, 0]}, 
-                 					Champion{id : 2, cost : 3, hp : [700, 1260, 2268], sm : 35, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 7, ra : 3, aID : 0, traits : [4, 5, 0]}];
+const CHAMPIONS : [Champion ; 3] = [Champion{id : 0, cost : 1, hp : [700, 1260, 2268], sm : 0, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 0.7, ra : 3, aID : 0, traits : [1, 2, 0]}, 
+                 					Champion{id : 1, cost : 2, hp : [900, 1620, 2916], sm : 50, mc : 100, ar : 40, mr : 40, ad : [77, 138, 248], aS : 0.7, ra : 3, aID : 0, traits : [2, 3, 0]}, 
+                 					Champion{id : 2, cost : 3, hp : [700, 1260, 2268], sm : 35, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 0.7, ra : 3, aID : 0, traits : [4, 5, 0]}];
 
 fn LuluAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize)
 {
@@ -120,13 +120,13 @@ struct SummonedChampion //Structure for champions on board in battle
 	ar : i32, //armor
 	mr : i8,  //magic resist
 	ad : i32, //attack damage
-	aS : u8, //attacks per 10 seconds
+	aS : f32, //attacks per 10 seconds
 	ra : u8, //auto attack range
 	aID : usize, //ability ID
 	id : usize, //id
 	targetCountDown : i8, //cooldown before target change
 	autoAttackDelay : i16, //cooldown before auto attackng again
-	attackSpeedIncrease : u8, //increase from items/ from base attack speed
+	attackSpeedModifier : f32, //increase from items/ from base attack speed
 	target : usize, //ID of target
 	targetCells : [i8 ; 2], //pathfinding target cell
 	items : [u8 ; 3], //item abilities 
@@ -169,7 +169,7 @@ impl SummonedChampion
 						   id : id,
 						   targetCountDown : 0,
 						   autoAttackDelay : 0,
-						   attackSpeedIncrease : 0,
+						   attackSpeedModifier : 1.0,
 						   target : 255,
 						   targetCells : [-1, -1], //Optimisation, list in path
 						   aID: ofChampion.aID, 
@@ -428,7 +428,7 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 			autoAttackDelay (centiseconds) = 1000 (centisecond * 10) / 7 (attacks per 10 seconds) + 7 * attackSpeedIncrease
 			
 			*/
-			friendlyChampions[selfIndex].autoAttackDelay = 1000 / (friendlyChampions[selfIndex].aS + friendlyChampions[selfIndex].aS * friendlyChampions[selfIndex].attackSpeedIncrease) as i16; //calculating auto attack delay
+			friendlyChampions[selfIndex].autoAttackDelay = 100 / (friendlyChampions[selfIndex].aS * friendlyChampions[selfIndex].attackSpeedModifier) as i16; //calculating auto attack delay
 			//attack speed unclear, capped at five yet some champions let you boost beyond it?
 			//optimisation definitely here
 			if friendlyChampions[selfIndex].gMD <= 0
