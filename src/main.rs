@@ -62,6 +62,7 @@ fn LuluAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : 
 		{
 			//stun enemies for 1.5 seconds and increase damage for 20%
 		}
+		i += 1;
 	}
 	if i < champCount - 1
 	{
@@ -130,7 +131,7 @@ struct SummonedChampion //Structure for champions on board in battle
 	targetCells : [i8 ; 2], //pathfinding target cell
 	items : [u8 ; 3], //item abilities 
 	ap : i32, //ability power
-	se : [[u8; 2 ]; 3], //status effects
+	se : Vec<[u8; 2 ]>, //status effects
 	gMD : i8, //generate mana delay, after abilities 1 second before can start generating mana again
 	starLevel : usize,
 	//sortBy : i8,
@@ -138,6 +139,10 @@ struct SummonedChampion //Structure for champions on board in battle
 }
 /*
 Summoned Champions Status Effects
+Need to Implement:
+-Attack Speed Increase
+-CC/ Stunlock
+-Self Damage Increase
 index : [statusDuration, statusEffectLevel]
 
 */
@@ -170,7 +175,7 @@ impl SummonedChampion
 						   aID: ofChampion.aID, 
 						   items: placedChampion.items,
 						   ap : 100,
-						   se : [[0, 0], [0, 0], [0, 0]],
+						   se : Vec::new(),
 						   gMD : 0,
 						   starLevel : starLevel,
 						   //sortBy : 0,
