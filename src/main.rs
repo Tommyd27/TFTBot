@@ -21,6 +21,17 @@ struct Champion //Basic structure to store the base stats of a champ
 }
 //
 
+struct StatusEffect
+{
+	duration : i16,
+	effect : StatusKind
+}
+enum StatusKind
+{
+	//             Performed, Modifier, Duration
+	AttackSpeedBuff(bool, f32)
+}
+
 const CHAMPIONS : [Champion ; 3] = [Champion{id : 0, cost : 1, hp : [700, 1260, 2268], sm : 0, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 0.7, ra : 3, aID : 0, traits : [1, 2, 0]}, 
                  					Champion{id : 1, cost : 2, hp : [900, 1620, 2916], sm : 50, mc : 100, ar : 40, mr : 40, ad : [77, 138, 248], aS : 0.7, ra : 3, aID : 0, traits : [2, 3, 0]}, 
                  					Champion{id : 2, cost : 3, hp : [700, 1260, 2268], sm : 35, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 0.7, ra : 3, aID : 0, traits : [4, 5, 0]}];
@@ -131,7 +142,7 @@ struct SummonedChampion //Structure for champions on board in battle
 	targetCells : [i8 ; 2], //pathfinding target cell
 	items : [u8 ; 3], //item abilities 
 	ap : i32, //ability power
-	se : Vec<[u8; 4]>, //status effects
+	se : Vec<StatusEffect>, //status effects
 	gMD : i8, //generate mana delay, after abilities 1 second before can start generating mana again
 	starLevel : usize,
 	//sortBy : i8,
@@ -366,13 +377,21 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 	gridSize : depreciated
 		*/
 	let mut thisChamp = &mut friendlyChampions[selfIndex];
-	friendlyChampions[selfIndex].targetCountDown -= timeUnit as i8;//Reduce cooldown to check target/ find new target
-	friendlyChampions[selfIndex].autoAttackDelay -= timeUnit as i16;//Risks going out of bounds as auto attack value may not be called for some time
-	friendlyChampions[selfIndex].gMD -= timeUnit as i8;
-	for statusEffect in &mut friendlyChampions[selfIndex].se
+	thisChamp.targetCountDown -= timeUnit as i8;//Reduce cooldown to check target/ find new target
+	thisChamp.autoAttackDelay -= timeUnit as i16;//Risks going out of bounds as auto attack value may not be called for some time
+	thisChamp.gMD -= timeUnit as i8;
+	let mut toRemoveVec : Vec<usize> = Vec::new();
+	for (index, statusEffect) in thisChamp.se.iter_mut().enumerate()
 	{
-		match statusEffect[0]
+		statusEffect.duration -= timeUnit as i16;
+		if statusEffect.duration <= 0
 		{
+			toRemoveVec.push(index);
+			continue;
+		}
+		match statusEffect.effect
+		{
+			StatusKind::AttackSpeedBuff(false, strength) => thisChamp.attackSpeedModifier *= strength,
 			_ => println!("Unimplemented")
 		}
 	}
@@ -415,11 +434,11 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 		}
 	}
 	
-	if distanceToTarget <= friendlyChampions[selfIndex].ra as i8//if target in range
+	if distanceToTarget <= thisChamp.ra as i8//if target in range
 	{
 		println!("Debug : Target in Range");
-		println!("Debug : Auto Attack Delay Remaining {0}", friendlyChampions[selfIndex].autoAttackDelay);
-		if friendlyChampions[selfIndex].autoAttackDelay <= 0//if autoattack ready
+		println!("Debug : Auto Attack Delay Remaining {0}", thisChamp.autoAttackDelay);
+		if thisChamp.autoAttackDelay <= 0//if autoattack ready
 		{
 			println!("Debug : Delay Smaller than 0 - Attacking");
 			/* 
@@ -434,10 +453,10 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 			autoAttackDelay (centiseconds) = 1000 (centisecond * 10) / 7 (attacks per 10 seconds) + 7 * attackSpeedIncrease
 			
 			*/
-			friendlyChampions[selfIndex].autoAttackDelay = 100 / (friendlyChampions[selfIndex].aS * friendlyChampions[selfIndex].attackSpeedModifier) as i16; //calculating auto attack delay
+			thisChamp.autoAttackDelay = 100 / (thisChamp.aS * thisChamp.attackSpeedModifier) as i16; //calculating auto attack delay
 			//attack speed unclear, capped at five yet some champions let you boost beyond it?
 			//optimisation definitely here
-			if friendlyChampions[selfIndex].gMD <= 0
+			if thisChamp.gMD <= 0
 			{
 				friendlyChampions[selfIndex].cm += 10;
 			}
