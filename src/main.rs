@@ -257,6 +257,7 @@ impl Board
 			debugCount += 1;
 			for p1ChampionIndex in 0..self.p1Champions.len()
 			{
+				let thisChamp = &self.p1Champions[p1ChampionIndex];
 				takeTurn(p1ChampionIndex, &mut self.p1Champions, &mut self.p2Champions, self.timeUnit, self.movementAmount, &mut randomGen)
 			}
 			for p2ChampionIndex in 0..self.p2Champions.len()
@@ -369,7 +370,7 @@ fn InGridHexagon(pos : [i8 ; 2]) -> bool//not going to attempt getting it workin
 fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, timeUnit : u8, movementAmount : i8, randomGen : &mut rand::rngs::ThreadRng/*gridSize : [i8 ; 2]*/)
 {
 	/*
-	friendlyChampions[selfIndex] : this champion
+	thisChamp : this champion
 	friendlyChampionsLocations : location of all friend champs (array of positions), for pathfinding
 	enemyChampions : all enemy champions, for targetting
 	timeUnit : time unit of a frame, in centiseconds
@@ -401,15 +402,15 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 	let mut index : usize = 99;//Cache index of target in enemyChampions
 	let mut distanceToTarget : i8 = 127;//Distance to target (is set either while finding target or when target found)
 	let mut needNewTargetCell : bool = false;//Bool to store whether new path is needed
-	if friendlyChampions[selfIndex].targetCountDown > 0 //if already has target and doesnt want to change targets 
+	if thisChamp.targetCountDown > 0 //if already has target and doesnt want to change targets 
 	{
 		for (i, enemyChampion) in enemyChampions.iter().enumerate() //every enemy champ
 		{
-			if enemyChampion.id == friendlyChampions[selfIndex].target //if they share id
+			if enemyChampion.id == thisChamp.target //if they share id
 			{
 				println!("Debug : Found Target");
 				index = i;//set index
-				distanceToTarget = DistanceBetweenPoints(&enemyChampion.location, &friendlyChampions[selfIndex].location);//calculate distance
+				distanceToTarget = DistanceBetweenPoints(&enemyChampion.location, &thisChamp.location);//calculate distance
 				break;
 			}
 		}	
@@ -417,17 +418,17 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 	if index == 99 //index not updating from initial intilialisation of 99, therefore need new target
 	{
 		println!("Debug : Looking for Target");
-		friendlyChampions[selfIndex].targetCountDown = 100;//reset target cooldown
-		friendlyChampions[selfIndex].target = 0;//reset target
+		thisChamp.targetCountDown = 100;//reset target cooldown
+		thisChamp.target = 0;//reset target
 		let mut distance; //cache to store distance between enemy and location
 		needNewTargetCell = true; //tells us to recalculate pathfinding later
 
 		for (i, enemyChampion) in enemyChampions.iter().enumerate() //for every champ
 		{
-			distance = DistanceBetweenPoints(&enemyChampion.location, &friendlyChampions[selfIndex].location); //calculate distance
+			distance = DistanceBetweenPoints(&enemyChampion.location, &thisChamp.location); //calculate distance
 			if distance < distanceToTarget //if distance to current enemy champion in loop is lower than distance to current target
 			{
-				friendlyChampions[selfIndex].target = enemyChampion.id; //change target
+				thisChamp.target = enemyChampion.id; //change target
 				distanceToTarget = distance; //updating distance to new lower value
 				index = i; //setting index
 			}
@@ -442,9 +443,9 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 		{
 			println!("Debug : Delay Smaller than 0 - Attacking");
 			/* 
-			friendlyChampions[selfIndex].aS = attacks per 10 seconds
-			friendlyChampions[selfIndex].autoAttackDelay = time in 1/10 of second until next attack
-			friendlyChampions[selfIndex].attackSpeedIncrease = percentage increase in attack speed
+			thisChamp.aS = attacks per 10 seconds
+			thisChamp.autoAttackDelay = time in 1/10 of second until next attack
+			thisChamp.attackSpeedIncrease = percentage increase in attack speed
 			
 			
 
@@ -458,12 +459,12 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 			//optimisation definitely here
 			if thisChamp.gMD <= 0
 			{
-				friendlyChampions[selfIndex].cm += 10;
+				thisChamp.cm += 10;
 			}
 			
 			if enemyChampions[index].dc <= 0 || enemyChampions[index].dc < randomGen.gen_range(0..100) //calculating whether to dodge
 			{
-				let damage : i32 = ((100 * friendlyChampions[selfIndex].ad) / (100 + enemyChampions[index].ar)).try_into().unwrap(); //calculating damage
+				let damage : i32 = ((100 * thisChamp.ad) / (100 + enemyChampions[index].ar)).try_into().unwrap(); //calculating damage
 				enemyChampions[index].health -=  damage;
 				if enemyChampions[index].gMD <= 0
 				{
@@ -471,7 +472,7 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 				}
 				
 				//discrepency
-				if friendlyChampions[selfIndex].cr > randomGen.gen_range(0..100)//calculating crit
+				if thisChamp.cr > randomGen.gen_range(0..100)//calculating crit
 				{
 					enemyChampions[index].health -= damage * 3 / 10;
 					println!("Debug : Critical Hit");
@@ -494,11 +495,11 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 	else 
 	{
 		println!("Debug : Not in Range");
-		if needNewTargetCell || friendlyChampions[selfIndex].location == friendlyChampions[selfIndex].targetCells //if need to update pathfinding or at pathfinding target
+		if needNewTargetCell || thisChamp.location == thisChamp.targetCells //if need to update pathfinding or at pathfinding target
 		//optimisation?, accuracy vs performance cost
 		{
 			println!("Debug : Need Target Cell");
-			friendlyChampions[selfIndex].targetCells = friendlyChampions[selfIndex].location; //setting target cells to location so if it does not find a target this frame will try to do it again
+			thisChamp.targetCells = thisChamp.location; //setting target cells to location so if it does not find a target this frame will try to do it again
 			//optimisation does not need to check every frame
 
 			let mut lowestDistance : i8 = 100; //setting lowestDistance to high value
@@ -506,7 +507,7 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 			for possibleMove in [[0, -1], [1, -1], [1, 0], [-1, 0], [-1, 1], [0, 1]] //for every possible move
 			//optimisation
 			{
-				newPosition = [friendlyChampions[selfIndex].location[0] + possibleMove[0], friendlyChampions[selfIndex].location[1] + possibleMove[1]];
+				newPosition = [thisChamp.location[0] + possibleMove[0], thisChamp.location[1] + possibleMove[1]];
 				distanceToTarget = DistanceBetweenPoints(&newPosition, &enemyChampions[index].location);
 				if distanceToTarget < lowestDistance
 				{
@@ -515,7 +516,7 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 					{
 						continue;
 					}
-					for friendlyChampionLocation in friendlyChampions.iter()
+					for friendlyChampionLocation in friendlyChampions
 					{
 						if friendlyChampionLocation.location[0] == newPosition[0] && friendlyChampionLocation.location[1] == newPosition[1]
 						{
@@ -529,33 +530,33 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 					}
 					println!("Debug : Found a Target Cell");
 					lowestDistance = distanceToTarget;
-					friendlyChampions[selfIndex].targetCells = newPosition;
+					thisChamp.targetCells = newPosition;
 				}
 				
 			}
 		}
 		
 		println!("Debug : Moving to Target Cell");
-		friendlyChampions[selfIndex].movementProgress[0] += movementAmount * sign(friendlyChampions[selfIndex].targetCells[0] - friendlyChampions[selfIndex].location[0]);//optimisation here
-		println!("Debug : Position ({0},{1}) -- Movement Progress ({2},{3})", friendlyChampions[selfIndex].location[0], friendlyChampions[selfIndex].location[1], friendlyChampions[selfIndex].movementProgress[0], friendlyChampions[selfIndex].movementProgress[1]);
-		if friendlyChampions[selfIndex].movementProgress[0].abs() == 10
+		thisChamp.movementProgress[0] += movementAmount * sign(thisChamp.targetCells[0] - thisChamp.location[0]);//optimisation here
+		println!("Debug : Position ({0},{1}) -- Movement Progress ({2},{3})", thisChamp.location[0], thisChamp.location[1], thisChamp.movementProgress[0], thisChamp.movementProgress[1]);
+		if thisChamp.movementProgress[0].abs() == 10
 		{
-			friendlyChampions[selfIndex].location[0] += sign(friendlyChampions[selfIndex].movementProgress[0]);
-			friendlyChampions[selfIndex].movementProgress[0] = 0;
+			thisChamp.location[0] += sign(thisChamp.movementProgress[0]);
+			thisChamp.movementProgress[0] = 0;
 			
 		}
-		friendlyChampions[selfIndex].movementProgress[1] += movementAmount * sign(friendlyChampions[selfIndex].targetCells[1] - friendlyChampions[selfIndex].location[1]);
-		if friendlyChampions[selfIndex].movementProgress[1].abs() == 10
+		thisChamp.movementProgress[1] += movementAmount * sign(thisChamp.targetCells[1] - thisChamp.location[1]);
+		if thisChamp.movementProgress[1].abs() == 10
 		{
-			friendlyChampions[selfIndex].location[1] += sign(friendlyChampions[selfIndex].movementProgress[1]);
-			friendlyChampions[selfIndex].movementProgress[1] = 0;
+			thisChamp.location[1] += sign(thisChamp.movementProgress[1]);
+			thisChamp.movementProgress[1] = 0;
 			
 		}
 	}
-	if friendlyChampions[selfIndex].cm >= friendlyChampions[selfIndex].mc
+	if thisChamp.cm >= thisChamp.mc
 	{
-		friendlyChampions[selfIndex].cm = 0;
-		CHAMPIONABILITIES[friendlyChampions[selfIndex].aID](friendlyChampions, enemyChampions, selfIndex);
+		thisChamp.cm = 0;
+		CHAMPIONABILITIES[thisChamp.aID](friendlyChampions, enemyChampions, selfIndex);
 	}
 }
 
