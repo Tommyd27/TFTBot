@@ -20,6 +20,16 @@ struct Champion //Basic structure to store the base stats of a champ
     traits : [u8 ; 3], //traits
 }
 //
+enum StatusType
+{
+	AttackSpeedBuff(bool, f32),
+}
+struct StatusEffect
+{
+	duration : i16,
+	statusType : StatusType,
+}
+
 
 const CHAMPIONS : [Champion ; 3] = [Champion{id : 0, cost : 1, hp : [700, 1260, 2268], sm : 0, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 0.7, ra : 3, aID : 0, traits : [1, 2, 0]}, 
                  					Champion{id : 1, cost : 2, hp : [900, 1620, 2916], sm : 50, mc : 100, ar : 40, mr : 40, ad : [77, 138, 248], aS : 0.7, ra : 3, aID : 0, traits : [2, 3, 0]}, 
@@ -131,7 +141,7 @@ struct SummonedChampion //Structure for champions on board in battle
 	targetCells : [i8 ; 2], //pathfinding target cell
 	items : [u8 ; 3], //item abilities 
 	ap : i32, //ability power
-	se : Vec<[u8; 4]>, //status effects
+	se : Vec<StatusEffect>, //status effects
 	gMD : i8, //generate mana delay, after abilities 1 second before can start generating mana again
 	starLevel : usize,
 	//sortBy : i8,
@@ -363,14 +373,25 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 	movementAmount : precalculated movement distance for 1 frame
 	gridSize : depreciated
 		*/
-	let mut thisChamp = &mut friendlyChampions[selfIndex];
+	//let mut thisChamp = &mut friendlyChampions[selfIndex];
 	friendlyChampions[selfIndex].targetCountDown -= timeUnit as i8;//Reduce cooldown to check target/ find new target
 	friendlyChampions[selfIndex].autoAttackDelay -= timeUnit as i16;//Risks going out of bounds as auto attack value may not be called for some time
 	friendlyChampions[selfIndex].gMD -= timeUnit as i8;
+	let mut statusEffectsToRemove : Vec<usize> = Vec::new();
+	let mut i : usize = 0;
+	//let mut statusEffects = friendlyChampions[selfIndex].se.clone();
 	for statusEffect in &mut friendlyChampions[selfIndex].se
 	{
-		match statusEffect[0]
+		i += 1;
+		statusEffect.duration -= timeUnit as i16;
+		if statusEffect.duration <= 0
 		{
+			statusEffectsToRemove.push(i - 1);
+			continue;
+		}
+		match statusEffect.statusType
+		{
+			StatusType::AttackSpeedBuff(false, modifier) => friendlyChampions[selfIndex].attackSpeedModifier *= modifier,
 			_ => println!("Unimplemented")
 		}
 	}
