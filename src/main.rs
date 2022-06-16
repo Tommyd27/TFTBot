@@ -1,5 +1,7 @@
 #![allow(non_snake_case)] //Allows snake case
 
+use std::iter::Sum;
+
 use rand::Rng; //Used for generating random numbers for crits
 struct Champion //Basic structure to store the base stats of a champ
 {
@@ -36,25 +38,21 @@ const CHAMPIONS : [Champion ; 3] = [Champion{id : 0, cost : 1, hp : [700, 1260, 
                  					Champion{id : 1, cost : 2, hp : [900, 1620, 2916], sm : 50, mc : 100, ar : 40, mr : 40, ad : [77, 138, 248], aS : 0.7, ra : 3, aID : 0, traits : [2, 3, 0]}, 
                  					Champion{id : 2, cost : 3, hp : [700, 1260, 2268], sm : 35, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 0.7, ra : 3, aID : 0, traits : [4, 5, 0]}];
 
-fn LuluAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize)
+fn LuluAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, thisChamp : &mut SummonedChampion)
 {
 	let mut playerDistances : Vec<[i8 ; 2]> = Vec::new();
-	let starLevel = friendlyChampions[selfIndex].starLevel;
+	let starLevel = thisChamp.starLevel;
 	for (index, champ) in friendlyChampions.iter().enumerate()
 	{
-		if index == selfIndex
+		if champ.id == thisChamp.id
 		{
 			continue;
 		}
-		playerDistances.push([DistanceBetweenPoints(&champ.location, &friendlyChampions[selfIndex].location), (index + 1) as i8])//optimisation
+		playerDistances.push([DistanceBetweenPoints(&champ.location, &thisChamp.location), (index + 1) as i8])//optimisation
 	}
 	for (index, champ) in enemyChampions.iter().enumerate()
 	{
-		if index == selfIndex
-		{
-			continue;
-		}
-		playerDistances.push([DistanceBetweenPoints(&champ.location, &friendlyChampions[selfIndex].location), -((index + 1) as i8)])//optimisation
+		playerDistances.push([DistanceBetweenPoints(&champ.location, &thisChamp.location), -((index + 1) as i8)])//optimisation
 	}
 	playerDistances.sort_unstable_by_key(|a| a[0]);
 	let champCount : usize = [3, 4, 5][starLevel];
@@ -81,12 +79,12 @@ fn LuluAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : 
 	}
 }
 
-fn AatroxAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize)
+fn AatroxAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, thisChamp : &mut SummonedChampion)
 {
-	let starLevel = friendlyChampions[selfIndex].starLevel;
+	let starLevel = thisChamp.starLevel;
 	//can strike from out of range
-	let mut targetIndex = friendlyChampions[selfIndex].target;
-	if targetIndex != enemyChampions[friendlyChampions[selfIndex].target as usize].id
+	let mut targetIndex = thisChamp.target;
+	if targetIndex != enemyChampions[thisChamp.target as usize].id
 	{
 		for (i, champ) in enemyChampions.iter().enumerate()
 		{
@@ -96,11 +94,11 @@ fn AatroxAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions 
 			}
 		}
 	}
-	friendlyChampions[selfIndex].health += ((300 + 50 * starLevel as i32) * friendlyChampions[selfIndex].ap) / 100;
+	thisChamp.health += ((300 + 50 * starLevel as i32) * thisChamp.ap) / 100;
 
-	enemyChampions[targetIndex].health -= (100 / 100 + enemyChampions[targetIndex].ar) * (300 + 5 * starLevel as i32) * friendlyChampions[selfIndex].ad;
+	enemyChampions[targetIndex].health -= (100 / 100 + enemyChampions[targetIndex].ar) * (300 + 5 * starLevel as i32) * thisChamp.ad;
 }
-const CHAMPIONABILITIES : [fn(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize) ; 2]	= 
+const CHAMPIONABILITIES : [fn(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, thisChamp : &mut SummonedChampion) ; 2]	= 
 	[LuluAbility, AatroxAbility];
 
 
@@ -196,7 +194,22 @@ impl SummonedChampion
 						}
 	}
 	//fn takeTurn(self : &mut SummonedChampion, friendlyChampionsLocations : &Vec<[i8 ; 2]>, enemyChampions : &mut Vec<SummonedChampion>, timeUnit : u8, movementAmount : i8, randomGen : &mut rand::rngs::ThreadRng/*gridSize : [i8 ; 2]*/)
-
+	fn copy(Self { location, movementProgress, health, cm, dc, cr, mc, ar, mr, ad, aS, ra, aID, id, targetCountDown, autoAttackDelay, attackSpeedModifier, target, targetCells, items, ap, se, gMD, starLevel }: Self)
+	{
+		return SummonedChampion{
+			location : location,
+			movementProgress : movementProgress,
+			health : health,
+			cm : cm,
+			dc : dc,
+			cr : cr,
+			mc : mc,
+			ar : ar,
+			mr : mr,
+			ar : ar,
+			
+		}
+	}
 }
 
 struct Player
@@ -257,12 +270,14 @@ impl Board
 			debugCount += 1;
 			for p1ChampionIndex in 0..self.p1Champions.len()
 			{
-				let thisChamp = &self.p1Champions[p1ChampionIndex];
-				takeTurn(p1ChampionIndex, &mut self.p1Champions, &mut self.p2Champions, self.timeUnit, self.movementAmount, &mut randomGen)
+				let mut thisChamp = self.p1Champions[p1ChampionIndex].copy();
+				//takeTurn(p1ChampionIndex, &mut self.p1Champions, &mut self.p2Champions, self.timeUnit, self.movementAmount, &mut randomGen);
+				takeTurn(&mut thisChamp, &mut self.p1Champions, &mut self.p2Champions, self.timeUnit, self.movementAmount, &mut randomGen);
+				self.p1Champions[p1ChampionIndex] = thisChamp;
 			}
 			for p2ChampionIndex in 0..self.p2Champions.len()
 			{
-				takeTurn(p2ChampionIndex, &mut self.p2Champions, &mut self.p1Champions, self.timeUnit, self.movementAmount, &mut randomGen)
+				//takeTurn(p2ChampionIndex, &mut self.p2Champions, &mut self.p1Champions, self.timeUnit, self.movementAmount, &mut randomGen)
 			}
 			/*for p1Champion in &mut *self.p1Champions
 			{
@@ -367,7 +382,8 @@ fn InGridHexagon(pos : [i8 ; 2]) -> bool//not going to attempt getting it workin
 	return false
 }
 
-fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, timeUnit : u8, movementAmount : i8, randomGen : &mut rand::rngs::ThreadRng/*gridSize : [i8 ; 2]*/)
+//fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, timeUnit : u8, movementAmount : i8, randomGen : &mut rand::rngs::ThreadRng/*gridSize : [i8 ; 2]*/)
+fn takeTurn(thisChamp : &mut SummonedChampion, friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, timeUnit : u8, movementAmount : i8, randomGen : &mut rand::rngs::ThreadRng/*gridSize : [i8 ; 2]*/)
 {
 	/*
 	thisChamp : this champion
@@ -377,7 +393,7 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 	movementAmount : precalculated movement distance for 1 frame
 	gridSize : depreciated
 		*/
-	let mut thisChamp = &mut friendlyChampions[selfIndex];
+	//let mut thisChamp = &mut friendlyChampions[selfIndex];
 	thisChamp.targetCountDown -= timeUnit as i8;//Reduce cooldown to check target/ find new target
 	thisChamp.autoAttackDelay -= timeUnit as i16;//Risks going out of bounds as auto attack value may not be called for some time
 	thisChamp.gMD -= timeUnit as i8;
@@ -556,7 +572,7 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 	if thisChamp.cm >= thisChamp.mc
 	{
 		thisChamp.cm = 0;
-		CHAMPIONABILITIES[thisChamp.aID](friendlyChampions, enemyChampions, selfIndex);
+		CHAMPIONABILITIES[thisChamp.aID](friendlyChampions, enemyChampions, thisChamp);
 	}
 }
 
