@@ -20,10 +20,12 @@ struct Champion //Basic structure to store the base stats of a champ
     traits : [u8 ; 3], //traits
 }
 //
+#[derive(Clone)]
 enum StatusType
 {
 	AttackSpeedBuff(bool, f32),
 }
+#[derive(Clone)]
 struct StatusEffect
 {
 	duration : i16,
@@ -362,7 +364,26 @@ fn InGridHexagon(pos : [i8 ; 2]) -> bool//not going to attempt getting it workin
 	}
 	return false
 }
-
+fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<SummonedChampion>, timeUnit : u8, selfIndex : usize) -> bool
+{
+	statusEffect.duration -= timeUnit as i16;
+	if statusEffect.duration <= 0
+	{
+		match statusEffect.statusType
+			{
+				StatusType::AttackSpeedBuff(_, modifier) => friendlyChampions[selfIndex].attackSpeedModifier /= modifier,
+				_ => println!("Unimplemented")
+			}
+		return false
+	}
+	match statusEffect.statusType
+	{
+		StatusType::AttackSpeedBuff(false, modifier) => {friendlyChampions[selfIndex].attackSpeedModifier *= modifier;
+															  statusEffect.statusType = StatusType::AttackSpeedBuff(true, modifier)},
+		_ => println!("Unimplemented")
+	}
+	true
+}
 fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, timeUnit : u8, movementAmount : i8, randomGen : &mut rand::rngs::ThreadRng/*gridSize : [i8 ; 2]*/)
 {
 	/*
@@ -377,24 +398,29 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 	friendlyChampions[selfIndex].targetCountDown -= timeUnit as i8;//Reduce cooldown to check target/ find new target
 	friendlyChampions[selfIndex].autoAttackDelay -= timeUnit as i16;//Risks going out of bounds as auto attack value may not be called for some time
 	friendlyChampions[selfIndex].gMD -= timeUnit as i8;
-	let mut statusEffectsToRemove : Vec<usize> = Vec::new();
-	let mut i : usize = 0;
-	//let mut statusEffects = friendlyChampions[selfIndex].se.clone();
-	for statusEffect in &mut friendlyChampions[selfIndex].se
+	let mut statusEffects = friendlyChampions[selfIndex].se.clone();
+	/*for mut statusEffect in statusEffects
 	{
 		i += 1;
 		statusEffect.duration -= timeUnit as i16;
 		if statusEffect.duration <= 0
 		{
 			statusEffectsToRemove.push(i - 1);
+			match statusEffect.statusType
+			{
+				StatusType::AttackSpeedBuff(_, modifier) => friendlyChampions[selfIndex].attackSpeedModifier /= modifier,
+				_ => println!("Unimplemented")
+			}
 			continue;
 		}
 		match statusEffect.statusType
 		{
-			StatusType::AttackSpeedBuff(false, modifier) => friendlyChampions[selfIndex].attackSpeedModifier *= modifier,
+			StatusType::AttackSpeedBuff(false, modifier) => {friendlyChampions[selfIndex].attackSpeedModifier *= modifier;
+																 statusEffect.statusType = StatusType::AttackSpeedBuff(true, modifier)},
 			_ => println!("Unimplemented")
 		}
-	}
+	}*/
+	statusEffects.retain_mut(|x| performStatus(x, friendlyChampions, timeUnit, selfIndex));
 	//does auto attack delay need to reset on pathing? does attack instantly after reaching path/ in range
 
 
