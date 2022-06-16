@@ -421,6 +421,7 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 		}
 	}*/
 	statusEffects.retain_mut(|x| performStatus(x, friendlyChampions, timeUnit, selfIndex));
+	friendlyChampions[selfIndex].se = statusEffects;
 	//does auto attack delay need to reset on pathing? does attack instantly after reaching path/ in range
 
 
