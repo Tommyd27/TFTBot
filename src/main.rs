@@ -60,7 +60,7 @@ fn LuluAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : 
 	playerDistances.sort_unstable_by_key(|a| a[0]);
 	let champCount : usize = [3, 4, 5][starLevel];
 	let mut i = 0;//optimisation
-	for [_distance, champIndex] in playerDistances
+	for [_, champIndex] in playerDistances//optimise
 	{
 		if i >= champCount
 		{
@@ -399,27 +399,6 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 	friendlyChampions[selfIndex].autoAttackDelay -= timeUnit as i16;//Risks going out of bounds as auto attack value may not be called for some time
 	friendlyChampions[selfIndex].gMD -= timeUnit as i8;
 	let mut statusEffects = friendlyChampions[selfIndex].se.clone();
-	/*for mut statusEffect in statusEffects
-	{
-		i += 1;
-		statusEffect.duration -= timeUnit as i16;
-		if statusEffect.duration <= 0
-		{
-			statusEffectsToRemove.push(i - 1);
-			match statusEffect.statusType
-			{
-				StatusType::AttackSpeedBuff(_, modifier) => friendlyChampions[selfIndex].attackSpeedModifier /= modifier,
-				_ => println!("Unimplemented")
-			}
-			continue;
-		}
-		match statusEffect.statusType
-		{
-			StatusType::AttackSpeedBuff(false, modifier) => {friendlyChampions[selfIndex].attackSpeedModifier *= modifier;
-																 statusEffect.statusType = StatusType::AttackSpeedBuff(true, modifier)},
-			_ => println!("Unimplemented")
-		}
-	}*/
 	statusEffects.retain_mut(|x| performStatus(x, friendlyChampions, timeUnit, selfIndex));
 	friendlyChampions[selfIndex].se = statusEffects;
 	//does auto attack delay need to reset on pathing? does attack instantly after reaching path/ in range
