@@ -1,6 +1,6 @@
 #![allow(non_snake_case)] //Allows snake case
 
-use rand::Rng; //Used for generating random numbers for crits
+use rand::{Rng, prelude::ThreadRng}; //Used for generating random numbers for crits
 struct Champion //Basic structure to store the base stats of a champ
 {
     id : u8, //champ id
@@ -37,6 +37,8 @@ struct StatusEffect
 const CHAMPIONS : [Champion ; 3] = [Champion{id : 0, cost : 1, hp : [700, 1260, 2268], sm : 0, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 0.7, ra : 3, aID : 0, traits : [1, 2, 0]}, 
                  					Champion{id : 1, cost : 2, hp : [900, 1620, 2916], sm : 50, mc : 100, ar : 40, mr : 40, ad : [77, 138, 248], aS : 0.7, ra : 3, aID : 0, traits : [2, 3, 0]}, 
                  					Champion{id : 2, cost : 3, hp : [700, 1260, 2268], sm : 35, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 0.7, ra : 3, aID : 0, traits : [4, 5, 0]}];
+
+
 
 fn LuluAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize)
 {
@@ -100,7 +102,7 @@ fn AatroxAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions 
 	}
 	friendlyChampions[selfIndex].health += ((300 + 50 * starLevel as i32) * friendlyChampions[selfIndex].ap) / 100;
 
-	enemyChampions[targetIndex].health -= (100 * (300 + 5 * starLevel as i32) * friendlyChampions[selfIndex].ad * enemyChampions[targetIndex].incomingDMGModifier) / (100 *(100 + enemyChampions[targetIndex].ar));
+	enemyChampions[targetIndex].takeAttackDamage((300 + 5 * starLevel as i32) * friendlyChampions[selfIndex].ad, friendlyChampions[selfIndex].cr);
 }
 const CHAMPIONABILITIES : [fn(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize) ; 2]	= 
 	[LuluAbility, AatroxAbility];
@@ -197,10 +199,10 @@ impl SummonedChampion
 						   //tIDs: Vec::new(),
 						}
 	}
-	fn takeAttackDamage(&self, incomingDamage : i32, critRate : u8, randomGen : &mut rand::rngs::ThreadRng)
+	fn takeAttackDamage(&self, incomingDamage : i32, critRate : u8)
 	{
 		let mut damage = (100 * incomingDamage * self.incomingDMGModifier) / (100 * (100 + self.ar));
-		if critRate > randomGen.gen_range(0..100)//calculating crit
+		if critRate > rand::thread_rng().gen_range(0..100)//calculating crit
 		{
 			damage *= 13 / 10;
 			println!("Debug : Critical Hit");
@@ -267,18 +269,17 @@ impl Board
 	fn StartBattle(mut self : Board) -> i8
 	{
 		let mut debugCount : u32 = 0;
-		let mut randomGen = rand::thread_rng();
 		while self.p1Champions.len() > 0 && self.p2Champions.len() > 0
 		{
 			println!("Debug : Iteration {}", debugCount);
 			debugCount += 1;
 			for p1ChampionIndex in 0..self.p1Champions.len()
 			{
-				takeTurn(p1ChampionIndex, &mut self.p1Champions, &mut self.p2Champions, self.timeUnit, self.movementAmount, &mut randomGen)
+				takeTurn(p1ChampionIndex, &mut self.p1Champions, &mut self.p2Champions, self.timeUnit, self.movementAmount)
 			}
 			for p2ChampionIndex in 0..self.p2Champions.len()
 			{
-				takeTurn(p2ChampionIndex, &mut self.p2Champions, &mut self.p1Champions, self.timeUnit, self.movementAmount, &mut randomGen)
+				takeTurn(p2ChampionIndex, &mut self.p2Champions, &mut self.p1Champions, self.timeUnit, self.movementAmount)
 			}
 			/*for p1Champion in &mut *self.p1Champions
 			{
@@ -402,7 +403,7 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 	}
 	true
 }
-fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, timeUnit : u8, movementAmount : i8, randomGen : &mut rand::rngs::ThreadRng/*gridSize : [i8 ; 2]*/)
+fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, timeUnit : u8, movementAmount : i8)
 {
 	/*
 	friendlyChampions[selfIndex] : this champion
@@ -483,10 +484,10 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 			{
 				friendlyChampions[selfIndex].cm += 10;
 			}
-			
-			if enemyChampions[index].dc <= 0 || enemyChampions[index].dc < randomGen.gen_range(0..100) //calculating whether to dodge
-			{
-				enemyChampions[index].takeAttackDamage(friendlyChampions[selfIndex].ad, friendlyChampions[selfIndex].cr, randomGen);
+			//discrepency maybe can  dodge actual ability
+			if enemyChampions[index].dc <= 0 || enemyChampions[index].dc < rand::thread_rng().gen_range(0..100) //calculating whether to dodge
+			{//optimisation from not generating random gen
+				enemyChampions[index].takeAttackDamage(friendlyChampions[selfIndex].ad, friendlyChampions[selfIndex].cr);
 				
 				println!("Debug : Enemy Champion Health is {0}", enemyChampions[index].health);
 				if enemyChampions[index].health <= 0 //if enemy champion dead
