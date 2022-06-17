@@ -1,6 +1,6 @@
 #![allow(non_snake_case)] //Allows snake case
 
-use rand::{Rng, prelude::ThreadRng}; //Used for generating random numbers for crits
+use rand::{Rng}; //Used for generating random numbers for crits
 struct Champion //Basic structure to store the base stats of a champ
 {
     id : u8, //champ id
