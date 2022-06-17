@@ -1,6 +1,11 @@
 #![allow(non_snake_case)] //Allows snake case
 
 use rand::{Rng}; //Used for generating random numbers for crits
+
+struct ABooleanWithExtraSteps
+{
+	value : bool,
+}
 struct Champion //Basic structure to store the base stats of a champ
 {
     id : u8, //champ id
@@ -24,7 +29,8 @@ struct Champion //Basic structure to store the base stats of a champ
 enum StatusType
 {
 	AttackSpeedBuff(bool, f32),
-
+	IncreaseDamageTaken(bool, i32), //in %, so 120 = 120% increased damage
+	Stun() //stun
 }
 #[derive(Clone)]
 struct StatusEffect
@@ -34,8 +40,8 @@ struct StatusEffect
 }
 
 
-const CHAMPIONS : [Champion ; 3] = [Champion{id : 0, cost : 1, hp : [700, 1260, 2268], sm : 0, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 0.7, ra : 3, aID : 0, traits : [1, 2, 0]}, 
-                 					Champion{id : 1, cost : 2, hp : [900, 1620, 2916], sm : 50, mc : 100, ar : 40, mr : 40, ad : [77, 138, 248], aS : 0.7, ra : 3, aID : 0, traits : [2, 3, 0]}, 
+const CHAMPIONS : [Champion ; 3] = [Champion{id : 0, cost : 1, hp : [650, 1170, 2106], sm : 70, mc : 140, ar : 25, mr : 25, ad : [40, 72, 129], aS : 0.7, ra : 3, aID : 0, traits : [1, 2, 0]}, 
+                 					Champion{id : 1, cost : 2, hp : [650, 1170, 2106], sm : 50, mc : 100, ar : 45, mr : 45, ad : [55, 99, 178], aS : 0.7, ra : 1, aID : 1, traits : [2, 3, 0]}, 
                  					Champion{id : 2, cost : 3, hp : [700, 1260, 2268], sm : 35, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 0.7, ra : 3, aID : 0, traits : [4, 5, 0]}];
 
 
@@ -72,16 +78,24 @@ fn LuluAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : 
 		if champIndex > 0
 		{//champIndex - 1
 			//give allies attack speed for 5 seconds
+			friendlyChampions[(champIndex - 1) as usize].se.push(StatusEffect{
+																	duration : 500,
+																	statusType : StatusType::AttackSpeedBuff(false, 1.7)	
+			});
 		}
 		else //-(champ index + 1)
 		{
 			//stun enemies for 1.5 seconds and increase damage for 20%
+			enemyChampions[-(champIndex + 1) as usize].se.push(StatusEffect { duration: 150, statusType: StatusType::Stun() });
+			enemyChampions[-(champIndex + 1) as usize].se.push(StatusEffect { duration: 150, statusType: StatusType::IncreaseDamageTaken(false, 120)});
 		}
 		i += 1;
 	}
 	if i < champCount - 1
 	{
-		//enchant herself
+		friendlyChampions[selfIndex].se.push(StatusEffect{
+			duration : 500,
+			statusType : StatusType::AttackSpeedBuff(false, 1.7)});
 	}
 }
 
@@ -199,7 +213,7 @@ impl SummonedChampion
 						   //tIDs: Vec::new(),
 						}
 	}
-	fn takeAttackDamage(&self, incomingDamage : i32, critRate : u8)
+	fn takeAttackDamage(&mut self, incomingDamage : i32, critRate : u8)
 	{
 		let mut damage = (100 * incomingDamage * self.incomingDMGModifier) / (100 * (100 + self.ar));
 		if critRate > rand::thread_rng().gen_range(0..100)//calculating crit
@@ -310,8 +324,9 @@ impl Board
 }
 
 fn main() {
-    let playerOneChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [3, 0]}, PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [9, 0]}, PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [6, 0]}];
-	let playerTwoChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 0, star : 2, items : [0, 0, 0], location : [6, 7]}];
+    //let playerOneChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [3, 0]}, PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [9, 0]}, PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [6, 0]}];
+	let playerOneChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [3, 0]}];
+	let playerTwoChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 1, star : 1, items : [0, 0, 0], location : [6, 7]}];
 	let mut boardOutcome = 1;
 	let mut iterationCount = 0;
 	while boardOutcome != 2
@@ -383,7 +398,7 @@ fn InGridHexagon(pos : [i8 ; 2]) -> bool//not going to attempt getting it workin
 	}
 	return false
 }
-fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<SummonedChampion>, timeUnit : u8, selfIndex : usize) -> bool
+fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<SummonedChampion>, timeUnit : u8, selfIndex : usize, stun : &mut ABooleanWithExtraSteps) -> bool
 {
 	statusEffect.duration -= timeUnit as i16;
 	if statusEffect.duration <= 0
@@ -391,6 +406,7 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 		match statusEffect.statusType
 			{
 				StatusType::AttackSpeedBuff(_, modifier) => friendlyChampions[selfIndex].attackSpeedModifier /= modifier,
+				StatusType::IncreaseDamageTaken(_, modifier) => friendlyChampions[selfIndex].incomingDMGModifier *= 100 / modifier,
 				_ => println!("Unimplemented")
 			}
 		return false
@@ -399,6 +415,9 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 	{
 		StatusType::AttackSpeedBuff(false, modifier) => {friendlyChampions[selfIndex].attackSpeedModifier *= modifier;
 															  statusEffect.statusType = StatusType::AttackSpeedBuff(true, modifier)},
+		StatusType::Stun() => stun.value = true,
+		StatusType::IncreaseDamageTaken(false, modifier) => {friendlyChampions[selfIndex].incomingDMGModifier *= modifier / 100;
+																  statusEffect.statusType = StatusType::IncreaseDamageTaken(true, modifier)}
 		_ => println!("Unimplemented")
 	}
 	true
@@ -417,9 +436,16 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 	friendlyChampions[selfIndex].targetCountDown -= timeUnit as i8;//Reduce cooldown to check target/ find new target
 	friendlyChampions[selfIndex].autoAttackDelay -= timeUnit as i16;//Risks going out of bounds as auto attack value may not be called for some time
 	friendlyChampions[selfIndex].gMD -= timeUnit as i8;
-	let mut statusEffects = friendlyChampions[selfIndex].se.clone();
-	statusEffects.retain_mut(|x| performStatus(x, friendlyChampions, timeUnit, selfIndex));
-	friendlyChampions[selfIndex].se = statusEffects;
+	{
+		let mut statusEffects = friendlyChampions[selfIndex].se.clone();
+		let mut stun = ABooleanWithExtraSteps{value : false};
+		statusEffects.retain_mut(|x| performStatus(x, friendlyChampions, timeUnit, selfIndex, &mut stun));
+		friendlyChampions[selfIndex].se = statusEffects;
+		if stun.value
+		{
+			return;
+		}
+	}
 	//does auto attack delay need to reset on pathing? does attack instantly after reaching path/ in range
 
 
