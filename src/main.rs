@@ -24,6 +24,7 @@ struct Champion //Basic structure to store the base stats of a champ
 enum StatusType
 {
 	AttackSpeedBuff(bool, f32),
+
 }
 #[derive(Clone)]
 struct StatusEffect
@@ -99,7 +100,7 @@ fn AatroxAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions 
 	}
 	friendlyChampions[selfIndex].health += ((300 + 50 * starLevel as i32) * friendlyChampions[selfIndex].ap) / 100;
 
-	enemyChampions[targetIndex].health -= (100 / 100 + enemyChampions[targetIndex].ar) * (300 + 5 * starLevel as i32) * friendlyChampions[selfIndex].ad;
+	enemyChampions[targetIndex].health -= (100 * (300 + 5 * starLevel as i32) * friendlyChampions[selfIndex].ad * enemyChampions[targetIndex].incomingDMGModifier) / (100 *(100 + enemyChampions[targetIndex].ar));
 }
 const CHAMPIONABILITIES : [fn(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize) ; 2]	= 
 	[LuluAbility, AatroxAbility];
@@ -146,6 +147,7 @@ struct SummonedChampion //Structure for champions on board in battle
 	se : Vec<StatusEffect>, //status effects
 	gMD : i8, //generate mana delay, after abilities 1 second before can start generating mana again
 	starLevel : usize,
+	incomingDMGModifier : i32,
 	//sortBy : i8,
 	//tIDs : Vec<[u8; 2]>, //trait abilities
 }
@@ -190,12 +192,28 @@ impl SummonedChampion
 						   se : Vec::new(),
 						   gMD : 0,
 						   starLevel : starLevel,
+						   incomingDMGModifier : 1,
 						   //sortBy : 0,
 						   //tIDs: Vec::new(),
 						}
 	}
-	//fn takeTurn(self : &mut SummonedChampion, friendlyChampionsLocations : &Vec<[i8 ; 2]>, enemyChampions : &mut Vec<SummonedChampion>, timeUnit : u8, movementAmount : i8, randomGen : &mut rand::rngs::ThreadRng/*gridSize : [i8 ; 2]*/)
-
+	fn takeAttackDamage(&self, incomingDamage : i32, critRate : u8, randomGen : &mut rand::rngs::ThreadRng)
+	{
+		let mut damage = (100 * incomingDamage * self.incomingDMGModifier) / (100 * (100 + self.ar));
+		if critRate > randomGen.gen_range(0..100)//calculating crit
+		{
+			damage *= 13 / 10;
+			println!("Debug : Critical Hit");
+		}
+		
+		if self.gMD <= 0
+		{
+			self.cm += (7 * damage  / 100) as u8; //discrepency, should be 1% of premitigation and 7% of post.
+		}
+		//discrepency
+		
+		self.health -= damage;
+	}
 }
 
 struct Player
@@ -468,19 +486,8 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 			
 			if enemyChampions[index].dc <= 0 || enemyChampions[index].dc < randomGen.gen_range(0..100) //calculating whether to dodge
 			{
-				let damage : i32 = ((100 * friendlyChampions[selfIndex].ad) / (100 + enemyChampions[index].ar)).try_into().unwrap(); //calculating damage
-				enemyChampions[index].health -=  damage;
-				if enemyChampions[index].gMD <= 0
-				{
-					enemyChampions[index].cm += (damage / 100 * 7) as u8; //discrepency, should be 1% of premitigation and 7% of post.
-				}
+				enemyChampions[index].takeAttackDamage(friendlyChampions[selfIndex].ad, friendlyChampions[selfIndex].cr, randomGen);
 				
-				//discrepency
-				if friendlyChampions[selfIndex].cr > randomGen.gen_range(0..100)//calculating crit
-				{
-					enemyChampions[index].health -= damage * 3 / 10;
-					println!("Debug : Critical Hit");
-				}
 				println!("Debug : Enemy Champion Health is {0}", enemyChampions[index].health);
 				if enemyChampions[index].health <= 0 //if enemy champion dead
 				{
