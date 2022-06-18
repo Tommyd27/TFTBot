@@ -1,5 +1,7 @@
 #![allow(non_snake_case)] //Allows snake case
 
+use std::cmp::min;
+
 use rand::{Rng}; //Used for generating random numbers for crits
 
 struct ABooleanWithExtraSteps
@@ -93,9 +95,8 @@ fn LuluAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : 
 	}
 	if i < champCount - 1
 	{
-		friendlyChampions[selfIndex].se.push(StatusEffect{
-			duration : 500,
-			statusType : StatusType::AttackSpeedBuff(false, 1.7)});
+		friendlyChampions[selfIndex].se.push(StatusEffect{duration : 500, statusType : StatusType::AttackSpeedBuff(false, 1.7)});
+		println!("attack speed buff");
 	}
 }
 
@@ -161,9 +162,10 @@ struct SummonedChampion //Structure for champions on board in battle
 	items : [u8 ; 3], //item abilities 
 	ap : i32, //ability power
 	se : Vec<StatusEffect>, //status effects
-	gMD : i8, //generate mana delay, after abilities 1 second before can start generating mana again
+	gMD : i16, //generate mana delay, after abilities 1 second before can start generating mana again
 	starLevel : usize,
 	incomingDMGModifier : i32,
+	initialHP : i32,
 	//sortBy : i8,
 	//tIDs : Vec<[u8; 2]>, //trait abilities
 }
@@ -187,6 +189,7 @@ impl SummonedChampion
 		SummonedChampion { location: [placedChampion.location[0], placedChampion.location[1]], //create summoned champ with all details
 						   movementProgress : [0, 0],
 						   health: ofChampion.hp[starLevel], 
+						   initialHP : ofChampion.hp[starLevel],
 						   cm: ofChampion.sm, //update current mana to starting mana
 						   dc: 0, 
 						   cr : 25,
@@ -215,6 +218,7 @@ impl SummonedChampion
 	}
 	fn takeAttackDamage(&mut self, incomingDamage : i32, critRate : u8)
 	{
+		println!("Take Attack Damage");
 		let mut damage = (100 * incomingDamage * self.incomingDMGModifier) / (100 * (100 + self.ar));
 		if critRate > rand::thread_rng().gen_range(0..100)//calculating crit
 		{
@@ -250,7 +254,7 @@ struct Board
 {
 	p1Champions : Vec<SummonedChampion>, //Vector of player 1's champs
 	p2Champions : Vec<SummonedChampion>, //Vector of player 2's champs
-	timeUnit : u8, //time unit for board in centiseconds (1/100 of a second
+	timeUnit : i8, //time unit for board in centiseconds (1/100 of a second
 	//gridSize : [i8 ; 2], //grid size [x, y, gridType]
 	movementAmount : i8, //will be calculated, const / timeUnit
 }
@@ -258,7 +262,7 @@ struct Board
 
 impl Board
 {
-	fn new(p1PlacedChamps : &Vec<PlacedChampion>, p2PlacedChamps : &Vec<PlacedChampion>, timeUnit : u8) -> Board
+	fn new(p1PlacedChamps : &Vec<PlacedChampion>, p2PlacedChamps : &Vec<PlacedChampion>, timeUnit : i8) -> Board
 	{
 		/*P1 and P2 placed champs to convert into Summoned Champs for  */
 		let mut p1Champions = Vec::new();
@@ -325,8 +329,8 @@ impl Board
 
 fn main() {
     //let playerOneChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [3, 0]}, PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [9, 0]}, PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [6, 0]}];
-	let playerOneChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [3, 0]}];
-	let playerTwoChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 1, star : 1, items : [0, 0, 0], location : [6, 7]}];
+	let playerOneChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 0, star : 0, items : [0, 0, 0], location : [3, 0]}];
+	let playerTwoChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 1, star : 0, items : [0, 0, 0], location : [6, 7]}];
 	let mut boardOutcome = 1;
 	let mut iterationCount = 0;
 	while boardOutcome != 2
@@ -398,7 +402,7 @@ fn InGridHexagon(pos : [i8 ; 2]) -> bool//not going to attempt getting it workin
 	}
 	return false
 }
-fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<SummonedChampion>, timeUnit : u8, selfIndex : usize, stun : &mut ABooleanWithExtraSteps) -> bool
+fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<SummonedChampion>, timeUnit : i8, selfIndex : usize, stun : &mut ABooleanWithExtraSteps) -> bool
 {
 	statusEffect.duration -= timeUnit as i16;
 	if statusEffect.duration <= 0
@@ -407,7 +411,7 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 			{
 				StatusType::AttackSpeedBuff(_, modifier) => friendlyChampions[selfIndex].attackSpeedModifier /= modifier,
 				StatusType::IncreaseDamageTaken(_, modifier) => friendlyChampions[selfIndex].incomingDMGModifier *= 100 / modifier,
-				_ => println!("Unimplemented")
+				_ => ()//println!("Unimplemented")
 			}
 		return false
 	}
@@ -418,11 +422,11 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 		StatusType::Stun() => stun.value = true,
 		StatusType::IncreaseDamageTaken(false, modifier) => {friendlyChampions[selfIndex].incomingDMGModifier *= modifier / 100;
 																  statusEffect.statusType = StatusType::IncreaseDamageTaken(true, modifier)}
-		_ => println!("Unimplemented")
+		_ => ()//println!("Unimplemented")
 	}
 	true
 }
-fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, timeUnit : u8, movementAmount : i8)
+fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, timeUnit : i8, movementAmount : i8)
 {
 	/*
 	friendlyChampions[selfIndex] : this champion
@@ -433,16 +437,18 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 	gridSize : depreciated
 		*/
 	//let mut thisChamp = &mut friendlyChampions[selfIndex];
-	friendlyChampions[selfIndex].targetCountDown -= timeUnit as i8;//Reduce cooldown to check target/ find new target
+	friendlyChampions[selfIndex].targetCountDown -= timeUnit;//Reduce cooldown to check target/ find new target
 	friendlyChampions[selfIndex].autoAttackDelay -= timeUnit as i16;//Risks going out of bounds as auto attack value may not be called for some time
-	friendlyChampions[selfIndex].gMD -= timeUnit as i8;
+	friendlyChampions[selfIndex].gMD -= timeUnit as i16;
 	{
 		let mut statusEffects = friendlyChampions[selfIndex].se.clone();
 		let mut stun = ABooleanWithExtraSteps{value : false};
 		statusEffects.retain_mut(|x| performStatus(x, friendlyChampions, timeUnit, selfIndex, &mut stun));
 		friendlyChampions[selfIndex].se = statusEffects;
+		friendlyChampions[selfIndex].health = min(friendlyChampions[selfIndex].initialHP, friendlyChampions[selfIndex].health);
 		if stun.value
 		{
+			println!("stunned");
 			return;
 		}
 	}
@@ -452,8 +458,9 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 	let mut index : usize = 99;//Cache index of target in enemyChampions
 	let mut distanceToTarget : i8 = 127;//Distance to target (is set either while finding target or when target found)
 	let mut needNewTargetCell : bool = false;//Bool to store whether new path is needed
-	if friendlyChampions[selfIndex].targetCountDown > 0 //if already has target and doesnt want to change targets 
+	if friendlyChampions[selfIndex].targetCountDown >= 0 //if already has target and doesnt want to change targets 
 	{
+		//maybe optimisation to first check for if enemyChampions[friendlyChampions.target]
 		for (i, enemyChampion) in enemyChampions.iter().enumerate() //every enemy champ
 		{
 			if enemyChampion.id == friendlyChampions[selfIndex].target //if they share id
@@ -472,6 +479,7 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 		friendlyChampions[selfIndex].target = 0;//reset target
 		let mut distance; //cache to store distance between enemy and location
 		needNewTargetCell = true; //tells us to recalculate pathfinding later
+		//discrepency what if target has moved regardless
 
 		for (i, enemyChampion) in enemyChampions.iter().enumerate() //for every champ
 		{
@@ -488,31 +496,35 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 	if distanceToTarget <= friendlyChampions[selfIndex].ra as i8//if target in range
 	{
 		println!("Debug : Target in Range");
-		println!("Debug : Auto Attack Delay Remaining {0}", friendlyChampions[selfIndex].autoAttackDelay);
+		println!("Debug : Auto Attack Delay Remaining {0}", friendlyChampions[selfIndex].autoAttackDelay);//discrepency, does auto attack "charge" while moving
 		if friendlyChampions[selfIndex].autoAttackDelay <= 0//if autoattack ready
 		{
 			println!("Debug : Delay Smaller than 0 - Attacking");
 			/* 
-			friendlyChampions[selfIndex].aS = attacks per 10 seconds
+			friendlyChampions[selfIndex].aS = attacks per 1 second
 			friendlyChampions[selfIndex].autoAttackDelay = time in 1/10 of second until next attack
 			friendlyChampions[selfIndex].attackSpeedIncrease = percentage increase in attack speed
 			
 			
-			autoAttacKDelay (seconds) = 1 (second) / 0.7 (attacks per seconds)
-			autoAttackDelay (centiseconds) = 100 (centisecond) / 0.7 (attacks per second)
-			autoAttackDelay (centiseconds) = 1000 (centisecond * 10) / 7 (attacks per 10 seconds) + 7 * attackSpeedIncrease
+			autoAttackDelay (seconds) = 1 / (attackSpeed * attackSpeedMod)
+			autoAttackDelay (centiseconds) = 100 / (attackSpeed * attackSpeedMod)
 			
 			*/
-			friendlyChampions[selfIndex].autoAttackDelay = 100 / (friendlyChampions[selfIndex].aS * friendlyChampions[selfIndex].attackSpeedModifier) as i16; //calculating auto attack delay
+			println!("as: {}, mod: {}", friendlyChampions[selfIndex].aS, friendlyChampions[selfIndex].attackSpeedModifier);
+			friendlyChampions[selfIndex].autoAttackDelay = (100.0 / (friendlyChampions[selfIndex].aS * friendlyChampions[selfIndex].attackSpeedModifier)) as i16; //calculating auto attack delay
+			println!("Auto attack delay set");
 			//attack speed unclear, capped at five yet some champions let you boost beyond it?
 			//optimisation definitely here
 			if friendlyChampions[selfIndex].gMD <= 0
 			{
 				friendlyChampions[selfIndex].cm += 10;
+				println!("gain mana");
 			}
+			println!("maybe dodge");
 			//discrepency maybe can  dodge actual ability
 			if enemyChampions[index].dc <= 0 || enemyChampions[index].dc < rand::thread_rng().gen_range(0..100) //calculating whether to dodge
 			{//optimisation from not generating random gen
+				println!("No Dodge");
 				enemyChampions[index].takeAttackDamage(friendlyChampions[selfIndex].ad, friendlyChampions[selfIndex].cr);
 				
 				println!("Debug : Enemy Champion Health is {0}", enemyChampions[index].health);
@@ -594,6 +606,7 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 	if friendlyChampions[selfIndex].cm >= friendlyChampions[selfIndex].mc
 	{
 		friendlyChampions[selfIndex].cm = 0;
+		friendlyChampions[selfIndex].gMD = 100;
 		CHAMPIONABILITIES[friendlyChampions[selfIndex].aID](friendlyChampions, enemyChampions, selfIndex);
 	}
 }
