@@ -1,53 +1,86 @@
 #![allow(non_snake_case)] //Allows snake case
 
 use std::cmp::min;
-
 use rand::{Rng}; //Used for generating random numbers for crits
 
+///It's in the name
 struct ABooleanWithExtraSteps
 {
+	///A bool
 	value : bool,
 }
+///Champion (struct):
+///Stores the basic information surrounding a champion
 struct Champion //Basic structure to store the base stats of a champ
 {
-    id : u8, //champ id
-    cost : u8, //gold cost
-    
-    hp : [i32; 3], //health points (scales with star level)
-    sm : u8, //starting mana
-    mc : u8, //ability mana cost
-    ar : i32, //armor
-    mr : i8, //magic resist
-    ad : [i32; 3], //attack damage (scales with star level)
-    aS : f32, //attack speed in attacks per 1 second
-    ra : u8, //auto attack range
-    
-    aID : usize, //ability ID
+	///Champion ID
+	///Index in
+    id : u8,
 
-    traits : [u8 ; 3], //traits
+	///Cost in Gold
+    cost : u8, 
+    
+	///HP values for each star level
+    hp : [i32; 3], 
+	///Starting mana
+    sm : u8,
+	///Ability Mana Cost
+    mc : u8,
+	///Base Armor Value
+    ar : i32,
+	///Base Magic Resist Value
+    mr : i8,
+	///Autoattack damage for each star level
+    ad : [i32; 3],
+	///Attack speed in attacks per second
+    aS : f32,
+	///Auto attack range
+    ra : u8,
+    ///Ability ID, same as index in const CHAMPIONABILITIES
+    aID : usize, 
+	///Trait IDs
+    traits : [u8 ; 3], 
 }
-//
+///Status Type (enum):
+///Holds information about what the status actually is
 #[derive(Clone)]
 enum StatusType
 {
+	///Attack Speed Buff
+	///(bool : whether the buff has been applied, f32 : actual modifier)
 	AttackSpeedBuff(bool, f32),
-	IncreaseDamageTaken(bool, i32), //in %, so 120 = 120% increased damage
+	///Increase Damage Taken
+	///(bool : whether the buff has been applied, i32 : actual modifier in % (so 120 = 120% or 20% increase))
+	IncreaseDamageTaken(bool, i32),
+	///Stun
+	///()
 	Stun() //stun
 }
+
+///StatusEffect (struct):
+///Stores a status type and a duration
 #[derive(Clone)]
 struct StatusEffect
 {
+	///Duration of status effect in centiseconds
 	duration : i16,
+	///Stores status type
 	statusType : StatusType,
 }
 
 
+///CHAMPIONS (const):<br />
+///Stores all the champion information
 const CHAMPIONS : [Champion ; 3] = [Champion{id : 0, cost : 1, hp : [650, 1170, 2106], sm : 70, mc : 140, ar : 25, mr : 25, ad : [40, 72, 129], aS : 0.7, ra : 3, aID : 0, traits : [1, 2, 0]}, 
                  					Champion{id : 1, cost : 2, hp : [650, 1170, 2106], sm : 50, mc : 100, ar : 45, mr : 45, ad : [55, 99, 178], aS : 0.7, ra : 1, aID : 1, traits : [2, 3, 0]}, 
                  					Champion{id : 2, cost : 3, hp : [700, 1260, 2268], sm : 35, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 0.7, ra : 3, aID : 0, traits : [4, 5, 0]}];
-
-
-
+///LuluAbility (func):<br />
+///Whimsy
+///Lulu enchants the nearest targets. Enchanted allies gain Attack Speed for 1.5 seconds. Enchanted enemies are stunned and transformed into harmless dragonlings, taking increased damage while stunned. If there are fewer than 3 units nearby, Lulu will enchant herself.<br />
+///Targets:
+///3/4/5<br />
+///Attack Speed:
+///70/80/120%
 fn LuluAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize)
 {
 	let mut playerDistances : Vec<[i8 ; 2]> = Vec::new();
@@ -100,6 +133,13 @@ fn LuluAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : 
 	}
 }
 
+///AatroxAbility (func):
+///Deathbringer Strike
+///Aatrox strikes his target for physical damage and heals himself.
+///Attack Damage:
+///300/305/310%
+///Heal:
+///300/350/400
 fn AatroxAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize)
 {
 	let starLevel = friendlyChampions[selfIndex].starLevel;
@@ -119,6 +159,14 @@ fn AatroxAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions 
 
 	enemyChampions[targetIndex].takeAttackDamage((300 + 5 * starLevel as i32) * friendlyChampions[selfIndex].ad, friendlyChampions[selfIndex].cr);
 }
+///const CHAMPIONABILITIES :
+///Stores all the champ abilities (index = abilityID)
+///All abilities are called in the form 
+///(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize)
+///Arguments:
+///friendlyChampions : Mutable reference to allied champions
+///enemyChampions : Mutable reference to enemy champions
+///selfIndex : Index of champion (in friendlyChampions) who casted this ability
 const CHAMPIONABILITIES : [fn(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize) ; 2]	= 
 	[LuluAbility, AatroxAbility];
 
@@ -128,10 +176,13 @@ const CHAMPIONABILITIES : [fn(friendlyChampions : &mut Vec<SummonedChampion>, en
 
 
 
-
-struct PlacedChampion //Structure for champions placed on the board (but not in a battle), includes bench
+///PlacedChampion (struct):
+///Stores information about a champion's location and status on a board (as well as ID of actual champion)
+///Not used in battles, only for planning phase
+struct PlacedChampion 
 {
-    id : usize, //champ id
+	///
+    id : usize, 
 
     star : usize, //star level
     items : [u8 ; 3], //items given
@@ -287,6 +338,8 @@ impl Board
 	fn StartBattle(mut self : Board) -> i8
 	{
 		let mut debugCount : u32 = 0;
+		/*
+		prematch setup */
 		while self.p1Champions.len() > 0 && self.p2Champions.len() > 0
 		{
 			println!("Debug : Iteration {}", debugCount);
