@@ -1,7 +1,7 @@
 #![allow(non_snake_case)] //Allows snake case
 
 use std::cmp::min;
-use rand::{Rng}; //Used for generating random numbers for crits
+use rand::{Rng};
 
 ///It's in the name
 struct ABooleanWithExtraSteps
@@ -9,7 +9,7 @@ struct ABooleanWithExtraSteps
 	///A bool
 	value : bool,
 }
-///Champion (struct):
+///Champion (struct)<br />:
 ///Stores the basic information surrounding a champion
 struct Champion //Basic structure to store the base stats of a champ
 {
@@ -41,7 +41,7 @@ struct Champion //Basic structure to store the base stats of a champ
 	///Trait IDs
     traits : [u8 ; 3], 
 }
-///Status Type (enum):
+///Status Type (enum)<br />:
 ///Holds information about what the status actually is
 #[derive(Clone)]
 enum StatusType
@@ -57,7 +57,7 @@ enum StatusType
 	Stun() //stun
 }
 
-///StatusEffect (struct):
+///StatusEffect (struct)<br />:
 ///Stores a status type and a duration
 #[derive(Clone)]
 struct StatusEffect
@@ -210,6 +210,63 @@ struct SummonedChampion //Structure for champions on board in battle
 	attackSpeedModifier : f32, //increase from items/ from base attack speed
 	target : usize, //ID of target
 	targetCells : [i8 ; 2], //pathfinding target cell
+	///Stores all the item IDs the champion is holding.<br />
+	///**Item IDS:**<br />
+	///0 : Null<br />
+	///1  : B.F Sword (+10 Attack Damage)<br />
+	///2  : Needlessly Large Rod (+10 Ability Power)<br />
+	///3  : Giants Belt (+150 health)<br />
+	///4  : Chain Vest (+20 Armor)<br />
+	///5  : Negatron Cloak (+20 Magic Resist)<br />
+	///6  : Recurve Bow (+10% Attack Speed)<br />
+	///7  : Sparring Gloves (+5% Crit Chance, +10% Dodge Chance)<br />
+	///8  : Tear of the Goddess (+15 Mana)<br />
+	///9  : Spatula<br />
+	///11 : Deathblade (+50, +75, +100 Attack Damage - Star Level Dependent)<br />
+ 	///12 : Hextech Gunblade (Dealing Magic and True Damage heals the owner and lowest health ally for 33% of the damage)<br />
+	///13 : Zekes Herald (Grants 30% bonus attack speed to the holder and 2 adjacent allies in same row)<br />
+	///14 : Edge of Night (At 60% health - once per combat - the holder briefly becomes untargetable and sheds negative effects. Then they gain 40% attack speed)<br />
+	///15 : Bloodthirster (Damage dealt heals holder for 33%. Once per combat at 40% Health, gain a 30% maximum health shield for up to 5 seconds)<br />
+	///16 : Giant Slayer (Abilities and attacks deal 20% more damage, increased to 60% if the holder has over 1800 maximum health)<br />
+	///17 : Infinity Edge (+10 Attack Damage, +75% Crit Chance, +10% Crit Damage, Converts every 1% excess critical strike chance into 1% bonus critical strike damage)<br />
+	///18 : Spear of Shojin (Basic attacks restore an additional 8 mana on-attack)<br />
+	///19 : Striker Emblem (Wearer becomes a striker, cannot equip on a striker)<br />
+	///22 :<br />
+	///23 :<br />
+	///24 :<br />
+	///25 :<br />
+	///26 :<br />
+	///27 :<br />
+	///28 :<br />
+	///29 :<br />
+	///33 :<br />
+	///34 :<br />
+	///35 :<br />
+	///36 :<br />
+	///37 :<br />
+	///38 :<br />
+	///39 :<br />
+	///44 :<br />
+	///45 :<br />
+	///46 :<br />
+	///47 :<br />
+	///48 :<br />
+	///49 :<br />
+	///55 :<br />
+	///56 :<br />
+	///57 :<br />
+	///58 :<br />
+	///59 :<br />
+	///66 :<br />
+	///67 :<br />
+	///68 :<br />
+	///69 :<br />
+	///77 :<br />
+	///78 :<br />
+	///79 :<br />
+	///88 :<br />
+	///89 :<br />
+	///99 :<br />
 	items : [u8 ; 3], //item abilities 
 	ap : i32, //ability power
 	se : Vec<StatusEffect>, //status effects
@@ -220,15 +277,6 @@ struct SummonedChampion //Structure for champions on board in battle
 	//sortBy : i8,
 	//tIDs : Vec<[u8; 2]>, //trait abilities
 }
-/*
-Summoned Champions Status Effects
-Need to Implement:
--Attack Speed Increase
--CC/ Stunlock
--Self Damage Increase
-Implementation Type:
-[statusID, statusDuration, statusStrength, statusPerformed]
-*/
 
 impl SummonedChampion 
 {
@@ -310,7 +358,17 @@ struct Board
 	movementAmount : i8, //will be calculated, const / timeUnit
 }
 
-
+fn GiveItemEffect(item : u8, champion : &mut SummonedChampion)
+{
+	if item == 0 
+	{
+		return;
+	}
+	match item
+	{
+		_ => println!("Unimplemented Item"),
+	}
+}
 impl Board
 {
 	fn new(p1PlacedChamps : &Vec<PlacedChampion>, p2PlacedChamps : &Vec<PlacedChampion>, timeUnit : i8) -> Board
@@ -335,11 +393,25 @@ impl Board
 			  movementAmount : 10 / timeUnit as i8, //optimisation
 			}
 	}
+
+
+
 	fn StartBattle(mut self : Board) -> i8
 	{
 		let mut debugCount : u32 = 0;
 		/*
-		prematch setup */
+		prematch setup 
+		*/
+		for p1Champ in self.p1Champions
+		{
+			for item in p1Champ.items
+			{
+				GiveItemEffect(item, &mut p1Champ)
+			}
+		}
+		/*
+		match 
+		*/
 		while self.p1Champions.len() > 0 && self.p2Champions.len() > 0
 		{
 			println!("Debug : Iteration {}", debugCount);
