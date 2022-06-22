@@ -29,7 +29,7 @@ struct Champion //Basic structure to store the base stats of a champ
 	///Base Armor Value
     ar : i32,
 	///Base Magic Resist Value
-    mr : i8,
+    mr : i32,
 	///Autoattack damage for each star level
     ad : [i32; 3],
 	///Attack speed in attacks per second
@@ -197,9 +197,10 @@ struct SummonedChampion //Structure for champions on board in battle
 	cm : u8, //current mana
 	dc : u8, //dodge chance
 	cr : u8, //crit rate
+	critD : i32, // crit damage
 	mc : u8, //mana/ ability cost
 	ar : i32, //armor
-	mr : i8,  //magic resist
+	mr : i32,  //magic resist
 	ad : i32, //attack damage
 	aS : f32, //attacks per second
 	ra : u8, //auto attack range
@@ -292,6 +293,7 @@ impl SummonedChampion
 						   cm: ofChampion.sm, //update current mana to starting mana
 						   dc: 0, 
 						   cr : 25,
+						   critD : 130,
 						   mc: ofChampion.mc, 
 						   ar: ofChampion.ar * 2, //when calculating distances in cube grid, 1 adjacent hex is calculated as "2" away due to the p, q, r coordinate system, thus attack range is doubled.
 						   mr: ofChampion.mr, 
@@ -369,15 +371,24 @@ fn GiveItemEffect(item : u8, champion : &mut SummonedChampion)
 	}
 	match item
 	{
-		1 | 12 | 18 => champion.ad += 10,
-		2 | 12 => champion.ap += 10,
+		1  => champion.ad += 10,
+		2  => champion.ap += 10,
 		3 => champion.health += 150,
 		4 => champion.ar += 20,
 		5 => champion.mr += 20,
 		6 => champion.attackSpeedModifier += 0.1,
 		7 => {champion.cr += 5; champion.dc += 10},
-		8  | 18 => champion.cm += 15,
+		8 => champion.cm += 15,
 		11 => champion.ad += [40, 70, 100][champion.starLevel],
+		12 => {champion.ad += 10; champion.ap += 10},
+		13 => (),
+		14 => (),
+		15 => (),
+		16 => (),
+		17 => (),
+		18 => {champion.ad += 10; champion.cm += 15},
+		19 => (),
+
 		_ => println!("Unimplemented Item"),
 	}
 }
@@ -414,11 +425,11 @@ impl Board
 		/*
 		prematch setup 
 		*/
-		for p1Champ in self.p1Champions
+		for p1Champ in &mut self.p1Champions
 		{
 			for item in p1Champ.items
 			{
-				GiveItemEffect(item, &mut p1Champ)
+				GiveItemEffect(item, p1Champ)
 			}
 		}
 		/*
@@ -520,18 +531,29 @@ fn dealDamage(selfIndex : usize,
 		0 => {damage = (100 * damageAmount * target.incomingDMGModifier) / (100 * (100 + target.ar));
 			  if friendlyChampions[selfIndex].cr > rand::thread_rng().gen_range(0..100)
 			  {
-				damage *= 13;
-				damage /= 10;
+				damage *= friendlyChampions[selfIndex].critD;
+				damage /= 100;
 			  }
 
 		},
-		1 => {damage = (100 * damageAmount * friendlyChampions[selfIndex].ap * target.incomingDMGModifier) / (100 * (100 + target.mr))},
+		1 => {damage = (100 * damageAmount * friendlyChampions[selfIndex].ap * target.incomingDMGModifier) / (100 * (100 + target.mr));
+			  if friendlyChampions[selfIndex].items.contains(&27)
+			  {
+				if friendlyChampions[selfIndex].cr > rand::thread_rng().gen_range(0..100)
+				{
+					damage *= friendlyChampions[selfIndex].critD;
+					damage /= 100;
+				}
+			  }
+		},
 		2 => {},
+		_ => ()
 	}
 	if target.gMD <= 0
 	{
 			target.cm += (7 * damage  / 100) as u8; //discrepency, should be 1% of premitigation and 7% of post.
 	}
+	target.health -= damage;
 }
 
 
