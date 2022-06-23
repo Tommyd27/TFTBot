@@ -44,6 +44,7 @@ struct Champion //Basic structure to store the base stats of a champ
 ///Status Type (enum)<br />:
 ///Holds information about what the status actually is
 #[derive(Clone)]
+#[derive(PartialEq)]
 enum StatusType
 {
 	///Attack Speed Buff
@@ -54,7 +55,10 @@ enum StatusType
 	IncreaseDamageTaken(bool, i32),
 	///Stun
 	///()
-	Stun() //stun
+	Stun(),
+
+
+	GreviousWounds()
 }
 
 ///StatusEffect (struct)<br />:
@@ -155,7 +159,7 @@ fn AatroxAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions 
 			}
 		}
 	}
-	friendlyChampions[selfIndex].health += ((300 + 50 * starLevel as i32) * friendlyChampions[selfIndex].ap) / 100;
+	friendlyChampions[selfIndex].heal(((300 + 50 * starLevel as i32) * friendlyChampions[selfIndex].ap) / 100);
 
 	enemyChampions[targetIndex].takeAttackDamage((300 + 5 * starLevel as i32) * friendlyChampions[selfIndex].ad, friendlyChampions[selfIndex].cr);
 }
@@ -335,6 +339,19 @@ impl SummonedChampion
 		
 		self.health -= damage;
 	}
+	fn heal(&mut self, mut healingAmount : i32)
+	{
+		for statusEffect in self.se
+		{
+			if statusEffect.statusType == StatusType::GreviousWounds()
+			{
+				healingAmount /= 2;
+				break;
+			}
+		}
+		self.health += healingAmount;
+		self.health = min(self.health, self.initialHP);
+	}
 }
 
 struct Player
@@ -431,6 +448,7 @@ impl Board
 			{
 				GiveItemEffect(item, p1Champ)
 			}
+			p1Champ.initialHP = p1Champ.health;
 		}
 		/*
 		match 
@@ -545,8 +563,45 @@ fn dealDamage(selfIndex : usize,
 					damage /= 100;
 				}
 			  }
+			  if friendlyChampions[selfIndex].items.contains(&12)
+			  {
+				let healing = damage / 4;
+				friendlyChampions[selfIndex].heal(healing);
+				let mut lowestHP : i32 = 999999;
+				let mut lowestHPID : usize = 0;
+				for (i, champ) in friendlyChampions.iter().enumerate()
+				{
+					if i != selfIndex && champ.health < lowestHP
+					{
+						lowestHP = champ.health;
+						lowestHPID = i;
+					}
+				}
+				if lowestHPID != selfIndex
+				{
+					friendlyChampions[lowestHPID].heal(healing);
+				}
+			  }
 		},
-		2 => {},
+		2 => {
+			if friendlyChampions[selfIndex].items.contains(&12)
+			{
+			  let healing = damage / 4;
+			  friendlyChampions[selfIndex].heal(healing);
+			  let mut lowestHP : i32 = 999999;
+			  let mut lowestHPID : usize = 0;
+			  for (i, champ) in friendlyChampions.iter().enumerate()
+			  {
+				  if i != selfIndex && champ.health < lowestHP
+				  {
+					  lowestHP = champ.health;
+					  lowestHPID = i;
+				  }
+			  }
+			  if lowestHPID != selfIndex
+			  {
+				  friendlyChampions[lowestHPID].heal(healing);
+			  }}},
 		_ => ()
 	}
 	if target.gMD <= 0
@@ -613,7 +668,6 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 		let mut stun = ABooleanWithExtraSteps{value : false};
 		statusEffects.retain_mut(|x| performStatus(x, friendlyChampions, timeUnit, selfIndex, &mut stun));
 		friendlyChampions[selfIndex].se = statusEffects;
-		friendlyChampions[selfIndex].health = min(friendlyChampions[selfIndex].initialHP, friendlyChampions[selfIndex].health);
 		if stun.value
 		{
 			println!("stunned");
