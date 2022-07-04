@@ -57,8 +57,11 @@ enum StatusType
 	///()
 	Stun(),
 
-
-	GreviousWounds()
+	///Grevious Wounds
+	///Reduces healing by 50%
+	GreviousWounds(),
+	///Gives edge of night buff
+	EdgeOfNight(),
 }
 
 ///StatusEffect (struct)<br />:
@@ -387,17 +390,17 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 	match item
 	{
 		0 => (),
-		1  => friendlyChampions[selfIndex].ad += 10,
-		2  => friendlyChampions[selfIndex].ap += 10,
-		3 => friendlyChampions[selfIndex].health += 150,
-		4 => friendlyChampions[selfIndex].ar += 20,
-		5 => friendlyChampions[selfIndex].mr += 20,
-		6 => friendlyChampions[selfIndex].attackSpeedModifier += 0.1,
-		7 => {friendlyChampions[selfIndex].cr += 5; friendlyChampions[selfIndex].dc += 10},
-		8 => friendlyChampions[selfIndex].cm += 15,
-		11 => friendlyChampions[selfIndex].ad += [40, 70, 100][friendlyChampions[selfIndex].starLevel],
-		12 => {friendlyChampions[selfIndex].ad += 10; friendlyChampions[selfIndex].ap += 10},
-		13 => {friendlyChampions[selfIndex].ad += 10; friendlyChampions[selfIndex].health += 150;
+		1  => friendlyChampions[selfIndex].ad += 10, //
+		2  => friendlyChampions[selfIndex].ap += 10, //
+		3 => friendlyChampions[selfIndex].health += 150, //
+		4 => friendlyChampions[selfIndex].ar += 20, //
+		5 => friendlyChampions[selfIndex].mr += 20,//
+		6 => friendlyChampions[selfIndex].attackSpeedModifier += 0.1,//
+		7 => {friendlyChampions[selfIndex].cr += 5; friendlyChampions[selfIndex].dc += 10},//
+		8 => friendlyChampions[selfIndex].cm += 15,//
+		11 => friendlyChampions[selfIndex].ad += [40, 70, 100][friendlyChampions[selfIndex].starLevel],//
+		12 => {friendlyChampions[selfIndex].ad += 10; friendlyChampions[selfIndex].ap += 10},//
+		13 => {friendlyChampions[selfIndex].ad += 10; friendlyChampions[selfIndex].health += 150;//
 			  let thisLocation = friendlyChampions[selfIndex].location;
 			  for friendlyChamp in friendlyChampions
 			  {
@@ -407,7 +410,8 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 				}
 			  }
 			  },
-		14 => (),
+		14 => {friendlyChampions[selfIndex].ad += 10; friendlyChampions[selfIndex].ar += 20; 
+			   friendlyChampions[selfIndex].se.push(StatusEffect { duration: 32767, statusType: StatusType::EdgeOfNight()})},
 		15 => (),
 		16 => (),
 		17 => (),
@@ -664,6 +668,10 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 		StatusType::Stun() => stun.value = true,
 		StatusType::IncreaseDamageTaken(false, modifier) => {friendlyChampions[selfIndex].incomingDMGModifier *= modifier / 100;
 																  statusEffect.statusType = StatusType::IncreaseDamageTaken(true, modifier)}
+		StatusType::EdgeOfNight() => {if friendlyChampions[selfIndex].health <= (friendlyChampions[selfIndex].initialHP / 2)
+									  {
+										
+									  }}
 		_ => ()//println!("Unimplemented")
 	}
 	true
