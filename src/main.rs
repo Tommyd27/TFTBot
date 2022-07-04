@@ -1,6 +1,6 @@
 #![allow(non_snake_case)] //Allows snake case
 
-use std::{cmp::min, ptr::null};
+use std::{cmp::min};
 use rand::{Rng};
 
 ///It's in the name
