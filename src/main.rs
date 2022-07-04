@@ -671,6 +671,8 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 		StatusType::EdgeOfNight() => {if friendlyChampions[selfIndex].health <= (friendlyChampions[selfIndex].initialHP / 2)
 									  {
 										
+										
+										return false
 									  }}
 		_ => ()//println!("Unimplemented")
 	}
