@@ -62,7 +62,15 @@ enum StatusType
 	GreviousWounds(),
 	///Gives edge of night buff
 	EdgeOfNight(),
+	///Whether the target is targetable
+	///bool : Whether the buff has been applied
+	Untargetable(bool),
+
+	///None
+	NoEffect()
 }
+
+
 
 ///StatusEffect (struct)<br />:
 ///Stores a status type and a duration
@@ -70,11 +78,18 @@ enum StatusType
 struct StatusEffect
 {
 	///Duration of status effect in centiseconds
-	duration : i16,
+	duration : i16,//optimisation so uses Option<i16> rather than i16
 	///Stores status type
 	statusType : StatusType,
+	isNegative : bool,
 }
 
+impl Default for StatusEffect{
+	fn default() -> StatusEffect
+	{
+		StatusEffect { duration: 0, statusType: StatusType::NoEffect(), isNegative: false }
+	}
+}
 
 ///CHAMPIONS (const):<br />
 ///Stores all the champion information
@@ -122,20 +137,21 @@ fn LuluAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : 
 			//give allies attack speed for 5 seconds
 			friendlyChampions[(champIndex - 1) as usize].se.push(StatusEffect{
 																	duration : 500,
-																	statusType : StatusType::AttackSpeedBuff(false, 1.7)	
+																	statusType : StatusType::AttackSpeedBuff(false, 1.7),
+																	..Default::default()	
 			});
 		}
 		else //-(champ index + 1)
 		{
 			//stun enemies for 1.5 seconds and increase damage for 20%
-			enemyChampions[-(champIndex + 1) as usize].se.push(StatusEffect { duration: 150, statusType: StatusType::Stun() });
-			enemyChampions[-(champIndex + 1) as usize].se.push(StatusEffect { duration: 150, statusType: StatusType::IncreaseDamageTaken(false, 120)});
+			enemyChampions[-(champIndex + 1) as usize].se.push(StatusEffect { duration: 150, statusType: StatusType::Stun(), isNegative : true });
+			enemyChampions[-(champIndex + 1) as usize].se.push(StatusEffect { duration: 150, statusType: StatusType::IncreaseDamageTaken(false, 120), isNegative : true});
 		}
 		i += 1;
 	}
 	if i < champCount - 1
 	{
-		friendlyChampions[selfIndex].se.push(StatusEffect{duration : 500, statusType : StatusType::AttackSpeedBuff(false, 1.7)});
+		friendlyChampions[selfIndex].se.push(StatusEffect{duration : 500, statusType : StatusType::AttackSpeedBuff(false, 1.7), ..Default::default()});
 		println!("attack speed buff");
 	}
 }
@@ -162,7 +178,8 @@ fn AatroxAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions 
 			}
 		}
 	}
-	friendlyChampions[selfIndex].heal(((300 + 50 * starLevel as i32) * friendlyChampions[selfIndex].ap) / 100);
+	let ap = friendlyChampions[selfIndex].ap;
+	friendlyChampions[selfIndex].heal(((300 + 50 * starLevel as i32) * ap) / 100);
 
 	enemyChampions[targetIndex].takeAttackDamage((300 + 5 * starLevel as i32) * friendlyChampions[selfIndex].ad, friendlyChampions[selfIndex].cr);
 }
@@ -282,6 +299,8 @@ struct SummonedChampion //Structure for champions on board in battle
 	starLevel : usize,
 	incomingDMGModifier : i32,
 	initialHP : i32,
+	targetable : bool,
+	shed : u8,
 	//sortBy : i8,
 	//tIDs : Vec<[u8; 2]>, //trait abilities
 }
@@ -320,6 +339,8 @@ impl SummonedChampion
 						   gMD : 0,
 						   starLevel : starLevel,
 						   incomingDMGModifier : 1,
+						   targetable : true,
+						   shed : 0,
 						   //sortBy : 0,
 						   //tIDs: Vec::new(),
 						}
@@ -344,7 +365,7 @@ impl SummonedChampion
 	}
 	fn heal(&mut self, mut healingAmount : i32)
 	{
-		for statusEffect in self.se
+		for statusEffect in &self.se
 		{
 			if statusEffect.statusType == StatusType::GreviousWounds()
 			{
@@ -411,7 +432,7 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 			  }
 			  },
 		14 => {friendlyChampions[selfIndex].ad += 10; friendlyChampions[selfIndex].ar += 20; 
-			   friendlyChampions[selfIndex].se.push(StatusEffect { duration: 32767, statusType: StatusType::EdgeOfNight()})},
+			   friendlyChampions[selfIndex].se.push(StatusEffect { duration: 32767, statusType: StatusType::EdgeOfNight(), ..Default::default()})},//
 		15 => (),
 		16 => (),
 		17 => (),
@@ -648,15 +669,23 @@ fn InGridHexagon(pos : [i8 ; 2]) -> bool//not going to attempt getting it workin
 	}
 	return false
 }
-fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<SummonedChampion>, timeUnit : i8, selfIndex : usize, stun : &mut ABooleanWithExtraSteps) -> bool
+fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<SummonedChampion>, timeUnit : i8, selfIndex : usize, stun : &mut ABooleanWithExtraSteps, seToAdd : &mut Vec<StatusEffect>) -> bool
 {
 	statusEffect.duration -= timeUnit as i16;
+	if friendlyChampions[selfIndex].shed == 2
+	{
+		if statusEffect.isNegative
+		{
+			statusEffect.duration = 0;
+		}
+	}
 	if statusEffect.duration <= 0
 	{
 		match statusEffect.statusType
 			{
 				StatusType::AttackSpeedBuff(_, modifier) => friendlyChampions[selfIndex].attackSpeedModifier /= modifier,
 				StatusType::IncreaseDamageTaken(_, modifier) => friendlyChampions[selfIndex].incomingDMGModifier *= 100 / modifier,
+				StatusType::Untargetable(_) => friendlyChampions[selfIndex].targetable = true,//discrepency if have 2 untargetable effects this will untarget too early
 				_ => ()//println!("Unimplemented")
 			}
 		return false
@@ -670,10 +699,12 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 																  statusEffect.statusType = StatusType::IncreaseDamageTaken(true, modifier)}
 		StatusType::EdgeOfNight() => {if friendlyChampions[selfIndex].health <= (friendlyChampions[selfIndex].initialHP / 2)
 									  {
-										
-										
+										seToAdd.push(StatusEffect{duration : 50, statusType : StatusType::Untargetable(false), ..Default::default()});//optimisation at every ..Default::default() with instead isNegative : false
+										seToAdd.push(StatusEffect { duration: 32767, statusType: StatusType::AttackSpeedBuff(false, 1.3), ..Default::default()}); //discrepency technically attack speed buff comes into play after untargetable wears off
+										friendlyChampions[selfIndex].shed = 1;
 										return false
 									  }}
+		StatusType::Untargetable(false) => {friendlyChampions[selfIndex].targetable = false; statusEffect.statusType = StatusType::Untargetable(true)}, //optimise with not recreating status Type?
 		_ => ()//println!("Unimplemented")
 	}
 	true
@@ -695,8 +726,19 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 	{
 		let mut statusEffects = friendlyChampions[selfIndex].se.clone();
 		let mut stun = ABooleanWithExtraSteps{value : false};
-		statusEffects.retain_mut(|x| performStatus(x, friendlyChampions, timeUnit, selfIndex, &mut stun));
+		let mut seToAdd : Vec<StatusEffect> = Vec::new();
+		statusEffects.retain_mut(|x| performStatus(x, friendlyChampions, timeUnit, selfIndex, &mut stun, &mut seToAdd));
 		friendlyChampions[selfIndex].se = statusEffects;
+		//deffo optimisation around statusEffects
+		friendlyChampions[selfIndex].se.extend(seToAdd);
+		if friendlyChampions[selfIndex].shed == 1
+		{
+			friendlyChampions[selfIndex].shed = 2;
+		}
+		else if friendlyChampions[selfIndex].shed == 2
+		{
+			friendlyChampions[selfIndex].shed = 0;
+		}
 		if stun.value
 		{
 			println!("stunned");
@@ -713,7 +755,7 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 		//maybe optimisation to first check for if enemyChampions[friendlyChampions.target]
 		for (i, enemyChampion) in enemyChampions.iter().enumerate() //every enemy champ
 		{
-			if enemyChampion.id == friendlyChampions[selfIndex].target //if they share id
+			if enemyChampion.id == friendlyChampions[selfIndex].target && friendlyChampions[selfIndex].targetable //if they share id
 			{
 				println!("Debug : Found Target");
 				index = i;//set index
@@ -733,6 +775,10 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 
 		for (i, enemyChampion) in enemyChampions.iter().enumerate() //for every champ
 		{
+			if !enemyChampion.targetable
+			{
+				continue;
+			}
 			distance = DistanceBetweenPoints(enemyChampion.location, friendlyChampions[selfIndex].location); //calculate distance
 			if distance < distanceToTarget //if distance to current enemy champion in loop is lower than distance to current target
 			{
