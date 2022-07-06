@@ -181,7 +181,7 @@ fn AatroxAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions 
 	let ap = friendlyChampions[selfIndex].ap;
 	friendlyChampions[selfIndex].heal(((300 + 50 * starLevel as i32) * ap) / 100);
 
-	enemyChampions[targetIndex].takeAttackDamage((300 + 5 * starLevel as i32) * friendlyChampions[selfIndex].ad, friendlyChampions[selfIndex].cr);
+	dealDamage(selfIndex, friendlyChampions, &mut enemyChampions[targetIndex], (300 + 5 * starLevel as i32) * friendlyChampions[selfIndex].ad, 0)
 }
 ///const CHAMPIONABILITIES :
 ///Stores all the champ abilities (index = abilityID)
@@ -344,24 +344,6 @@ impl SummonedChampion
 						   //sortBy : 0,
 						   //tIDs: Vec::new(),
 						}
-	}
-	fn takeAttackDamage(&mut self, incomingDamage : i32, critRate : u8)
-	{
-		println!("Take Attack Damage");
-		let mut damage = (100 * incomingDamage * self.incomingDMGModifier) / (100 * (100 + self.ar));
-		if critRate > rand::thread_rng().gen_range(0..100)//calculating crit
-		{
-			damage *= 13 / 10;
-			println!("Debug : Critical Hit");
-		}
-		
-		if self.gMD <= 0
-		{
-			self.cm += (7 * damage  / 100) as u8; //discrepency, should be 1% of premitigation and 7% of post.
-		}
-		//discrepency
-		
-		self.health -= damage;
 	}
 	fn heal(&mut self, mut healingAmount : i32)
 	{
@@ -591,7 +573,7 @@ fn dealDamage(selfIndex : usize,
 	match damageType
 	{
 		0 => {damage = (100 * damageAmount * target.incomingDMGModifier) / (100 * (100 + target.ar));
-			  if friendlyChampions[selfIndex].cr > rand::thread_rng().gen_range(0..100)
+			  if friendlyChampions[selfIndex].cr > rand::thread_rng().gen_range(0..100)//optimisation
 			  {
 				damage *= friendlyChampions[selfIndex].critD;
 				damage /= 100;
@@ -650,7 +632,7 @@ fn dealDamage(selfIndex : usize,
 	}
 	if target.gMD <= 0
 	{
-			target.cm += (7 * damage  / 100) as u8; //discrepency, should be 1% of premitigation and 7% of post.
+		target.cm += (7 * damage  / 100) as u8; //discrepency, should be 1% of premitigation and 7% of post.
 	}
 	target.health -= damage;
 }
@@ -825,7 +807,7 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 			if enemyChampions[index].dc <= 0 || enemyChampions[index].dc < rand::thread_rng().gen_range(0..100) //calculating whether to dodge
 			{//optimisation from not generating random gen
 				println!("No Dodge");
-				enemyChampions[index].takeAttackDamage(friendlyChampions[selfIndex].ad, friendlyChampions[selfIndex].cr);
+				dealDamage(selfIndex, friendlyChampions, &mut enemyChampions[index], friendlyChampions[selfIndex].ad, 0);
 				
 				println!("Debug : Enemy Champion Health is {0}", enemyChampions[index].health);
 				if enemyChampions[index].health <= 0 //if enemy champion dead
