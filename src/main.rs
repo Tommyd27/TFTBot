@@ -212,7 +212,11 @@ struct PlacedChampion
     items : [u8 ; 3], //items given
     location : [i8; 2] //location on board
 }
-
+struct Shield
+{
+	duration : i8,
+	size : i16,
+}
 struct SummonedChampion //Structure for champions on board in battle
 {
 	location : [i8 ; 2], //array of p, q coordinates, r can be calculated with r = -p - q
@@ -301,6 +305,7 @@ struct SummonedChampion //Structure for champions on board in battle
 	initialHP : i32,
 	targetable : bool,
 	shed : u8,
+	shields : Vec<Shield>,
 	//sortBy : i8,
 	//tIDs : Vec<[u8; 2]>, //trait abilities
 }
@@ -341,6 +346,7 @@ impl SummonedChampion
 						   incomingDMGModifier : 1,
 						   targetable : true,
 						   shed : 0,
+						   shields : Vec::new(),
 						   //sortBy : 0,
 						   //tIDs: Vec::new(),
 						}
