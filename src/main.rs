@@ -66,6 +66,9 @@ enum StatusType
 	///bool : Whether the buff has been applied
 	Untargetable(bool),
 
+	///Bloodthirster shield at 40%
+	Bloodthirster(),
+
 	///None
 	NoEffect()
 }
@@ -214,8 +217,8 @@ struct PlacedChampion
 }
 struct Shield
 {
-	duration : i8,
-	size : i16,
+	duration : i16,
+	size : i32,
 }
 struct SummonedChampion //Structure for champions on board in battle
 {
@@ -421,7 +424,9 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 			  },
 		14 => {friendlyChampions[selfIndex].ad += 10; friendlyChampions[selfIndex].ar += 20; 
 			   friendlyChampions[selfIndex].se.push(StatusEffect { duration: 32767, statusType: StatusType::EdgeOfNight(), ..Default::default()})},//
-		15 => (),
+		15 => {friendlyChampions[selfIndex].ad += 10; friendlyChampions[selfIndex].mr += 20;
+			   friendlyChampions[selfIndex].se.push(StatusEffect { duration: 32767, statusType: StatusType::Bloodthirster(), ..Default::default()})		
+		},
 		16 => (),
 		17 => (),
 		18 => {friendlyChampions[selfIndex].ad += 10; friendlyChampions[selfIndex].cm += 15},
@@ -584,6 +589,10 @@ fn dealDamage(selfIndex : usize,
 				damage *= friendlyChampions[selfIndex].critD;
 				damage /= 100;
 			  }
+			  if friendlyChampions[selfIndex].items.contains(&15)//maybe not only physical damage, discrepency?
+			  {
+				friendlyChampions[selfIndex].heal(damage / 4);
+			  }
 
 		},
 		1 => {damage = (100 * damageAmount * friendlyChampions[selfIndex].ap * target.incomingDMGModifier) / (100 * (100 + target.mr));
@@ -640,10 +649,27 @@ fn dealDamage(selfIndex : usize,
 	{
 		target.cm += (7 * damage  / 100) as u8; //discrepency, should be 1% of premitigation and 7% of post.
 	}
+	while target.shields.len() > 0
+	{
+		if target.shields[0].size < damage
+		{
+			damage -= target.shields[0].size;
+			target.shields.swap_remove(0);
+		}
+		else 
+		{
+			target.shields[0].size -= damage;
+			damage = 0;	
+		}
+	}
 	target.health -= damage;
 }
 
-
+fn UpdateShield(shield : &mut Shield, timeUnit : i8) -> bool
+{
+	shield.duration -= timeUnit as i16;//optimisation
+	return shield.duration > 0
+}
 fn InGridHexagon(pos : [i8 ; 2]) -> bool//not going to attempt getting it working for different grid sizes yet
 {
 	if pos[0] >= 0 && pos[0] < 10 &&
@@ -692,6 +718,14 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 										friendlyChampions[selfIndex].shed = 1;
 										return false
 									  }}
+		StatusType::Bloodthirster() => {if friendlyChampions[selfIndex].health <= (4 * friendlyChampions[selfIndex].initialHP) / 10
+										{
+											let quarterHP = friendlyChampions[selfIndex].initialHP / 4;
+											friendlyChampions[selfIndex].shields.push(Shield{duration : 500, size : quarterHP});
+											
+											return false
+										}
+		}
 		StatusType::Untargetable(false) => {friendlyChampions[selfIndex].targetable = false; statusEffect.statusType = StatusType::Untargetable(true)}, //optimise with not recreating status Type?
 		_ => ()//println!("Unimplemented")
 	}
@@ -732,6 +766,7 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 			println!("stunned");
 		}
 	}
+	friendlyChampions[selfIndex].shields.retain_mut(|x| UpdateShield(x, timeUnit));
 	//does auto attack delay need to reset on pathing? does attack instantly after reaching path/ in range
 
 
