@@ -2,6 +2,7 @@
 
 use std::{cmp::min};
 use rand::{Rng};
+use std::collections::HashMap;//Optimisation change default hashing algorithm
 
 ///It's in the name
 struct ABooleanWithExtraSteps
@@ -442,9 +443,15 @@ impl Board
 		/*P1 and P2 placed champs to convert into Summoned Champs for  */
 		let mut p1Champions = Vec::new();
 		let mut p2Champions = Vec::new();
+		let mut p1Traits : HashMap<u8, u8> = HashMap::new();
+		let mut p2Traits : HashMap<u8, u8> = HashMap::new();
 		for (i, p1Champion) in p1PlacedChamps.iter().enumerate()//place for optimisation
 		{
 			p1Champions.push(SummonedChampion::new(&p1Champion, i));//converts into summoned champ
+			for champTrait in CHAMPIONS[p1Champion.id].traits
+			{
+				p1Traits
+			}
 		}
 
 		for (i, p2Champion) in p2PlacedChamps.iter().enumerate()//place for optimisation
