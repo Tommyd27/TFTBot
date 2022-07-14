@@ -40,7 +40,7 @@ struct Champion //Basic structure to store the base stats of a champ
     ///Ability ID, same as index in const CHAMPIONABILITIES
     aID : usize, 
 	///Trait IDs
-    traits : [u8 ; 3], 
+    traits : [u8 ; 3],
 }
 ///Status Type (enum)<br />:
 ///Holds information about what the status actually is
@@ -311,7 +311,7 @@ struct SummonedChampion //Structure for champions on board in battle
 	shed : u8,
 	shields : Vec<Shield>,
 	//sortBy : i8,
-	//tIDs : Vec<[u8; 2]>, //trait abilities
+	traits : Vec<u8>, //trait abilities
 }
 
 impl SummonedChampion 
@@ -321,6 +321,8 @@ impl SummonedChampion
 	{
 		let starLevel = placedChampion.star; //Get STart Level
 		let ofChampion = &CHAMPIONS[placedChampion.id];
+		let mut traits = ofChampion.traits.to_vec();
+		traits.retain(|x| *x != 0);//optimisation
 		SummonedChampion { location: [placedChampion.location[0], placedChampion.location[1]], //create summoned champ with all details
 						   movementProgress : [0, 0],
 						   health: ofChampion.hp[starLevel], 
@@ -352,7 +354,7 @@ impl SummonedChampion
 						   shed : 0,
 						   shields : Vec::new(),
 						   //sortBy : 0,
-						   //tIDs: Vec::new(),
+						   traits : traits,
 						}
 	}
 	fn heal(&mut self, mut healingAmount : i32)
@@ -443,15 +445,10 @@ impl Board
 		/*P1 and P2 placed champs to convert into Summoned Champs for  */
 		let mut p1Champions = Vec::new();
 		let mut p2Champions = Vec::new();
-		let mut p1Traits : HashMap<u8, u8> = HashMap::new();
-		let mut p2Traits : HashMap<u8, u8> = HashMap::new();
 		for (i, p1Champion) in p1PlacedChamps.iter().enumerate()//place for optimisation
 		{
 			p1Champions.push(SummonedChampion::new(&p1Champion, i));//converts into summoned champ
-			for champTrait in CHAMPIONS[p1Champion.id].traits
-			{
-				p1Traits
-			}
+
 		}
 
 		for (i, p2Champion) in p2PlacedChamps.iter().enumerate()//place for optimisation
@@ -461,6 +458,7 @@ impl Board
 		
 		Board{p1Champions : p1Champions,
 			  p2Champions : p2Champions,
+
 			  timeUnit : timeUnit,
 			  //gridSize : [7, 8],
 			  movementAmount : 10 / timeUnit as i8, //optimisation
@@ -487,12 +485,55 @@ impl Board
 
 
 
-		for i in 0..self.p1Champions.len()
+		for i in 0..self.p1Champions.len()//optimisation
 		{
 			for item in self.p1Champions[i].items
 			{
 				GiveItemEffect(item, &mut self.p1Champions, &mut self.p2Champions, i);
 			}
+		}
+		for i in 0..self.p2Champions.len()
+		{
+			for item in self.p2Champions[i].items
+			{
+				GiveItemEffect(item, &mut self.p2Champions, &mut self.p1Champions, i);
+			}
+		}
+
+		let mut p1Traits : HashMap<u8, u8> = HashMap::new();
+		let mut p2Traits : HashMap<u8, u8> = HashMap::new();
+		for p1Champ in &self.p1Champions
+		{
+			for champTrait in &p1Champ.traits
+			{
+				*p1Traits.entry(*champTrait).or_insert(1) += 1;
+			}
+		}
+		for p2Champ in &self.p2Champions
+		{
+			for champTrait in &p2Champ.traits
+			{
+				*p2Traits.entry(*champTrait).or_insert(1) += 1;
+			}
+		}
+
+
+		for champTrait in p1Traits
+		{	
+			/*Traits:
+			0 - 
+			1 - Assassin */
+
+
+
+			/*match champTrait.0
+			{
+				1 => {for p1Champ in self.p1Champions
+				{
+					if p1Champ.id
+				}}
+				_ => ()
+			}*/
 		}
 		/*
 		match 
