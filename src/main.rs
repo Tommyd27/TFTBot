@@ -534,8 +534,9 @@ impl Board
 		{
 			match augment
 			{
-				0  | _ => continue,
+				0 => continue,
 				1 => *p1Traits.entry(1).or_insert(1) += 1,
+				_ => (),
 			}
 
 		}
