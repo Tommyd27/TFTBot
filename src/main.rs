@@ -527,6 +527,18 @@ impl Board
 			}
 		}
 
+		/*Augments:
+		0 => None
+		1 => Assassin Heart*/
+		for augment in self.p1Augments
+		{
+			match augment
+			{
+				0  | _ => continue,
+				1 => *p1Traits.entry(1).or_insert(1) += 1,
+			}
+
+		}
 
 		for champTrait in p1Traits
 		{	
