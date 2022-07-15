@@ -70,6 +70,8 @@ enum StatusType
 	///Bloodthirster shield at 40%
 	Bloodthirster(),
 
+	Assassin(),
+
 	///None
 	NoEffect()
 }
@@ -502,11 +504,16 @@ impl Board
 
 		let mut p1Traits : HashMap<u8, u8> = HashMap::new();
 		let mut p2Traits : HashMap<u8, u8> = HashMap::new();
-		for p1Champ in &self.p1Champions
+		for p1Champ in &mut self.p1Champions
 		{
 			for champTrait in &p1Champ.traits
 			{
 				*p1Traits.entry(*champTrait).or_insert(1) += 1;
+				match champTrait
+				{
+					1 => p1Champ.se.push(StatusEffect { duration: 32767, statusType: StatusType::Assassin(), ..Default::default() }),
+					_ => ()
+				}
 			}
 		}
 		for p2Champ in &self.p2Champions
@@ -526,14 +533,31 @@ impl Board
 
 
 
-			/*match champTrait.0
+			match champTrait.0
 			{
-				1 => {for p1Champ in self.p1Champions
-				{
-					if p1Champ.id
-				}}
+				1 => {
+					let mut extraCritChance = 15;
+					let mut extraCritDamage = 5;
+					if champTrait.1 > 5
+					{
+						extraCritChance = 45;
+						extraCritDamage = 45;
+					}
+					else if champTrait.1 > 3
+					{
+						extraCritChance = 30;
+						extraCritDamage = 25;
+					}
+					for p1Champ in &mut self.p1Champions
+					{
+						if p1Champ.traits.contains(&1)
+						{
+							p1Champ.cr += extraCritChance;//discrepency maybe doesnt apply like this
+							p1Champ.critD += extraCritDamage;
+						}
+					}}
 				_ => ()
-			}*/
+			}
 		}
 		/*
 		match 
@@ -772,8 +796,16 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 											friendlyChampions[selfIndex].shields.push(Shield{duration : 500, size : quarterHP});
 											
 											return false
-										}
+										}}
+		StatusType::Assassin() => {if friendlyChampions[selfIndex].location[1] >= 4
+		{
+			friendlyChampions[selfIndex].location[1] = 0;
 		}
+		else 
+		{
+			friendlyChampions[selfIndex].location[1] = 0;//discrepency maybe leap not instantaneous/ first frame?
+		}
+		return false}
 		StatusType::Untargetable(false) => {friendlyChampions[selfIndex].targetable = false; statusEffect.statusType = StatusType::Untargetable(true)}, //optimise with not recreating status Type?
 		_ => ()//println!("Unimplemented")
 	}
