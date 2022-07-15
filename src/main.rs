@@ -390,6 +390,8 @@ struct Board
 {
 	p1Champions : Vec<SummonedChampion>, //Vector of player 1's champs
 	p2Champions : Vec<SummonedChampion>, //Vector of player 2's champs
+	p1Augments : [u8 ; 3],
+	p2Augments : [u8 ; 3],
 	timeUnit : i8, //time unit for board in centiseconds (1/100 of a second
 	//gridSize : [i8 ; 2], //grid size [x, y, gridType]
 	movementAmount : i8, //will be calculated, const / timeUnit
@@ -458,7 +460,8 @@ impl Board
 		
 		Board{p1Champions : p1Champions,
 			  p2Champions : p2Champions,
-
+			  p1Augments : [0, 0, 0],
+			  p2Augments : [0, 0, 0],
 			  timeUnit : timeUnit,
 			  //gridSize : [7, 8],
 			  movementAmount : 10 / timeUnit as i8, //optimisation
