@@ -434,7 +434,7 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 		15 => {friendlyChampions[selfIndex].ad += 10; friendlyChampions[selfIndex].mr += 20;
 			   friendlyChampions[selfIndex].se.push(StatusEffect { duration: 32767, statusType: StatusType::Bloodthirster(), ..Default::default()})		
 		},
-		16 => (),
+		16 => {friendlyChampions[selfIndex].ad += 10; friendlyChampions[selfIndex].attackSpeedModifier += 0.1},//
 		17 => (),
 		18 => {friendlyChampions[selfIndex].ad += 10; friendlyChampions[selfIndex].cm += 15},
 		19 => (),
@@ -733,6 +733,18 @@ fn dealDamage(selfIndex : usize,
 			  }}},
 		_ => ()
 	}
+	if friendlyChampions[selfIndex].items.contains(&16)
+	{
+		if target.initialHP >= 2200
+		{
+			damage += (damage / 20) * 9;//discrepency in division yada
+		}
+		else {
+			damage += damage / 5;
+		}
+	}
+
+
 	if target.gMD <= 0
 	{
 		target.cm += (7 * damage  / 100) as u8; //discrepency, should be 1% of premitigation and 7% of post.
