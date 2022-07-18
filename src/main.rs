@@ -427,7 +427,7 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 		3 => friendlyChampions[selfIndex].health += 150, //
 		4 => friendlyChampions[selfIndex].ar += 20, //
 		5 => friendlyChampions[selfIndex].mr += 20,//
-		6 => friendlyChampions[selfIndex].attackSpeedModifier += 0.1,//
+		6 => friendlyChampions[selfIndex].attackSpeedModifier += 0.1,//discrepency, + 0.1 or * 0.1
 		7 => {friendlyChampions[selfIndex].cr += 5; friendlyChampions[selfIndex].dc += 10},//
 		8 => friendlyChampions[selfIndex].cm += 15,//
 		11 => friendlyChampions[selfIndex].ad += [40, 70, 100][friendlyChampions[selfIndex].starLevel],//
