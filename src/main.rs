@@ -69,8 +69,14 @@ enum StatusType
 
 	///Bloodthirster shield at 40%
 	Bloodthirster(),
-
+	///Assassin trait leap
 	Assassin(),
+
+	///Morellonomicon Burn
+	///i32 : damage per tick
+	///i32 : damage to do
+	///i16 : time til next tick
+	MorellonomiconBurn(i32, i32, i16),
 
 	///None
 	NoEffect()
@@ -328,7 +334,7 @@ impl SummonedChampion
 		SummonedChampion { location: [placedChampion.location[0], placedChampion.location[1]], //create summoned champ with all details
 						   movementProgress : [0, 0],
 						   health: ofChampion.hp[starLevel], 
-						   initialHP : ofChampion.hp[starLevel],
+						   initialHP : 0,
 						   cm: ofChampion.sm, //update current mana to starting mana
 						   dc: 0, 
 						   cr : 25,
@@ -435,9 +441,24 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 			   friendlyChampions[selfIndex].se.push(StatusEffect { duration: 32767, statusType: StatusType::Bloodthirster(), ..Default::default()})		
 		},
 		16 => {friendlyChampions[selfIndex].ad += 10; friendlyChampions[selfIndex].attackSpeedModifier += 0.1},//
-		17 => (),
-		18 => {friendlyChampions[selfIndex].ad += 10; friendlyChampions[selfIndex].cm += 15},
-		19 => (),
+		17 => {friendlyChampions[selfIndex].ad += 10; friendlyChampions[selfIndex].cr += 75; friendlyChampions[selfIndex].critD += 10},// //discrepency cuz crit rate ig
+		18 => {friendlyChampions[selfIndex].ad += 10; friendlyChampions[selfIndex].cm += 15},//
+		19 => {friendlyChampions[selfIndex].ad += 10; /*friendlyChampions[selfIndex].traits.push() - Shimmerscale*/},
+		22 => {friendlyChampions[selfIndex].ap += 75},
+		23 => {friendlyChampions[selfIndex].ap += 40; friendlyChampions[selfIndex].health += 150}//
+		24 => {friendlyChampions[selfIndex].ap += 10; friendlyChampions[selfIndex].ar += 20;//
+			   	let shieldAmount = [300, 350, 400][friendlyChampions[selfIndex].starLevel];
+			   	let thisLocation = friendlyChampions[selfIndex].location;
+				for friendlyChamp in friendlyChampions
+				{
+					if friendlyChamp.location[1] == thisLocation[1] && DistanceBetweenPoints(friendlyChamp.location, thisLocation) < 3
+					{
+						friendlyChamp.shields.push(Shield{duration : 1500, size : shieldAmount});
+					}
+				}
+			   
+		},
+		25 => {friendlyChampions[selfIndex].ap += 10; friendlyChampions[selfIndex].mr += 20;},
 
 		_ => println!("Unimplemented Item"),
 	}
@@ -475,18 +496,6 @@ impl Board
 	fn StartBattle(mut self : Board) -> i8
 	{
 		let mut debugCount : u32 = 0;
-		/*
-		prematch setup 
-		*/
-		/*for p1Champ in &mut self.p1Champions
-		{
-			for item in p1Champ.items
-			{
-				GiveItemEffect(item, p1Champ)
-			}
-			p1Champ.initialHP = p1Champ.health;
-		}*/
-
 
 
 
@@ -575,9 +584,14 @@ impl Board
 				_ => ()
 			}
 		}
-		/*
-		match 
-		*/
+		for p1Champ in &mut self.p1Champions
+		{
+			p1Champ.initialHP = p1Champ.health;
+		}
+		for p1Champ in &mut self.p1Champions
+		{
+			p1Champ.initialHP = p1Champ.health;
+		}
 		while self.p1Champions.len() > 0 && self.p2Champions.len() > 0
 		{
 			println!("Debug : Iteration {}", debugCount);
@@ -674,6 +688,11 @@ fn dealDamage(selfIndex : usize,
 		0 => {damage = (100 * damageAmount * target.incomingDMGModifier) / (100 * (100 + target.ar));
 			  if friendlyChampions[selfIndex].cr > rand::thread_rng().gen_range(0..100)//optimisation
 			  {
+				let mut critD = friendlyChampions[selfIndex].critD;
+				if friendlyChampions[selfIndex].cr > 100 && friendlyChampions[selfIndex].items.contains(&17)
+				{
+					critD += (friendlyChampions[selfIndex].cr - 100) as i32
+				}
 				damage *= friendlyChampions[selfIndex].critD;
 				damage /= 100;
 			  }
@@ -711,7 +730,13 @@ fn dealDamage(selfIndex : usize,
 					friendlyChampions[lowestHPID].heal(healing);
 				}
 			  }
-		},
+			  if friendlyChampions[selfIndex].items.contains(&23)
+			  {
+				target.se.push(StatusEffect { duration: 1000, statusType: StatusType::GreviousWounds(), isNegative: true });
+				let dmgToDo = target.initialHP / 4;
+				target.se.push(StatusEffect { duration: 1000, statusType: StatusType::MorellonomiconBurn(dmgToDo / 10, dmgToDo, 100), isNegative : true})//discrepency unsure whether burn just reapplies itself
+			}
+			},
 		2 => {
 			if friendlyChampions[selfIndex].items.contains(&12)
 			{
@@ -730,7 +755,14 @@ fn dealDamage(selfIndex : usize,
 			  if lowestHPID != selfIndex
 			  {
 				  friendlyChampions[lowestHPID].heal(healing);
-			  }}},
+			  }}
+			if friendlyChampions[selfIndex].items.contains(&23)
+			{
+				target.se.push(StatusEffect { duration: 1000, statusType: StatusType::GreviousWounds(), isNegative: true });
+				let dmgToDo = target.initialHP / 4;
+				target.se.push(StatusEffect { duration: 1000, statusType: StatusType::MorellonomiconBurn(dmgToDo / 10, dmgToDo, 100), isNegative : true})//discrepency unsure whether burn just reapplies itself
+			}
+			},
 		_ => ()
 	}
 	if friendlyChampions[selfIndex].items.contains(&16)
@@ -784,7 +816,7 @@ fn InGridHexagon(pos : [i8 ; 2]) -> bool//not going to attempt getting it workin
 	return false
 }
 fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<SummonedChampion>, timeUnit : i8, selfIndex : usize, stun : &mut ABooleanWithExtraSteps, seToAdd : &mut Vec<StatusEffect>) -> bool
-{
+{//discrepency on whether the last tick of a status applies or not etc
 	statusEffect.duration -= timeUnit as i16;
 	if friendlyChampions[selfIndex].shed == 2
 	{
@@ -835,6 +867,19 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 		}
 		return false}
 		StatusType::Untargetable(false) => {friendlyChampions[selfIndex].targetable = false; statusEffect.statusType = StatusType::Untargetable(true)}, //optimise with not recreating status Type?
+		StatusType::MorellonomiconBurn(dmgPerTick, dmgToDo, duration) => {let newDuration = duration - (timeUnit as i16);
+											                        if newDuration <= 0
+																	{
+																		friendlyChampions[selfIndex].health -= dmgPerTick;
+																		statusEffect.statusType = StatusType::MorellonomiconBurn(dmgPerTick, dmgToDo - dmgPerTick, 100);//discrepency maybe apply burn more often like every half second
+																	}
+																	else 
+																	{
+																		statusEffect.statusType = StatusType::MorellonomiconBurn(dmgPerTick, dmgToDo, newDuration);	
+																	}
+																	
+																				
+																},
 		_ => ()//println!("Unimplemented")
 	}
 	true
@@ -906,7 +951,7 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 
 		for (i, enemyChampion) in enemyChampions.iter().enumerate() //for every champ
 		{
-			if !enemyChampion.targetable
+			if !enemyChampion.targetable//discrepency zapped with ionic spark if untargetable?
 			{
 				continue;
 			}
