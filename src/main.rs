@@ -78,6 +78,12 @@ enum StatusType
 	///i16 : time til next tick
 	MorellonomiconBurn(i32, i32, i16),
 
+	///Ionic spark effect
+	///Reduces MR by 50%
+	///bool : applied
+	///i32 : how much MR is reduced by
+	IonicSparkEffect(bool, i32),
+
 	///None
 	NoEffect()
 }
@@ -875,11 +881,7 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 																	}
 																	else 
 																	{
-																		statusEffect.statusType = StatusType::MorellonomiconBurn(dmgPerTick, dmgToDo, newDuration);	
-																	}
-																	
-																				
-																},
+																		statusEffect.statusType = StatusType::MorellonomiconBurn(dmgPerTick, dmgToDo, newDuration);	}},
 		_ => ()//println!("Unimplemented")
 	}
 	true
