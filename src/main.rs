@@ -80,9 +80,8 @@ enum StatusType
 
 	///Ionic spark effect
 	///Reduces MR by 50%
-	///bool : applied
-	///i32 : how much MR is reduced by
-	IonicSparkEffect(bool, i32),
+	///bool : applied - remove as doesnt need as only lasts 1 frame?
+	IonicSparkEffect(),//maybe discrepencies? awkward cuz only lasts 1 frame?
 
 	///None
 	NoEffect()
@@ -326,6 +325,7 @@ struct SummonedChampion //Structure for champions on board in battle
 	shields : Vec<Shield>,
 	//sortBy : i8,
 	traits : Vec<u8>, //trait abilities
+	zap : bool //zap for ionic spark on ability cast
 }
 
 impl SummonedChampion 
@@ -369,6 +369,7 @@ impl SummonedChampion
 						   shields : Vec::new(),
 						   //sortBy : 0,
 						   traits : traits,
+						   zap : false, //discrepency maybe if order of status Effects is ever affected, alternative would be to iterate through status Effects and check for ionic spark
 						}
 	}
 	fn heal(&mut self, mut healingAmount : i32)
@@ -464,7 +465,7 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 				}
 			   
 		},
-		25 => {friendlyChampions[selfIndex].ap += 10; friendlyChampions[selfIndex].mr += 20;},
+		25 => {friendlyChampions[selfIndex].ap += 10; friendlyChampions[selfIndex].mr += 20;},//
 
 		_ => println!("Unimplemented Item"),
 	}
@@ -838,6 +839,9 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 				StatusType::AttackSpeedBuff(_, modifier) => friendlyChampions[selfIndex].attackSpeedModifier /= modifier,
 				StatusType::IncreaseDamageTaken(_, modifier) => friendlyChampions[selfIndex].incomingDMGModifier *= 100 / modifier,
 				StatusType::Untargetable(_) => friendlyChampions[selfIndex].targetable = true,//discrepency if have 2 untargetable effects this will untarget too early
+				StatusType::MorellonomiconBurn(_, dmgToDo, _) => friendlyChampions[selfIndex].health -= dmgToDo,
+				StatusType::IonicSparkEffect() => {friendlyChampions[selfIndex].mr *= 2; friendlyChampions[selfIndex].zap = false}, //discrepency maybe if something like illaoi/ daega ult reduces mr it wont increase by equal amount 
+				
 				_ => ()//println!("Unimplemented")
 			}
 		return false
@@ -882,7 +886,8 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 																	else 
 																	{
 																		statusEffect.statusType = StatusType::MorellonomiconBurn(dmgPerTick, dmgToDo, newDuration);	}},
-		_ => ()//println!("Unimplemented")
+		StatusType::IonicSparkEffect() => {friendlyChampions[selfIndex].mr /= 2; friendlyChampions[selfIndex].zap = true}
+																		_ => ()//println!("Unimplemented")
 	}
 	true
 }
@@ -896,7 +901,7 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 	movementAmount : precalculated movement distance for 1 frame
 	gridSize : depreciated
 		*/
-	//let mut thisChamp = &mut friendlyChampions[selfIndex];
+	//let mut thisChamp = &mut friendlyChampions[selfIndex]; //optimisation, maybe setting friendkyChampions[selfIndex] to a var is much faster than repeatedly calling access to a vector??
 	friendlyChampions[selfIndex].targetCountDown -= timeUnit;//Reduce cooldown to check target/ find new target
 	friendlyChampions[selfIndex].autoAttackDelay -= timeUnit as i16;//Risks going out of bounds as auto attack value may not be called for some time
 	friendlyChampions[selfIndex].gMD -= timeUnit as i16;
@@ -1081,10 +1086,30 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 			
 		}
 	}
+	
+	//Ionic spark, optimisation, could be status effect but enemies not passed into function? also doesnt need to be check every turn
+	if friendlyChampions[selfIndex].items.contains(&25)
+	{
+		let thisLocation = friendlyChampions[selfIndex].location;
+		for enemyChamp in enemyChampions.iter_mut()
+		{
+			if DistanceBetweenPoints(thisLocation, enemyChamp.location) < 7//discrepency check distance between points returns value twice as large?
+			{
+				enemyChamp.se.push(StatusEffect { duration: (timeUnit + 1) as i16, statusType: StatusType::IonicSparkEffect(), isNegative: true});
+			}
+		}
+	}
+	
+	
 	if friendlyChampions[selfIndex].cm >= friendlyChampions[selfIndex].mc
 	{
+		if friendlyChampions[selfIndex].zap
+		{
+			friendlyChampions[selfIndex].health -= ((friendlyChampions[selfIndex].mc as i32) * 5) / 2;
+		}
 		friendlyChampions[selfIndex].cm = 0;
 		friendlyChampions[selfIndex].gMD = 100;
 		CHAMPIONABILITIES[friendlyChampions[selfIndex].aID](friendlyChampions, enemyChampions, selfIndex);
+		
 	}
 }
