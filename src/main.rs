@@ -1,6 +1,6 @@
 #![allow(non_snake_case)] //Allows snake case
 
-use std::{cmp::min};
+use std::{cmp::min, cmp::max};
 use rand::{Rng};
 use std::collections::HashMap;//Optimisation change default hashing algorithm
 
@@ -82,6 +82,11 @@ enum StatusType
 	///Reduces MR by 50%
 	///bool : applied - remove as doesnt need as only lasts 1 frame?
 	IonicSparkEffect(),//maybe discrepencies? awkward cuz only lasts 1 frame?
+
+	///Archangel Staff
+	///bool : applied
+	///i32 : ap increase
+	ArchangelStaff(bool, i32),
 
 	///None
 	NoEffect()
@@ -427,7 +432,7 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 		3 => friendlyChampions[selfIndex].health += 150, //
 		4 => friendlyChampions[selfIndex].ar += 20, //
 		5 => friendlyChampions[selfIndex].mr += 20,//
-		6 => friendlyChampions[selfIndex].attackSpeedModifier += 0.1,//discrepency, + 0.1 or * 0.1
+		6 => friendlyChampions[selfIndex].attackSpeedModifier *= 0.1,//discrepency, + 0.1 or * 0.1
 		7 => {friendlyChampions[selfIndex].cr += 5; friendlyChampions[selfIndex].dc += 10},//
 		8 => friendlyChampions[selfIndex].cm += 15,//
 		11 => friendlyChampions[selfIndex].ad += [40, 70, 100][friendlyChampions[selfIndex].starLevel],//
@@ -447,7 +452,7 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 		15 => {friendlyChampions[selfIndex].ad += 10; friendlyChampions[selfIndex].mr += 20;
 			   friendlyChampions[selfIndex].se.push(StatusEffect { duration: 32767, statusType: StatusType::Bloodthirster(), ..Default::default()})		
 		},
-		16 => {friendlyChampions[selfIndex].ad += 10; friendlyChampions[selfIndex].attackSpeedModifier += 0.1},//
+		16 => {friendlyChampions[selfIndex].ad += 10; friendlyChampions[selfIndex].attackSpeedModifier *= 0.1},//
 		17 => {friendlyChampions[selfIndex].ad += 10; friendlyChampions[selfIndex].cr += 75; friendlyChampions[selfIndex].critD += 10},// //discrepency cuz crit rate ig
 		18 => {friendlyChampions[selfIndex].ad += 10; friendlyChampions[selfIndex].cm += 15},//
 		19 => {friendlyChampions[selfIndex].ad += 10; /*friendlyChampions[selfIndex].traits.push() - Shimmerscale*/},
@@ -466,7 +471,12 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 			   
 		},
 		25 => {friendlyChampions[selfIndex].ap += 10; friendlyChampions[selfIndex].mr += 20;},//
-
+		26 => {friendlyChampions[selfIndex].ap += 10; friendlyChampions[selfIndex].attackSpeedModifier *= 0.1},//
+		27 => {friendlyChampions[selfIndex].ap += 50; friendlyChampions[selfIndex].cr += 15; friendlyChampions[selfIndex].critD += 40}// //discrepency does bonus ability damage include from components? //
+		28 => {friendlyChampions[selfIndex].ap += 10; friendlyChampions[selfIndex].cm += 15; friendlyChampions[selfIndex].se.push(StatusEffect { duration: 500, statusType: StatusType::ArchangelStaff(false, 20), isNegative: false })}
+		29 => {friendlyChampions[selfIndex].ap += 10; },//add next trait
+		33 => {friendlyChampions[selfIndex].health += 1000},
+		34 => {friendlyChampions[selfIndex].health += 300; friendlyChampions[selfIndex].ar += 20}// discrepency not done LOL +have to test how sunfire works before i feel comfortable implementing it
 		_ => println!("Unimplemented Item"),
 	}
 }
@@ -769,7 +779,16 @@ fn dealDamage(selfIndex : usize,
 				let dmgToDo = target.initialHP / 4;
 				target.se.push(StatusEffect { duration: 1000, statusType: StatusType::MorellonomiconBurn(dmgToDo / 10, dmgToDo, 100), isNegative : true})//discrepency unsure whether burn just reapplies itself
 			}
-			},
+			if friendlyChampions[selfIndex].items.contains(&27)
+			{
+			  if friendlyChampions[selfIndex].cr > rand::thread_rng().gen_range(0..100)
+			  {
+				  damage *= friendlyChampions[selfIndex].critD;
+				  damage /= 100;
+			  }
+			}	
+		},
+			
 		_ => ()
 	}
 	if friendlyChampions[selfIndex].items.contains(&16)
@@ -841,6 +860,7 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 				StatusType::Untargetable(_) => friendlyChampions[selfIndex].targetable = true,//discrepency if have 2 untargetable effects this will untarget too early
 				StatusType::MorellonomiconBurn(_, dmgToDo, _) => friendlyChampions[selfIndex].health -= dmgToDo,
 				StatusType::IonicSparkEffect() => {friendlyChampions[selfIndex].mr *= 2; friendlyChampions[selfIndex].zap = false}, //discrepency maybe if something like illaoi/ daega ult reduces mr it wont increase by equal amount 
+				StatusType::ArchangelStaff(_, apAmount) => {statusEffect.duration = 500; statusEffect.statusType = StatusType::ArchangelStaff(false, apAmount); return true},
 				
 				_ => ()//println!("Unimplemented")
 			}
@@ -886,7 +906,8 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 																	else 
 																	{
 																		statusEffect.statusType = StatusType::MorellonomiconBurn(dmgPerTick, dmgToDo, newDuration);	}},
-		StatusType::IonicSparkEffect() => {friendlyChampions[selfIndex].mr /= 2; friendlyChampions[selfIndex].zap = true}
+		StatusType::IonicSparkEffect() => {friendlyChampions[selfIndex].mr /= 2; friendlyChampions[selfIndex].zap = true},
+		StatusType::ArchangelStaff(false, apAmount) => {friendlyChampions[selfIndex].ap += apAmount; statusEffect.statusType = StatusType::ArchangelStaff(true, apAmount)}
 																		_ => ()//println!("Unimplemented")
 	}
 	true
@@ -990,8 +1011,12 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 			
 			*/
 			println!("as: {}, mod: {}", friendlyChampions[selfIndex].aS, friendlyChampions[selfIndex].attackSpeedModifier);
-			friendlyChampions[selfIndex].autoAttackDelay = (100.0 / (friendlyChampions[selfIndex].aS * friendlyChampions[selfIndex].attackSpeedModifier)) as i16; //calculating auto attack delay
+			friendlyChampions[selfIndex].autoAttackDelay = max((100.0 / (friendlyChampions[selfIndex].aS * friendlyChampions[selfIndex].attackSpeedModifier)) as i16, 20); //calculating auto attack delay
 			println!("Auto attack delay set");
+			if friendlyChampions[selfIndex].items.contains(&26)//discrepency if attack speed doesnt increase when attack misses/ is dodged
+			{
+				friendlyChampions[selfIndex].attackSpeedModifier *= 1.06
+			}
 			//attack speed unclear, capped at five yet some champions let you boost beyond it?
 			//optimisation definitely here
 			if friendlyChampions[selfIndex].gMD <= 0
@@ -1109,7 +1134,6 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 		}
 		friendlyChampions[selfIndex].cm = 0;
 		friendlyChampions[selfIndex].gMD = 100;
-		CHAMPIONABILITIES[friendlyChampions[selfIndex].aID](friendlyChampions, enemyChampions, selfIndex);
-		
+		CHAMPIONABILITIES[friendlyChampions[selfIndex].aID](friendlyChampions, enemyChampions, selfIndex);	
 	}
 }
