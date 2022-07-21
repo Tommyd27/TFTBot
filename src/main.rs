@@ -88,6 +88,17 @@ enum StatusType
 	///i32 : ap increase
 	ArchangelStaff(bool, i32),
 
+
+	///Zephyr Item
+	///bool : applied
+	///i32 : banish duration
+	Zephyr(bool, i32),
+
+	///Banished
+	///bool : applied
+	///i32 : banish duration
+	Banished(bool, i32),
+
 	///None
 	NoEffect()
 }
@@ -330,7 +341,8 @@ struct SummonedChampion //Structure for champions on board in battle
 	shields : Vec<Shield>,
 	//sortBy : i8,
 	traits : Vec<u8>, //trait abilities
-	zap : bool //zap for ionic spark on ability cast
+	zap : bool, //zap for ionic spark on ability cast
+	banish : bool,//zenith banish
 }
 
 impl SummonedChampion 
@@ -375,6 +387,7 @@ impl SummonedChampion
 						   //sortBy : 0,
 						   traits : traits,
 						   zap : false, //discrepency maybe if order of status Effects is ever affected, alternative would be to iterate through status Effects and check for ionic spark
+						   banish : false,//discrepency with this and many others if one status effect banishing ends and another is still going on etc.
 						}
 	}
 	fn heal(&mut self, mut healingAmount : i32)
@@ -477,6 +490,7 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 		29 => {friendlyChampions[selfIndex].ap += 10; },//add next trait
 		33 => {friendlyChampions[selfIndex].health += 1000},
 		34 => {friendlyChampions[selfIndex].health += 300; friendlyChampions[selfIndex].ar += 20}// discrepency not done LOL +have to test how sunfire works before i feel comfortable implementing it
+		35 => {friendlyChampions[selfIndex].health += 150; friendlyChampions[selfIndex].mr += 20; friendlyChampions[selfIndex].se.push(StatusEffect { duration : 32767, statusType: StatusType::Zephyr(false, 500), ..Default::default()})}
 		_ => println!("Unimplemented Item"),
 	}
 }
@@ -754,7 +768,7 @@ fn dealDamage(selfIndex : usize,
 				target.se.push(StatusEffect { duration: 1000, statusType: StatusType::MorellonomiconBurn(dmgToDo / 10, dmgToDo, 100), isNegative : true})//discrepency unsure whether burn just reapplies itself
 			}
 			},
-		2 => {
+		2 => {//discrepency does lulu ability etc affect true dmg
 			if friendlyChampions[selfIndex].items.contains(&12)
 			{
 			  let healing = damage / 4;
