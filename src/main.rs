@@ -91,13 +91,12 @@ enum StatusType
 
 	///Zephyr Item
 	///bool : applied
-	///i32 : banish duration
-	Zephyr(bool, i32),
+	///i16 : banish duration
+	Zephyr(bool, i16),
 
 	///Banished
 	///bool : applied
-	///i32 : banish duration
-	Banished(bool, i32),
+	Banished(bool),
 
 	///None
 	NoEffect()
@@ -207,7 +206,7 @@ fn AatroxAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions 
 		{
 			if champ.id == targetIndex
 			{
-				targetIndex == i;
+				targetIndex = i;
 			}
 		}
 	}
@@ -490,7 +489,7 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 		29 => {friendlyChampions[selfIndex].ap += 10; },//add next trait
 		33 => {friendlyChampions[selfIndex].health += 1000},
 		34 => {friendlyChampions[selfIndex].health += 300; friendlyChampions[selfIndex].ar += 20}// discrepency not done LOL +have to test how sunfire works before i feel comfortable implementing it
-		35 => {friendlyChampions[selfIndex].health += 150; friendlyChampions[selfIndex].mr += 20; friendlyChampions[selfIndex].se.push(StatusEffect { duration : 32767, statusType: StatusType::Zephyr(false, 500), ..Default::default()})}
+		35 => {friendlyChampions[selfIndex].health += 150; friendlyChampions[selfIndex].mr += 20; friendlyChampions[selfIndex].se.push(StatusEffect { duration : 32767, statusType: StatusType::Zephyr(false, 500), ..Default::default()})}//donE?????????????????????????????????????????????????????????????
 		_ => println!("Unimplemented Item"),
 	}
 }
@@ -530,7 +529,7 @@ impl Board
 
 
 
-		for i in 0..self.p1Champions.len()//optimisation
+		for i in 0..self.p1Champions.len()//optimisation, discrepency slam item mid round?
 		{
 			for item in self.p1Champions[i].items
 			{
@@ -724,7 +723,7 @@ fn dealDamage(selfIndex : usize,
 				{
 					critD += (friendlyChampions[selfIndex].cr - 100) as i32
 				}
-				damage *= friendlyChampions[selfIndex].critD;
+				damage *= critD;
 				damage /= 100;
 			  }
 			  if friendlyChampions[selfIndex].items.contains(&15)//maybe not only physical damage, discrepency?
@@ -855,7 +854,7 @@ fn InGridHexagon(pos : [i8 ; 2]) -> bool//not going to attempt getting it workin
 	}
 	return false
 }
-fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<SummonedChampion>, timeUnit : i8, selfIndex : usize, stun : &mut ABooleanWithExtraSteps, seToAdd : &mut Vec<StatusEffect>) -> bool
+fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, timeUnit : i8, selfIndex : usize, stun : &mut ABooleanWithExtraSteps, seToAdd : &mut Vec<StatusEffect>) -> bool
 {//discrepency on whether the last tick of a status applies or not etc
 	statusEffect.duration -= timeUnit as i16;
 	if friendlyChampions[selfIndex].shed == 2
@@ -875,7 +874,7 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 				StatusType::MorellonomiconBurn(_, dmgToDo, _) => friendlyChampions[selfIndex].health -= dmgToDo,
 				StatusType::IonicSparkEffect() => {friendlyChampions[selfIndex].mr *= 2; friendlyChampions[selfIndex].zap = false}, //discrepency maybe if something like illaoi/ daega ult reduces mr it wont increase by equal amount 
 				StatusType::ArchangelStaff(_, apAmount) => {statusEffect.duration = 500; statusEffect.statusType = StatusType::ArchangelStaff(false, apAmount); return true},
-				
+				StatusType::Banished(_) => {friendlyChampions[selfIndex].banish = false}
 				_ => ()//println!("Unimplemented")
 			}
 		return false
@@ -921,8 +920,29 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 																	{
 																		statusEffect.statusType = StatusType::MorellonomiconBurn(dmgPerTick, dmgToDo, newDuration);	}},
 		StatusType::IonicSparkEffect() => {friendlyChampions[selfIndex].mr /= 2; friendlyChampions[selfIndex].zap = true},
-		StatusType::ArchangelStaff(false, apAmount) => {friendlyChampions[selfIndex].ap += apAmount; statusEffect.statusType = StatusType::ArchangelStaff(true, apAmount)}
-																		_ => ()//println!("Unimplemented")
+		StatusType::ArchangelStaff(false, apAmount) => {friendlyChampions[selfIndex].ap += apAmount; statusEffect.statusType = StatusType::ArchangelStaff(true, apAmount)},
+		StatusType::Banished(false) => {statusEffect.statusType = StatusType::Banished(true); friendlyChampions[selfIndex].banish = true}																
+		StatusType::Zephyr(_, banishDuration) => {
+			let oppositeLocation = [friendlyChampions[selfIndex].location[1], friendlyChampions[selfIndex].location[0]];
+			let mut smallestDistance : i8 = 99;
+			let mut smallestDistanceID : usize = 0;
+			for (i , enemyChampion) in enemyChampions.iter().enumerate()
+			{
+				let distance = DistanceBetweenPoints(oppositeLocation, enemyChampion.location);
+				if distance < smallestDistance
+				{
+					smallestDistance = distance;
+					smallestDistanceID = i;
+					if distance == 0
+					{
+						break;
+					}
+				}
+			}
+			enemyChampions[smallestDistanceID].se.push(StatusEffect { duration: banishDuration, statusType: StatusType::Banished(false), ..Default::default() });
+			return false
+		}
+		_ => ()//println!("Unimplemented")
 	}
 	true
 }
@@ -936,7 +956,7 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 	movementAmount : precalculated movement distance for 1 frame
 	gridSize : depreciated
 		*/
-	//let mut thisChamp = &mut friendlyChampions[selfIndex]; //optimisation, maybe setting friendkyChampions[selfIndex] to a var is much faster than repeatedly calling access to a vector??
+	//let mut thisChamp = &mut friendlyChampions[selfIndex]; //optimisation, maybe setting friendlyChampions[selfIndex] to a var is much faster than repeatedly calling access to a vector??
 	friendlyChampions[selfIndex].targetCountDown -= timeUnit;//Reduce cooldown to check target/ find new target
 	friendlyChampions[selfIndex].autoAttackDelay -= timeUnit as i16;//Risks going out of bounds as auto attack value may not be called for some time
 	friendlyChampions[selfIndex].gMD -= timeUnit as i16;
@@ -944,7 +964,7 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 		let mut statusEffects = friendlyChampions[selfIndex].se.clone();
 		let mut stun = ABooleanWithExtraSteps{value : false};
 		let mut seToAdd : Vec<StatusEffect> = Vec::new();
-		statusEffects.retain_mut(|x| performStatus(x, friendlyChampions, timeUnit, selfIndex, &mut stun, &mut seToAdd));
+		statusEffects.retain_mut(|x| performStatus(x, friendlyChampions, enemyChampions, timeUnit, selfIndex, &mut stun, &mut seToAdd));
 		friendlyChampions[selfIndex].se = statusEffects;
 		//deffo optimisation around statusEffects
 		friendlyChampions[selfIndex].se.extend(seToAdd);
@@ -956,15 +976,20 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 		{
 			friendlyChampions[selfIndex].shed = 0;
 		}
+		friendlyChampions[selfIndex].shields.retain_mut(|x| UpdateShield(x, timeUnit));
 		if stun.value
 		{
 			println!("stunned");
+			return
 		}
 	}
-	friendlyChampions[selfIndex].shields.retain_mut(|x| UpdateShield(x, timeUnit));
+	
 	//does auto attack delay need to reset on pathing? does attack instantly after reaching path/ in range
 
-
+	if friendlyChampions[selfIndex].banish
+	{
+		return
+	}
 	let mut index : usize = 99;//Cache index of target in enemyChampions
 	let mut distanceToTarget : i8 = 127;//Distance to target (is set either while finding target or when target found)
 	let mut needNewTargetCell : bool = false;//Bool to store whether new path is needed
@@ -973,7 +998,7 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 		//maybe optimisation to first check for if enemyChampions[friendlyChampions.target]
 		for (i, enemyChampion) in enemyChampions.iter().enumerate() //every enemy champ
 		{
-			if enemyChampion.id == friendlyChampions[selfIndex].target && friendlyChampions[selfIndex].targetable //if they share id
+			if enemyChampion.id == friendlyChampions[selfIndex].target && enemyChampion.targetable  && ! enemyChampion.banish//if they share id
 			{
 				println!("Debug : Found Target");
 				index = i;//set index
@@ -993,7 +1018,7 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 
 		for (i, enemyChampion) in enemyChampions.iter().enumerate() //for every champ
 		{
-			if !enemyChampion.targetable//discrepency zapped with ionic spark if untargetable?
+			if !enemyChampion.targetable || enemyChampion.banish//discrepency zapped with ionic spark if untargetable?
 			{
 				continue;
 			}
