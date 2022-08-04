@@ -98,6 +98,10 @@ enum StatusType
 	///bool : applied
 	Banished(bool),
 
+	///Taunted
+	///usize : ID of taunter
+	Taunted(usize),
+
 	///None
 	NoEffect()
 }
@@ -941,6 +945,11 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 			}
 			enemyChampions[smallestDistanceID].se.push(StatusEffect { duration: banishDuration, statusType: StatusType::Banished(false), ..Default::default() });
 			return false
+		}
+		StatusType::Taunted(tauntID) => 
+		{
+			friendlyChampions[selfIndex].target = tauntID;
+			friendlyChampions[selfIndex].targetCountDown = 100;
 		}
 		_ => ()//println!("Unimplemented")
 	}
