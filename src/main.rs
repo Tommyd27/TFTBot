@@ -494,6 +494,15 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 		33 => {friendlyChampions[selfIndex].health += 1000},
 		34 => {friendlyChampions[selfIndex].health += 300; friendlyChampions[selfIndex].ar += 20}// discrepency not done LOL +have to test how sunfire works before i feel comfortable implementing it
 		35 => {friendlyChampions[selfIndex].health += 150; friendlyChampions[selfIndex].mr += 20; friendlyChampions[selfIndex].se.push(StatusEffect { duration : 32767, statusType: StatusType::Zephyr(false, 500), ..Default::default()})}//donE?????????????????????????????????????????????????????????????
+		36 => {friendlyChampions[selfIndex].health += 150; friendlyChampions[selfIndex].attackSpeedModifier *= 0.1;
+			   for enemyChamp in enemyChampions
+			   {
+					if DistanceBetweenPoints(enemyChamp.location, friendlyChampions[selfIndex].location) < 9
+					{
+						enemyChamp.se.push(StatusEffect { duration: 32767, statusType: StatusType::Taunted(friendlyChampions[selfIndex].id), isNegative: true })//discrepency does shed cleanse taunt?
+					}
+			   }
+		}
 		_ => println!("Unimplemented Item"),
 	}
 }
@@ -878,7 +887,7 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 				StatusType::MorellonomiconBurn(_, dmgToDo, _) => friendlyChampions[selfIndex].health -= dmgToDo,
 				StatusType::IonicSparkEffect() => {friendlyChampions[selfIndex].mr *= 2; friendlyChampions[selfIndex].zap = false}, //discrepency maybe if something like illaoi/ daega ult reduces mr it wont increase by equal amount 
 				StatusType::ArchangelStaff(_, apAmount) => {statusEffect.duration = 500; statusEffect.statusType = StatusType::ArchangelStaff(false, apAmount); return true},
-				StatusType::Banished(_) => {friendlyChampions[selfIndex].banish = false}
+				StatusType::Banished(_) => {friendlyChampions[selfIndex].banish = false},
 				_ => ()//println!("Unimplemented")
 			}
 		return false
@@ -946,10 +955,17 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 			enemyChampions[smallestDistanceID].se.push(StatusEffect { duration: banishDuration, statusType: StatusType::Banished(false), ..Default::default() });
 			return false
 		}
-		StatusType::Taunted(tauntID) => 
-		{
-			friendlyChampions[selfIndex].target = tauntID;
-			friendlyChampions[selfIndex].targetCountDown = 100;
+		StatusType::Taunted(tauntID) => {
+			for enemyChamp in enemyChampions
+			{
+				if enemyChamp.id == tauntID
+				{
+					friendlyChampions[selfIndex].target = tauntID;
+					friendlyChampions[selfIndex].targetCountDown = 100;
+					return true;
+				}
+			}
+			return false;
 		}
 		_ => ()//println!("Unimplemented")
 	}
@@ -1172,6 +1188,7 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 			}
 		}
 	}
+
 	
 	
 	if friendlyChampions[selfIndex].cm >= friendlyChampions[selfIndex].mc
