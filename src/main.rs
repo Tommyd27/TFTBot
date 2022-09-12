@@ -1103,7 +1103,14 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 				if enemyChampions[index].health <= 0 //if enemy champion dead
 				{
 					println!("Debug : Health Lower than 0 - Removing");
-					enemyChampions.swap_remove(index);
+
+					if enemyChampions[index].items.contains(&36)
+					{
+						enemyChampions.push(SummonedChampion { location: enemyChampions[index].location, movementProgress: 0, health: 1500, cm: 0, dc: 0, cr: 0, critD: 25, mc: 255, ar: 20, mr: 20, ad: 100, aS: 0.8, ra: 1, aID: -1, id: -1, targetCountDown: 0, autoAttackDelay: 0, attackSpeedModifier: 1, target: (), targetCells: (), items: (), ap: (), se: (), gMD: (), starLevel: (), incomingDMGModifier: (), initialHP: (), targetable: (), shed: (), shields: (), traits: (), zap: (), banish: () })
+						//discrepency stats change depending on stage
+					}
+					enemyChampions.swap_remove(index);//discrepency, only checks for champion death when it is auto attacked
+					//maybe discrepency if target gets removed from enemyChamps and then we try to abiity cast on it.
 				}
 			}
 			else 
