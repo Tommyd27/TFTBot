@@ -502,7 +502,7 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 			   	let thisLocation = friendlyChampions[selfIndex].location;
 				for friendlyChamp in friendlyChampions
 				{
-					if friendlyChamp.location[1] == thisLocation[1] && DistanceBetweenPoints(friendlyChamp.location, thisLocation) < 3
+					if friendlyChamp.location[1] == thisLocation[1] && DistanceBetweenPoints(friendlyChamp.location, thisLocation) < 5 //discrepency distances
 					{
 						friendlyChamp.shields.push(Shield{duration : 1500, size : shieldAmount, ..Default::default()});
 					}
@@ -526,8 +526,15 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 					}
 			   }
 		}
-		37 => {friendlyChampions[selfIndex].health += 150; friendlyChampions[selfIndex].dc += 15
-
+		37 => {friendlyChampions[selfIndex].health += 150; friendlyChampions[selfIndex].dc += 15;  	
+			let thisLocation = friendlyChampions[selfIndex].location;
+			for friendlyChamp in friendlyChampions
+			  	{
+					if friendlyChamp.location[1] == thisLocation[1] && DistanceBetweenPoints(friendlyChamp.location, thisLocation) < 3 //discrepency distances
+					{
+						friendlyChamp.shields.push(Shield{duration : 1500, size : 600, blocksType : Some(DamageType::Magical()), pop : true});
+					}
+			  	}
 		}
 		_ => println!("Unimplemented Item"),
 	}
