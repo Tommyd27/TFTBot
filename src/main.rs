@@ -217,7 +217,7 @@ fn AatroxAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions 
 	let ap = friendlyChampions[selfIndex].ap;
 	friendlyChampions[selfIndex].heal(((300 + 50 * starLevel as i32) * ap) / 100);
 
-	dealDamage(selfIndex, friendlyChampions, &mut enemyChampions[targetIndex], (300 + 5 * starLevel as i32) * friendlyChampions[selfIndex].ad, 0)
+	dealDamage(selfIndex, friendlyChampions, &mut enemyChampions[targetIndex], (300 + 5 * starLevel as i32) * friendlyChampions[selfIndex].ad, DamageType::Physical())
 }
 ///const CHAMPIONABILITIES :
 ///Stores all the champ abilities (index = abilityID)
@@ -231,8 +231,13 @@ const CHAMPIONABILITIES : [fn(friendlyChampions : &mut Vec<SummonedChampion>, en
 	[LuluAbility, AatroxAbility];
 
 //discrepency, cast time = 0.5 seconds apparently
-
-
+#[derive(PartialEq, Clone, Copy)]
+enum DamageType
+{
+	Physical(),
+	Magical(),
+	True(),
+}
 
 
 
@@ -252,7 +257,25 @@ struct Shield
 {
 	duration : i16,
 	size : i32,
+
+	blocksType : Option<DamageType>,
+	pop : bool,
 }
+
+impl Default for Shield
+{
+	fn default() -> Shield
+	{
+		Shield
+		{
+			duration : 0,
+			size : 0,
+			blocksType : None,
+			pop : false
+		}
+	}
+}
+
 struct SummonedChampion //Structure for champions on board in battle
 {
 	location : [i8 ; 2], //array of p, q coordinates, r can be calculated with r = -p - q
@@ -481,7 +504,7 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 				{
 					if friendlyChamp.location[1] == thisLocation[1] && DistanceBetweenPoints(friendlyChamp.location, thisLocation) < 3
 					{
-						friendlyChamp.shields.push(Shield{duration : 1500, size : shieldAmount});
+						friendlyChamp.shields.push(Shield{duration : 1500, size : shieldAmount, ..Default::default()});
 					}
 				}
 			   
@@ -503,7 +526,9 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 					}
 			   }
 		}
-		
+		37 => {friendlyChampions[selfIndex].health += 150; friendlyChampions[selfIndex].dc += 15
+
+		}
 		_ => println!("Unimplemented Item"),
 	}
 }
@@ -723,13 +748,13 @@ fn dealDamage(selfIndex : usize,
 			  friendlyChampions : &mut Vec<SummonedChampion>,
 			  target : &mut SummonedChampion,
 			  damageAmount : i32,
-			  damageType : u8,
+			  damageType : DamageType,
 			  )
 {
 	let mut damage : i32 = 0;
 	match damageType
 	{
-		0 => {damage = (100 * damageAmount * target.incomingDMGModifier) / (100 * (100 + target.ar));
+		DamageType::Physical() => {damage = (100 * damageAmount * target.incomingDMGModifier) / (100 * (100 + target.ar));
 			  if friendlyChampions[selfIndex].cr > rand::thread_rng().gen_range(0..100)//optimisation
 			  {
 				let mut critD = friendlyChampions[selfIndex].critD;
@@ -746,7 +771,7 @@ fn dealDamage(selfIndex : usize,
 			  }
 
 		},
-		1 => {damage = (100 * damageAmount * friendlyChampions[selfIndex].ap * target.incomingDMGModifier) / (100 * (100 + target.mr));
+		DamageType::Magical() => {damage = (100 * damageAmount * friendlyChampions[selfIndex].ap * target.incomingDMGModifier) / (100 * (100 + target.mr));
 			  if friendlyChampions[selfIndex].items.contains(&27)
 			  {
 				if friendlyChampions[selfIndex].cr > rand::thread_rng().gen_range(0..100)
@@ -781,7 +806,7 @@ fn dealDamage(selfIndex : usize,
 				target.se.push(StatusEffect { duration: 1000, statusType: StatusType::MorellonomiconBurn(dmgToDo / 10, dmgToDo, 100), isNegative : true})//discrepency unsure whether burn just reapplies itself
 			}
 			},
-		2 => {//discrepency does lulu ability etc affect true dmg
+		DamageType::True() => {//discrepency does lulu ability etc affect true dmg
 			if friendlyChampions[selfIndex].items.contains(&12)
 			{
 			  let healing = damage / 4;
@@ -834,18 +859,26 @@ fn dealDamage(selfIndex : usize,
 	{
 		target.cm += (7 * damage  / 100) as u8; //discrepency, should be 1% of premitigation and 7% of post.
 	}
-	while target.shields.len() > 0
+	for shield in &mut target.shields
 	{
-		if target.shields[0].size < damage
+		if damageType == shield.blocksType.unwrap_or(damageType)
 		{
-			damage -= target.shields[0].size;
-			target.shields.swap_remove(0);
-		}
-		else 
-		{
-			target.shields[0].size -= damage;
-			damage = 0;
-			break;
+			if damage > shield.size
+			{
+				damage -= shield.size;
+				shield.size = 0;
+				shield.duration = 0;
+			}
+			else {
+				shield.size -= damage;
+				damage = 0;
+				if shield.pop
+				{
+					shield.size = 0;
+					shield.duration = 0;
+				}
+				break;
+			}
 		}
 	}
 	target.health -= damage;
@@ -911,7 +944,7 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 		StatusType::Bloodthirster() => {if friendlyChampions[selfIndex].health <= (4 * friendlyChampions[selfIndex].initialHP) / 10
 										{
 											let quarterHP = friendlyChampions[selfIndex].initialHP / 4;
-											friendlyChampions[selfIndex].shields.push(Shield{duration : 500, size : quarterHP});
+											friendlyChampions[selfIndex].shields.push(Shield{duration : 500, size : quarterHP, ..Default::default()});
 											
 											return false
 										}}
@@ -1099,7 +1132,7 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 			if enemyChampions[index].dc <= 0 || enemyChampions[index].dc < rand::thread_rng().gen_range(0..100) //calculating whether to dodge
 			{//optimisation from not generating random gen
 				println!("No Dodge");
-				dealDamage(selfIndex, friendlyChampions, &mut enemyChampions[index], friendlyChampions[selfIndex].ad, 0);
+				dealDamage(selfIndex, friendlyChampions, &mut enemyChampions[index], friendlyChampions[selfIndex].ad, DamageType::Physical());
 				
 				println!("Debug : Enemy Champion Health is {0}", enemyChampions[index].health);
 				if enemyChampions[index].health <= 0 //if enemy champion dead
