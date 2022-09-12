@@ -494,7 +494,7 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 		33 => {friendlyChampions[selfIndex].health += 1000},
 		34 => {friendlyChampions[selfIndex].health += 300; friendlyChampions[selfIndex].ar += 20}// discrepency not done LOL +have to test how sunfire works before i feel comfortable implementing it
 		35 => {friendlyChampions[selfIndex].health += 150; friendlyChampions[selfIndex].mr += 20; friendlyChampions[selfIndex].se.push(StatusEffect { duration : 32767, statusType: StatusType::Zephyr(false, 500), ..Default::default()})}//donE?????????????????????????????????????????????????????????????
-		36 => {friendlyChampions[selfIndex].health += 150; friendlyChampions[selfIndex].attackSpeedModifier *= 0.1;
+		36 => {friendlyChampions[selfIndex].health += 150; friendlyChampions[selfIndex].attackSpeedModifier *= 0.1; //close enough, doesnt reset fully
 			   for enemyChamp in enemyChampions
 			   {
 					if DistanceBetweenPoints(enemyChamp.location, friendlyChampions[selfIndex].location) < 9
@@ -503,6 +503,7 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 					}
 			   }
 		}
+		
 		_ => println!("Unimplemented Item"),
 	}
 }
@@ -843,7 +844,8 @@ fn dealDamage(selfIndex : usize,
 		else 
 		{
 			target.shields[0].size -= damage;
-			damage = 0;	
+			damage = 0;
+			break;
 		}
 	}
 	target.health -= damage;
@@ -1106,11 +1108,25 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 
 					if enemyChampions[index].items.contains(&36)
 					{
-						enemyChampions.push(SummonedChampion { location: enemyChampions[index].location, movementProgress: 0, health: 1500, cm: 0, dc: 0, cr: 0, critD: 25, mc: 255, ar: 20, mr: 20, ad: 100, aS: 0.8, ra: 1, aID: -1, id: -1, targetCountDown: 0, autoAttackDelay: 0, attackSpeedModifier: 1, target: (), targetCells: (), items: (), ap: (), se: (), gMD: (), starLevel: (), incomingDMGModifier: (), initialHP: (), targetable: (), shed: (), shields: (), traits: (), zap: (), banish: () })
+						enemyChampions[index].health = 1500;
+						enemyChampions[index].attackSpeedModifier = 0.8;
+						enemyChampions[index].se.clear();
+						enemyChampions[index].ra = 1;
+						enemyChampions[index].ar = 20;
+						enemyChampions[index].mr = 20;
+						enemyChampions[index].items = [0, 0, 0];
+						enemyChampions[index].aS = 0.8;
+						enemyChampions[index].attackSpeedModifier = 1.0;
+						enemyChampions[index].cr = 25;
+						//discrepency cant be asked to set everything to default
 						//discrepency stats change depending on stage
 					}
-					enemyChampions.swap_remove(index);//discrepency, only checks for champion death when it is auto attacked
+					else
+					{
+						enemyChampions.swap_remove(index);//discrepency, only checks for champion death when it is auto attacked
 					//maybe discrepency if target gets removed from enemyChamps and then we try to abiity cast on it.
+					}
+					
 				}
 			}
 			else 
