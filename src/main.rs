@@ -22,17 +22,17 @@ struct Champion //Basic structure to store the base stats of a champ
     cost : u8, 
     
 	///HP values for each star level
-    hp : [i32; 3], 
+    hp : [f32; 3], 
 	///Starting mana
     sm : u8,
 	///Ability Mana Cost
     mc : u8,
 	///Base Armor Value
-    ar : i32,
+    ar : f32,
 	///Base Magic Resist Value
-    mr : i32,
+    mr : f32,
 	///Autoattack damage for each star level
-    ad : [i32; 3],
+    ad : [f32; 3],
 	///Attack speed in attacks per second
     aS : f32,
 	///Auto attack range
@@ -53,7 +53,7 @@ enum StatusType
 	AttackSpeedBuff(bool, f32),
 	///Increase Damage Taken
 	///(bool : whether the buff has been applied, i32 : actual modifier in % (so 120 = 120% or 20% increase))
-	IncreaseDamageTaken(bool, i32),
+	IncreaseDamageTaken(bool, f32),
 	///Stun
 	///()
 	Stun(),
@@ -76,7 +76,7 @@ enum StatusType
 	///i32 : damage per tick
 	///i32 : damage to do
 	///i16 : time til next tick
-	MorellonomiconBurn(i32, i32, i16),
+	MorellonomiconBurn(f32, f32, i16),
 
 	///Ionic spark effect
 	///Reduces MR by 50%
@@ -86,7 +86,7 @@ enum StatusType
 	///Archangel Staff
 	///bool : applied
 	///i32 : ap increase
-	ArchangelStaff(bool, i32),
+	ArchangelStaff(bool, f32),
 
 	///Zephyr Item
 	///bool : applied
@@ -131,9 +131,9 @@ impl Default for StatusEffect{
 
 ///CHAMPIONS (const):<br />
 ///Stores all the champion information
-const CHAMPIONS : [Champion ; 3] = [Champion{id : 0, cost : 1, hp : [650, 1170, 2106], sm : 70, mc : 140, ar : 25, mr : 25, ad : [40, 72, 129], aS : 0.7, ra : 3, aID : 0, traits : [1, 2, 0]}, 
-                 					Champion{id : 1, cost : 2, hp : [650, 1170, 2106], sm : 50, mc : 100, ar : 45, mr : 45, ad : [55, 99, 178], aS : 0.7, ra : 1, aID : 1, traits : [2, 3, 0]}, 
-                 					Champion{id : 2, cost : 3, hp : [700, 1260, 2268], sm : 35, mc : 35, ar : 25, mr : 25, ad : [75, 135, 243], aS : 0.7, ra : 3, aID : 0, traits : [4, 5, 0]}];
+const CHAMPIONS : [Champion ; 3] = [Champion{id : 0, cost : 1, hp : [650.0, 1170.0, 2106.0], sm : 70, mc : 140, ar : 0.25, mr : 0.25, ad : [40.0, 72.0, 129.0], aS : 0.7, ra : 3, aID : 0, traits : [1, 2, 0]}, 
+                 					Champion{id : 1, cost : 2, hp : [650.0, 1170.0, 2106.0], sm : 50, mc : 100, ar : 0.45, mr : 0.45, ad : [55.0, 99.0, 178.0], aS : 0.7, ra : 1, aID : 1, traits : [2, 3, 0]}, 
+                 					Champion{id : 2, cost : 3, hp : [700.0, 1260.0, 2268.0], sm : 35, mc : 35, ar : 0.25, mr : 0.25, ad : [75.0, 135.0, 243.0], aS : 0.7, ra : 3, aID : 0, traits : [4, 5, 0]}];
 ///LuluAbility (func):<br />
 ///Whimsy
 ///Lulu enchants the nearest targets. Enchanted allies gain Attack Speed for 1.5 seconds. Enchanted enemies are stunned and transformed into harmless dragonlings, taking increased damage while stunned. If there are fewer than 3 units nearby, Lulu will enchant herself.<br />
@@ -183,7 +183,7 @@ fn LuluAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : 
 		{
 			//stun enemies for 1.5 seconds and increase damage for 20%
 			enemyChampions[-(champIndex + 1) as usize].se.push(StatusEffect { duration: 150, statusType: StatusType::Stun(), isNegative : true });
-			enemyChampions[-(champIndex + 1) as usize].se.push(StatusEffect { duration: 150, statusType: StatusType::IncreaseDamageTaken(false, 120), isNegative : true});
+			enemyChampions[-(champIndex + 1) as usize].se.push(StatusEffect { duration: 150, statusType: StatusType::IncreaseDamageTaken(false, 1.2), isNegative : true});
 		}
 		i += 1;
 	}
@@ -217,9 +217,9 @@ fn AatroxAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions 
 		}
 	}
 	let ap = friendlyChampions[selfIndex].ap;
-	friendlyChampions[selfIndex].heal(((300 + 50 * starLevel as i32) * ap) / 100);
+	friendlyChampions[selfIndex].heal((300.0 + 50.0 * starLevel as f32) * ap);
 
-	dealDamage(selfIndex, friendlyChampions, &mut enemyChampions[targetIndex], (300 + 5 * starLevel as i32) * friendlyChampions[selfIndex].ad, DamageType::Physical())
+	dealDamage(selfIndex, friendlyChampions, &mut enemyChampions[targetIndex], (300.0 + 5.0 * starLevel as f32) * friendlyChampions[selfIndex].ad, DamageType::Physical())
 }
 ///const CHAMPIONABILITIES :
 ///Stores all the champ abilities (index = abilityID)
@@ -258,7 +258,7 @@ struct PlacedChampion
 struct Shield
 {
 	duration : i16,
-	size : i32,
+	size : f32,
 
 	blocksType : Option<DamageType>,
 	pop : bool,
@@ -271,7 +271,7 @@ impl Default for Shield
 		Shield
 		{
 			duration : 0,
-			size : 0,
+			size : 0.0,
 			blocksType : None,
 			pop : false
 		}
@@ -282,15 +282,15 @@ struct SummonedChampion //Structure for champions on board in battle
 {
 	location : [i8 ; 2], //array of p, q coordinates, r can be calculated with r = -p - q
 	movementProgress : [i8 ; 2], //progress of movement before moving to a new square, goes to 10 before moving
-	health : i32, //health
+	health : f32, //health
 	cm : u8, //current mana
 	dc : u8, //dodge chance
 	cr : u8, //crit rate
-	critD : i32, // crit damage
+	critD : f32, // crit damage
 	mc : u8, //mana/ ability cost
-	ar : i32, //armor
-	mr : i32,  //magic resist
-	ad : i32, //attack damage
+	ar : f32, //armor
+	mr : f32,  //magic resist
+	ad : f32, //attack damage
 	aS : f32, //attacks per second
 	ra : u8, //auto attack range
 	aID : usize, //ability ID
@@ -358,12 +358,12 @@ struct SummonedChampion //Structure for champions on board in battle
 	///89 : Mage Emblem (Wearer becomes a mage, cannot equip on a mage)<br />
 	///99 : Tacticians Crown (Increase board unit size by 1)<br />
 	items : [u8 ; 3], //item abilities 
-	ap : i32, //ability power
+	ap : f32, //ability power
 	se : Vec<StatusEffect>, //status effects
 	gMD : i16, //generate mana delay, after abilities 1 second before can start generating mana again
 	starLevel : usize,
-	incomingDMGModifier : i32,
-	initialHP : i32,
+	incomingDMGModifier : f32,
+	initialHP : f32,
 	targetable : bool,
 	shed : u8,
 	shields : Vec<Shield>,
@@ -385,13 +385,13 @@ impl SummonedChampion
 		SummonedChampion { location: [placedChampion.location[0], placedChampion.location[1]], //create summoned champ with all details
 						   movementProgress : [0, 0],
 						   health: ofChampion.hp[starLevel], 
-						   initialHP : 0,
+						   initialHP : 0.0,
 						   cm: ofChampion.sm, //update current mana to starting mana
 						   dc: 0, 
 						   cr : 25,
-						   critD : 130,
+						   critD : 0.3,
 						   mc: ofChampion.mc, 
-						   ar: ofChampion.ar * 2, //when calculating distances in cube grid, 1 adjacent hex is calculated as "2" away due to the p, q, r coordinate system, thus attack range is doubled.
+						   ar: ofChampion.ar,
 						   mr: ofChampion.mr, 
 						   ad: ofChampion.ad[starLevel], 
 						   aS: ofChampion.aS, 
@@ -404,11 +404,11 @@ impl SummonedChampion
 						   targetCells : [-1, -1], //Optimisation, list in path
 						   aID: ofChampion.aID, 
 						   items: placedChampion.items,
-						   ap : 100,
+						   ap : 1.0,
 						   se : Vec::new(),
 						   gMD : 0,
 						   starLevel : starLevel,
-						   incomingDMGModifier : 1,
+						   incomingDMGModifier : 1.0,
 						   targetable : true,
 						   shed : 0,
 						   shields : Vec::new(),
@@ -418,18 +418,21 @@ impl SummonedChampion
 						   banish : false,//discrepency with this and many others if one status effect banishing ends and another is still going on etc.
 						}
 	}
-	fn heal(&mut self, mut healingAmount : i32)
+	fn heal(&mut self, mut healingAmount : f32)
 	{
 		for statusEffect in &self.se
 		{
 			if statusEffect.statusType == StatusType::GreviousWounds()
 			{
-				healingAmount /= 2;
+				healingAmount /= 2.0;
 				break;
 			}
 		}
 		self.health += healingAmount;
-		self.health = min(self.health, self.initialHP);
+		if self.health > self.initialHP
+		{
+			self.health = self.initialHP
+		}
 	}
 }
 
@@ -467,17 +470,17 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 	match item
 	{
 		0 => (),
-		1  => friendlyChampions[selfIndex].ad += 10, //
-		2  => friendlyChampions[selfIndex].ap += 10, //
-		3 => friendlyChampions[selfIndex].health += 150, //
-		4 => friendlyChampions[selfIndex].ar += 20, //
-		5 => friendlyChampions[selfIndex].mr += 20,//
+		1  => friendlyChampions[selfIndex].ad += 10.0, //
+		2  => friendlyChampions[selfIndex].ap += 0.1, //
+		3 => friendlyChampions[selfIndex].health += 150.0, //
+		4 => friendlyChampions[selfIndex].ar += 0.2, //
+		5 => friendlyChampions[selfIndex].mr += 0.2,//
 		6 => friendlyChampions[selfIndex].attackSpeedModifier *= 0.1,//discrepency, + 0.1 or * 0.1
 		7 => {friendlyChampions[selfIndex].cr += 5; friendlyChampions[selfIndex].dc += 10},//
 		8 => friendlyChampions[selfIndex].cm += 15,//
-		11 => friendlyChampions[selfIndex].ad += [40, 70, 100][friendlyChampions[selfIndex].starLevel],//
-		12 => {friendlyChampions[selfIndex].ad += 10; friendlyChampions[selfIndex].ap += 10},//
-		13 => {friendlyChampions[selfIndex].ad += 10; friendlyChampions[selfIndex].health += 150;//
+		11 => friendlyChampions[selfIndex].ad += [40.0, 70.0, 100.0][friendlyChampions[selfIndex].starLevel],//
+		12 => {friendlyChampions[selfIndex].ad += 10.0; friendlyChampions[selfIndex].ap += 0.1},//
+		13 => {friendlyChampions[selfIndex].ad += 10.0; friendlyChampions[selfIndex].health += 150.0;//
 			  let thisLocation = friendlyChampions[selfIndex].location;
 			  for friendlyChamp in friendlyChampions
 			  {
@@ -487,19 +490,19 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 				}
 			  }
 			  },
-		14 => {friendlyChampions[selfIndex].ad += 10; friendlyChampions[selfIndex].ar += 20; 
+		14 => {friendlyChampions[selfIndex].ad += 10.0; friendlyChampions[selfIndex].ar += 0.2; 
 			   friendlyChampions[selfIndex].se.push(StatusEffect { duration: 32767, statusType: StatusType::EdgeOfNight(), ..Default::default()})},//
-		15 => {friendlyChampions[selfIndex].ad += 10; friendlyChampions[selfIndex].mr += 20;
+		15 => {friendlyChampions[selfIndex].ad += 10.0; friendlyChampions[selfIndex].mr += 0.2;
 			   friendlyChampions[selfIndex].se.push(StatusEffect { duration: 32767, statusType: StatusType::Bloodthirster(), ..Default::default()})		
 		},
-		16 => {friendlyChampions[selfIndex].ad += 10; friendlyChampions[selfIndex].attackSpeedModifier *= 0.1},//
-		17 => {friendlyChampions[selfIndex].ad += 10; friendlyChampions[selfIndex].cr += 75; friendlyChampions[selfIndex].critD += 10},// //discrepency cuz crit rate ig
-		18 => {friendlyChampions[selfIndex].ad += 10; friendlyChampions[selfIndex].cm += 15},//
-		19 => {friendlyChampions[selfIndex].ad += 10; /*friendlyChampions[selfIndex].traits.push() - Shimmerscale*/},
-		22 => {friendlyChampions[selfIndex].ap += 75},
-		23 => {friendlyChampions[selfIndex].ap += 40; friendlyChampions[selfIndex].health += 150}//
-		24 => {friendlyChampions[selfIndex].ap += 10; friendlyChampions[selfIndex].ar += 20;//
-			   	let shieldAmount = [300, 350, 400][friendlyChampions[selfIndex].starLevel];
+		16 => {friendlyChampions[selfIndex].ad += 10.0; friendlyChampions[selfIndex].attackSpeedModifier *= 0.1},//
+		17 => {friendlyChampions[selfIndex].ad += 10.0; friendlyChampions[selfIndex].cr += 75; friendlyChampions[selfIndex].critD += 0.1},// //discrepency cuz crit rate ig
+		18 => {friendlyChampions[selfIndex].ad += 10.0; friendlyChampions[selfIndex].cm += 15},//
+		19 => {friendlyChampions[selfIndex].ad += 10.0; /*friendlyChampions[selfIndex].traits.push() - Shimmerscale*/},
+		22 => {friendlyChampions[selfIndex].ap += 0.75},
+		23 => {friendlyChampions[selfIndex].ap += 0.40; friendlyChampions[selfIndex].health += 150.0}//
+		24 => {friendlyChampions[selfIndex].ap += 0.1; friendlyChampions[selfIndex].ar += 0.2;//
+			   	let shieldAmount = [300.0, 350.0, 400.0][friendlyChampions[selfIndex].starLevel];
 			   	let thisLocation = friendlyChampions[selfIndex].location;
 				for friendlyChamp in friendlyChampions
 				{
@@ -510,15 +513,15 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 				}
 			   
 		},
-		25 => {friendlyChampions[selfIndex].ap += 10; friendlyChampions[selfIndex].mr += 20;},//
-		26 => {friendlyChampions[selfIndex].ap += 10; friendlyChampions[selfIndex].attackSpeedModifier *= 0.1},//
-		27 => {friendlyChampions[selfIndex].ap += 50; friendlyChampions[selfIndex].cr += 15; friendlyChampions[selfIndex].critD += 40}// //discrepency does bonus ability damage include from components? //
-		28 => {friendlyChampions[selfIndex].ap += 10; friendlyChampions[selfIndex].cm += 15; friendlyChampions[selfIndex].se.push(StatusEffect { duration: 500, statusType: StatusType::ArchangelStaff(false, 20), isNegative: false })}
-		29 => {friendlyChampions[selfIndex].ap += 10; },//add next trait
-		33 => {friendlyChampions[selfIndex].health += 1000},
-		34 => {friendlyChampions[selfIndex].health += 300; friendlyChampions[selfIndex].ar += 20}// discrepency not done LOL +have to test how sunfire works before i feel comfortable implementing it
-		35 => {friendlyChampions[selfIndex].health += 150; friendlyChampions[selfIndex].mr += 20; friendlyChampions[selfIndex].se.push(StatusEffect { duration : 32767, statusType: StatusType::Zephyr(false, 500), ..Default::default()})}//donE?????????????????????????????????????????????????????????????
-		36 => {friendlyChampions[selfIndex].health += 150; friendlyChampions[selfIndex].attackSpeedModifier *= 0.1; //close enough, doesnt reset fully
+		25 => {friendlyChampions[selfIndex].ap += 0.1; friendlyChampions[selfIndex].mr += 0.2;},//
+		26 => {friendlyChampions[selfIndex].ap += 0.1; friendlyChampions[selfIndex].attackSpeedModifier *= 0.1},//
+		27 => {friendlyChampions[selfIndex].ap += 0.5; friendlyChampions[selfIndex].cr += 15; friendlyChampions[selfIndex].critD += 0.4}// //discrepency does bonus ability damage include from components? //
+		28 => {friendlyChampions[selfIndex].ap += 0.1; friendlyChampions[selfIndex].cm += 15; friendlyChampions[selfIndex].se.push(StatusEffect { duration: 500, statusType: StatusType::ArchangelStaff(false, 0.2), isNegative: false })}
+		29 => {friendlyChampions[selfIndex].ap += 0.1; },//add next trait
+		33 => {friendlyChampions[selfIndex].health += 1000.0},
+		34 => {friendlyChampions[selfIndex].health += 300.0; friendlyChampions[selfIndex].ar += 0.2}// discrepency not done LOL +have to test how sunfire works before i feel comfortable implementing it
+		35 => {friendlyChampions[selfIndex].health += 150.0; friendlyChampions[selfIndex].mr += 0.2; friendlyChampions[selfIndex].se.push(StatusEffect { duration : 32767, statusType: StatusType::Zephyr(false, 500), ..Default::default()})}//donE?????????????????????????????????????????????????????????????
+		36 => {friendlyChampions[selfIndex].health += 150.0; friendlyChampions[selfIndex].attackSpeedModifier *= 0.1; //close enough, doesnt reset fully
 			   for enemyChamp in enemyChampions
 			   {
 					if DistanceBetweenPoints(enemyChamp.location, friendlyChampions[selfIndex].location) < 9
@@ -527,19 +530,19 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 					}
 			   }
 		}
-		37 => {friendlyChampions[selfIndex].health += 150; friendlyChampions[selfIndex].dc += 15;  	
+		37 => {friendlyChampions[selfIndex].health += 150.0; friendlyChampions[selfIndex].dc += 15;  	
 			let thisLocation = friendlyChampions[selfIndex].location;
 			for friendlyChamp in friendlyChampions
 			  	{
 					if friendlyChamp.location[1] == thisLocation[1] && DistanceBetweenPoints(friendlyChamp.location, thisLocation) < 3 //discrepency distances
 					{
-						friendlyChamp.shields.push(Shield{duration : 1500, size : 600, blocksType : Some(DamageType::Magical()), pop : true}); //discrepency shouldn't stack whether from multiple items on 1 person or from multiple champs
+						friendlyChamp.shields.push(Shield{duration : 1500, size : 600.0, blocksType : Some(DamageType::Magical()), pop : true}); //discrepency shouldn't stack whether from multiple items on 1 person or from multiple champs
 					}
 			  	}
 		}
-		38 => {friendlyChampions[selfIndex].health += 150; friendlyChampions[selfIndex].cm += 15; friendlyChampions[selfIndex].se.push(StatusEffect { duration: 100, statusType: StatusType::RedemptionGive(), ..Default::default() })}  //discrepency does it give redemption bonus to self
-		39 => {friendlyChampions[selfIndex].health += 150}//add trait
-		44 => {friendlyChampions[selfIndex].ar += 40}
+		38 => {friendlyChampions[selfIndex].health += 150.0; friendlyChampions[selfIndex].cm += 15; friendlyChampions[selfIndex].se.push(StatusEffect { duration: 100, statusType: StatusType::RedemptionGive(), ..Default::default() })}  //discrepency does it give redemption bonus to self
+		39 => {friendlyChampions[selfIndex].health += 150.0}//add trait
+		44 => {friendlyChampions[selfIndex].ar += 0.4}
 		_ => println!("Unimplemented Item"),
 	}
 }
@@ -593,7 +596,7 @@ impl Board
 				GiveItemEffect(item, &mut self.p2Champions, &mut self.p1Champions, i);
 			}
 		}
-
+		/*
 		let mut p1Traits : HashMap<u8, u8> = HashMap::new();
 		let mut p2Traits : HashMap<u8, u8> = HashMap::new();
 		for p1Champ in &mut self.p1Champions
@@ -616,9 +619,9 @@ impl Board
 			}
 		}
 
-		/*Augments:
+		Augments:
 		0 => None
-		1 => Assassin Heart*/
+		1 => Assassin Heart
 		for augment in self.p1Augments
 		{
 			match augment
@@ -642,16 +645,16 @@ impl Board
 			{
 				1 => {
 					let mut extraCritChance = 15;
-					let mut extraCritDamage = 5;
+					let mut extraCritDamage = 0.05;
 					if champTrait.1 > 5
 					{
 						extraCritChance = 45;
-						extraCritDamage = 45;
+						extraCritDamage = 0.45;
 					}
 					else if champTrait.1 > 3
 					{
 						extraCritChance = 30;
-						extraCritDamage = 25;
+						extraCritDamage = 0.25;
 					}
 					for p1Champ in &mut self.p1Champions
 					{
@@ -664,13 +667,15 @@ impl Board
 				_ => ()
 			}
 		}
+		*/
+		
 		for p1Champ in &mut self.p1Champions
 		{
 			p1Champ.initialHP = p1Champ.health;
 		}
-		for p1Champ in &mut self.p1Champions
+		for p2Champ in &mut self.p2Champions
 		{
-			p1Champ.initialHP = p1Champ.health;
+			p2Champ.initialHP = p2Champ.health;
 		}
 		while self.p1Champions.len() > 0 && self.p2Champions.len() > 0
 		{
@@ -758,53 +763,53 @@ fn sign(num : i8) -> i8
 fn dealDamage(selfIndex : usize,
 			  friendlyChampions : &mut Vec<SummonedChampion>,
 			  target : &mut SummonedChampion,
-			  damageAmount : i32,
+			  damageAmount : f32,
 			  damageType : DamageType,
 			  )
 {
-	let mut damage : i32 = 0;
+	let mut damage : f32 = 0.0;
 	match damageType
 	{
-		DamageType::Physical() => {damage = (100 * damageAmount * target.incomingDMGModifier) / (100 * (100 + target.ar));
+		DamageType::Physical() => {damage = (damageAmount * target.incomingDMGModifier) / ( 1.0 + target.ar);
 			  if friendlyChampions[selfIndex].cr > rand::thread_rng().gen_range(0..100)//optimisation
 			  {
 				let mut critD = friendlyChampions[selfIndex].critD;
 				if friendlyChampions[selfIndex].cr > 100 && friendlyChampions[selfIndex].items.contains(&17)
 				{
-					critD += (friendlyChampions[selfIndex].cr - 100) as i32
+					critD += (friendlyChampions[selfIndex].cr - 100) as f32
 				}
+				let extraDamage = damage * critD;
 				if target.items.contains(&44)
-				{//discrepency i know its not this but fucckit
-					critD /= 4; //discrepency not sure if its exactly this but fuckkit
+				{
+					extraDamage /= 4.0;
 				}
-				damage *= critD;
-				damage /= 100;
+				damage += extraDamage;
 			  }
 			  if friendlyChampions[selfIndex].items.contains(&15)//maybe not only physical damage, discrepency?
 			  {
-				friendlyChampions[selfIndex].heal(damage / 4);
+				friendlyChampions[selfIndex].heal(damage / 4.0);
 			  }
 
 		},
-		DamageType::Magical() => {damage = (100 * damageAmount * friendlyChampions[selfIndex].ap * target.incomingDMGModifier) / (100 * (100 + target.mr));
+		DamageType::Magical() => {damage = (damageAmount * friendlyChampions[selfIndex].ap * target.incomingDMGModifier) / (1.0 + target.mr);
 			  if friendlyChampions[selfIndex].items.contains(&27)
 			  {
 				if friendlyChampions[selfIndex].cr > rand::thread_rng().gen_range(0..100)
 				{
 					let mut critD = friendlyChampions[selfIndex].critD;
+					let mut extraDamage = damage * critD;
 					if target.items.contains(&44)
 					{
-						critD /= 4; //discrepency not sure if its exactly this but fuckkit
+						extraDamage /= 4.0;
 					}
-					damage *= critD;
-					damage /= 100;
+					damage += extraDamage;
 				}
 			  }
 			  if friendlyChampions[selfIndex].items.contains(&12)
 			  {
-				let healing = damage / 4;
+				let healing = damage / 4.0;
 				friendlyChampions[selfIndex].heal(healing);
-				let mut lowestHP : i32 = 999999;
+				let mut lowestHP : f32 = 999999.0;
 				let mut lowestHPID : usize = 0;
 				for (i, champ) in friendlyChampions.iter().enumerate()
 				{
@@ -822,16 +827,16 @@ fn dealDamage(selfIndex : usize,
 			  if friendlyChampions[selfIndex].items.contains(&23)
 			  {
 				target.se.push(StatusEffect { duration: 1000, statusType: StatusType::GreviousWounds(), isNegative: true });
-				let dmgToDo = target.initialHP / 4;
-				target.se.push(StatusEffect { duration: 1000, statusType: StatusType::MorellonomiconBurn(dmgToDo / 10, dmgToDo, 100), isNegative : true})//discrepency unsure whether burn just reapplies itself
+				let dmgToDo = target.initialHP / 4.0;
+				target.se.push(StatusEffect { duration: 1000, statusType: StatusType::MorellonomiconBurn(dmgToDo / 10.0, dmgToDo, 100), isNegative : true})//discrepency unsure whether burn just reapplies itself
 			}
 			},
 		DamageType::True() => {//discrepency does lulu ability etc affect true dmg
 			if friendlyChampions[selfIndex].items.contains(&12)
 			{
-			  let healing = damage / 4;
+			  let healing = damage / 4.0;
 			  friendlyChampions[selfIndex].heal(healing);
-			  let mut lowestHP : i32 = 999999;
+			  let mut lowestHP : f32 = 999999.0;
 			  let mut lowestHPID : usize = 0;
 			  for (i, champ) in friendlyChampions.iter().enumerate()
 			  {
@@ -848,15 +853,18 @@ fn dealDamage(selfIndex : usize,
 			if friendlyChampions[selfIndex].items.contains(&23)
 			{
 				target.se.push(StatusEffect { duration: 1000, statusType: StatusType::GreviousWounds(), isNegative: true });
-				let dmgToDo = target.initialHP / 4;
-				target.se.push(StatusEffect { duration: 1000, statusType: StatusType::MorellonomiconBurn(dmgToDo / 10, dmgToDo, 100), isNegative : true})//discrepency unsure whether burn just reapplies itself
+				let dmgToDo = target.initialHP / 4.0;
+				target.se.push(StatusEffect { duration: 1000, statusType: StatusType::MorellonomiconBurn(dmgToDo / 10.0, dmgToDo, 100), isNegative : true})//discrepency unsure whether burn just reapplies itself
 			}
 			if friendlyChampions[selfIndex].items.contains(&27)
 			{
 			  if friendlyChampions[selfIndex].cr > rand::thread_rng().gen_range(0..100)
 			  {
-				  damage *= friendlyChampions[selfIndex].critD;
-				  damage /= 100;
+				  let mut extraDamage = damage * friendlyChampions[selfIndex].critD;
+				  if target.items.contains(&44)
+					{
+						extraDamage /= 4.0; //discrepency not sure if it applies to true dmg
+					}
 			  }
 			}	
 		},
@@ -865,19 +873,19 @@ fn dealDamage(selfIndex : usize,
 	}
 	if friendlyChampions[selfIndex].items.contains(&16)
 	{
-		if target.initialHP >= 2200
+		if target.initialHP >= 2200.0
 		{
-			damage += (damage / 20) * 9;//discrepency in division yada
+			damage *= 1.45;//discrepency in division yada
 		}
 		else {
-			damage += damage / 5;
+			damage *= 1.2;
 		}
 	}
 
 
 	if target.gMD <= 0
 	{
-		target.cm += (7 * damage  / 100) as u8; //discrepency, should be 1% of premitigation and 7% of post.
+		target.cm += (0.7 * damage) as u8; //discrepency, should be 1% of premitigation and 7% of post.
 	}
 	for shield in &mut target.shields
 	{
@@ -886,15 +894,15 @@ fn dealDamage(selfIndex : usize,
 			if damage > shield.size
 			{
 				damage -= shield.size;
-				shield.size = 0;
+				shield.size = 0.0;
 				shield.duration = 0;
 			}
 			else {
 				shield.size -= damage;
-				damage = 0;
+				damage = 0.0;
 				if shield.pop
 				{
-					shield.size = 0;
+					shield.size = 0.0;
 					shield.duration = 0;
 				}
 				break;
