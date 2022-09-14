@@ -88,7 +88,6 @@ enum StatusType
 	///i32 : ap increase
 	ArchangelStaff(bool, i32),
 
-
 	///Zephyr Item
 	///bool : applied
 	///i16 : banish duration
@@ -102,10 +101,13 @@ enum StatusType
 	///usize : ID of taunter
 	Taunted(usize),
 
+	///Redemption
+	///Give effect
+	RedemptionGive(),
+
 	///None
 	NoEffect()
 }
-
 
 
 ///StatusEffect (struct)<br />:
@@ -440,7 +442,6 @@ struct Player
     level : u8, //p level
     xp : u8, //p xp
 
-
     champions : Vec<PlacedChampion>, //all p champions
 	augments : [u8 ; 3] //augments
 }
@@ -532,10 +533,13 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 			  	{
 					if friendlyChamp.location[1] == thisLocation[1] && DistanceBetweenPoints(friendlyChamp.location, thisLocation) < 3 //discrepency distances
 					{
-						friendlyChamp.shields.push(Shield{duration : 1500, size : 600, blocksType : Some(DamageType::Magical()), pop : true});
+						friendlyChamp.shields.push(Shield{duration : 1500, size : 600, blocksType : Some(DamageType::Magical()), pop : true}); //discrepency shouldn't stack whether from multiple items on 1 person or from multiple champs
 					}
 			  	}
 		}
+		38 => {friendlyChampions[selfIndex].health += 150; friendlyChampions[selfIndex].cm += 15; friendlyChampions[selfIndex].se.push(StatusEffect { duration: 100, statusType: StatusType::RedemptionGive(), ..Default::default() })}  //discrepency does it give redemption bonus to self
+		39 => {friendlyChampions[selfIndex].health += 150}//add trait
+		44 => {friendlyChampions[selfIndex].ar += 40}
 		_ => println!("Unimplemented Item"),
 	}
 }
@@ -769,6 +773,10 @@ fn dealDamage(selfIndex : usize,
 				{
 					critD += (friendlyChampions[selfIndex].cr - 100) as i32
 				}
+				if target.items.contains(&44)
+				{//discrepency i know its not this but fucckit
+					critD /= 4; //discrepency not sure if its exactly this but fuckkit
+				}
 				damage *= critD;
 				damage /= 100;
 			  }
@@ -783,7 +791,12 @@ fn dealDamage(selfIndex : usize,
 			  {
 				if friendlyChampions[selfIndex].cr > rand::thread_rng().gen_range(0..100)
 				{
-					damage *= friendlyChampions[selfIndex].critD;
+					let mut critD = friendlyChampions[selfIndex].critD;
+					if target.items.contains(&44)
+					{
+						critD /= 4; //discrepency not sure if its exactly this but fuckkit
+					}
+					damage *= critD;
 					damage /= 100;
 				}
 			  }
@@ -930,6 +943,7 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 				StatusType::IonicSparkEffect() => {friendlyChampions[selfIndex].mr *= 2; friendlyChampions[selfIndex].zap = false}, //discrepency maybe if something like illaoi/ daega ult reduces mr it wont increase by equal amount 
 				StatusType::ArchangelStaff(_, apAmount) => {statusEffect.duration = 500; statusEffect.statusType = StatusType::ArchangelStaff(false, apAmount); return true},
 				StatusType::Banished(_) => {friendlyChampions[selfIndex].banish = false},
+				StatusType::RedemptionGive() => {statusEffect.duration = 100}
 				_ => ()//println!("Unimplemented")
 			}
 		return false
@@ -1008,6 +1022,16 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 				}
 			}
 			return false;
+		}
+		StatusType::RedemptionGive() => {
+			let thisLocation = friendlyChampions[selfIndex].location;
+			for friendlyChamp in friendlyChampions
+			{
+				if DistanceBetweenPoints(thisLocation, friendlyChamp.location) < 3
+				{
+					friendlyChamp.heal(((friendlyChamp.initialHP - friendlyChamp.health) * 12) / 100)//discrepency check at multitarget damage time for redemption heal for reduction
+				}
+			}
 		}
 		_ => ()//println!("Unimplemented")
 	}
