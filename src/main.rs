@@ -1,5 +1,6 @@
 #![allow(non_snake_case)] //Allows snake case
 
+use core::num;
 use std::{cmp::min, cmp::max};
 use rand::{Rng};
 use std::collections::HashMap;//Optimisation change default hashing algorithm
@@ -104,6 +105,8 @@ enum StatusType
 	///Redemption
 	///Give effect
 	RedemptionGive(),
+
+	Gargoyles(u8),
 
 	///None
 	NoEffect()
@@ -569,7 +572,10 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 		}
 		38 => {friendlyChampions[selfIndex].health += 150.0; friendlyChampions[selfIndex].cm += 15; friendlyChampions[selfIndex].se.push(StatusEffect { duration: 100, statusType: StatusType::RedemptionGive(), ..Default::default() })}  //discrepency does it give redemption bonus to self
 		39 => {friendlyChampions[selfIndex].health += 150.0}//add trait
-		44 => {friendlyChampions[selfIndex].ar += 0.4}
+		44 => {friendlyChampions[selfIndex].ar += 0.8}//says grants 40 bonus armor, is that the 40 from the two chain vests? discrepency
+		45 => {friendlyChampions[selfIndex].ar += 0.2; friendlyChampions[selfIndex].mr += 0.2;//
+				friendlyChampions[selfIndex].se.push(StatusEffect{duration : 100, statusType: StatusType::Gargoyles(0), ..Default::default() })//discrepency only updates every second
+		}
 		_ => println!("Unimplemented Item"),
 	}
 }
@@ -987,6 +993,20 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 				StatusType::ArchangelStaff(_, apAmount) => {statusEffect.duration = 500; statusEffect.statusType = StatusType::ArchangelStaff(false, apAmount); return true},
 				StatusType::Banished(_) => {friendlyChampions[selfIndex].banish = false},
 				StatusType::RedemptionGive() => {statusEffect.duration = 100}
+				StatusType::Gargoyles(oldNumTargeting) => {statusEffect.duration = 100;
+																let mut numTargeting : u8 = 0;
+																let ourID = friendlyChampions[selfIndex].id;
+																for enemyChamp in enemyChampions
+																{
+																	if enemyChamp.target == ourID
+																	{
+																		numTargeting += 1;
+																	}
+																}
+																let difference : f32 = (numTargeting - oldNumTargeting) as f32;
+																friendlyChampions[selfIndex].ar += 0.18 * difference;
+																friendlyChampions[selfIndex].mr += 0.18 * difference;
+				}
 				_ => ()//println!("Unimplemented")
 			}
 		return false
