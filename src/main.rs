@@ -859,12 +859,30 @@ fn dealDamage(selfIndex : usize,
 			}
 			},
 		DamageType::True() => {//discrepency does lulu ability etc affect true dmg
+			if friendlyChampions[selfIndex].items.contains(&27)
+			{
+			  if friendlyChampions[selfIndex].cr > rand::thread_rng().gen_range(0..100)
+			  {
+				  let mut extraDamage = damage * friendlyChampions[selfIndex].critD;
+				  if target.items.contains(&44)
+					{
+						extraDamage /= 4.0; //discrepency not sure if it applies to true dmg
+					}
+					damage += extraDamage;
+				}
+			}
+			
+			
 			if friendlyChampions[selfIndex].items.contains(&12)
 			{
 			  let healing = damage / 4.0;
 			  friendlyChampions[selfIndex].heal(healing);
 			  let mut lowestHP : f32 = 999999.0;
 			  let mut lowestHPID : usize = 0;
+
+
+
+			  
 			  for (i, champ) in friendlyChampions.iter().enumerate()
 			  {
 				  if i != selfIndex && champ.health < lowestHP
@@ -883,17 +901,7 @@ fn dealDamage(selfIndex : usize,
 				let dmgToDo = target.initialHP / 4.0;
 				target.se.push(StatusEffect { duration: 1000, statusType: StatusType::MorellonomiconBurn(dmgToDo / 10.0, dmgToDo, 100), isNegative : true})//discrepency unsure whether burn just reapplies itself
 			}
-			if friendlyChampions[selfIndex].items.contains(&27)
-			{
-			  if friendlyChampions[selfIndex].cr > rand::thread_rng().gen_range(0..100)
-			  {
-				  let mut extraDamage = damage * friendlyChampions[selfIndex].critD;
-				  if target.items.contains(&44)
-					{
-						extraDamage /= 4.0; //discrepency not sure if it applies to true dmg
-					}
-			  }
-			}	
+	
 		},
 			
 		_ => ()
