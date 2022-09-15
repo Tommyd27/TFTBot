@@ -456,6 +456,33 @@ struct Board
 	movementAmount : i8, //will be calculated, const / timeUnit
 }
 
+/* 
+struct Item
+{
+	ad : i32,
+	ap : i32,
+	hp : i32,
+	ar : i32,
+	mr : i32,
+	aSModifier : f32,
+	cr : u8,
+	critD : i32,
+	dc : u8,
+	cm : u8,
+
+}
+impl Default for Item
+{
+	fn default() -> Item
+	{
+		Item
+		{
+
+		}
+	}
+}
+
+*/
 
 ///GiveItemEffect : (func)<br />
 ///Gives an item effect to a champion<br />
@@ -471,7 +498,7 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 		3 => friendlyChampions[selfIndex].health += 150, //
 		4 => friendlyChampions[selfIndex].ar += 20, //
 		5 => friendlyChampions[selfIndex].mr += 20,//
-		6 => friendlyChampions[selfIndex].attackSpeedModifier *= 0.1,//discrepency, + 0.1 or * 0.1
+		6 => friendlyChampions[selfIndex].attackSpeedModifier *= 1.1,//discrepency, + 0.1 or * 0.1
 		7 => {friendlyChampions[selfIndex].cr += 5; friendlyChampions[selfIndex].dc += 10},//
 		8 => friendlyChampions[selfIndex].cm += 15,//
 		11 => friendlyChampions[selfIndex].ad += [40, 70, 100][friendlyChampions[selfIndex].starLevel],//
@@ -532,7 +559,7 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 			  	{
 					if friendlyChamp.location[1] == thisLocation[1] && DistanceBetweenPoints(friendlyChamp.location, thisLocation) < 3 //discrepency distances
 					{
-						friendlyChamp.shields.push(Shield{duration : 1500, size : 600, blocksType : Some(DamageType::Magical()), pop : true});
+						friendlyChamp.shields.push(Shield{duration : 1500, size : 600, blocksType : Some(DamageType::Magical()), pop : true}); //discrepencies shields dont stack? whether shields from separate champs or from 2 of the item on 1 champ
 					}
 			  	}
 		}
