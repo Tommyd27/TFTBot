@@ -576,6 +576,10 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 		45 => {friendlyChampions[selfIndex].ar += 0.2; friendlyChampions[selfIndex].mr += 0.2;//
 				friendlyChampions[selfIndex].se.push(StatusEffect{duration : 100, statusType: StatusType::Gargoyles(0), ..Default::default() })//discrepency only updates every second
 		}
+		46 => {friendlyChampions[selfIndex].ar += 0.2; friendlyChampions[selfIndex].attackSpeedModifier *= 1.1;
+				
+
+		}
 		_ => println!("Unimplemented Item"),
 	}
 }
