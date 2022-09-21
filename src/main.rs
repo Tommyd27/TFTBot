@@ -1,6 +1,5 @@
 #![allow(non_snake_case)] //Allows snake case
 
-use core::num;
 use std::{cmp::min, cmp::max};
 use rand::{Rng};
 use std::collections::HashMap;//Optimisation change default hashing algorithm
@@ -104,9 +103,13 @@ enum StatusType
 
 	///Redemption
 	///Give effect
-	RedemptionGive(),
+	RedemptionGive(bool),
 
 	Gargoyles(u8),
+
+	TitansResolve(u8),
+
+	ShroudOfStillness(),
 
 	///None
 	NoEffect()
@@ -374,6 +377,7 @@ struct SummonedChampion //Structure for champions on board in battle
 	traits : Vec<u8>, //trait abilities
 	zap : bool, //zap for ionic spark on ability cast
 	banish : bool,//zenith banish
+	titansResolveStack : u8
 }
 
 impl SummonedChampion 
@@ -419,6 +423,7 @@ impl SummonedChampion
 						   traits : traits,
 						   zap : false, //discrepency maybe if order of status Effects is ever affected, alternative would be to iterate through status Effects and check for ionic spark
 						   banish : false,//discrepency with this and many others if one status effect banishing ends and another is still going on etc.
+						   titansResolveStack : 0,
 						}
 	}
 	fn heal(&mut self, mut healingAmount : f32)
@@ -570,15 +575,17 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 					}
 			  	}
 		}
-		38 => {friendlyChampions[selfIndex].health += 150.0; friendlyChampions[selfIndex].cm += 15; friendlyChampions[selfIndex].se.push(StatusEffect { duration: 100, statusType: StatusType::RedemptionGive(), ..Default::default() })}  //discrepency does it give redemption bonus to self
+		38 => {friendlyChampions[selfIndex].health += 150.0; friendlyChampions[selfIndex].cm += 15; friendlyChampions[selfIndex].se.push(StatusEffect { duration: 100, statusType: StatusType::RedemptionGive(false), ..Default::default() })}  //discrepency does it give redemption bonus to self
 		39 => {friendlyChampions[selfIndex].health += 150.0}//add trait
 		44 => {friendlyChampions[selfIndex].ar += 0.8}//says grants 40 bonus armor, is that the 40 from the two chain vests? discrepency
 		45 => {friendlyChampions[selfIndex].ar += 0.2; friendlyChampions[selfIndex].mr += 0.2;//
 				friendlyChampions[selfIndex].se.push(StatusEffect{duration : 100, statusType: StatusType::Gargoyles(0), ..Default::default() })//discrepency only updates every second
 		}
 		46 => {friendlyChampions[selfIndex].ar += 0.2; friendlyChampions[selfIndex].attackSpeedModifier *= 1.1;
-				
-
+			friendlyChampions[selfIndex].se.push(StatusEffect { duration: 32726, statusType: StatusType::TitansResolve(0), ..Default::default() })
+		}
+		47 => {friendlyChampions[selfIndex].ar += 0.2; friendlyChampions[selfIndex].dc += 15;
+				friendlyChampions[selfIndex].se.push(StatusEffect { duration: 0, statusType: StatusType::ShroudOfStillness(), ..Default::default() })
 		}
 		_ => println!("Unimplemented Item"),
 	}
@@ -955,6 +962,8 @@ fn dealDamage(selfIndex : usize,
 		}
 	}
 	target.health -= damage;
+	target.titansResolveStack = min(target.titansResolveStack + 1, 25);
+	friendlyChampions[selfIndex].titansResolveStack = min(friendlyChampions[selfIndex].titansResolveStack + 1, 25)
 }
 
 fn UpdateShield(shield : &mut Shield, timeUnit : i8) -> bool
@@ -996,7 +1005,8 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 				StatusType::IonicSparkEffect() => {friendlyChampions[selfIndex].mr *= 2.0; friendlyChampions[selfIndex].zap = false}, //discrepency maybe if something like illaoi/ daega ult reduces mr it wont increase by equal amount 
 				StatusType::ArchangelStaff(_, apAmount) => {statusEffect.duration = 500; statusEffect.statusType = StatusType::ArchangelStaff(false, apAmount); return true},
 				StatusType::Banished(_) => {friendlyChampions[selfIndex].banish = false},
-				StatusType::RedemptionGive() => {statusEffect.duration = 100}
+				StatusType::RedemptionGive(_) => {statusEffect.duration = 100;
+												  statusEffect.statusType = StatusType::RedemptionGive(false)},
 				StatusType::Gargoyles(oldNumTargeting) => {statusEffect.duration = 100;
 																let mut numTargeting : u8 = 0;
 																let ourID = friendlyChampions[selfIndex].id;
@@ -1010,6 +1020,14 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 																let difference : f32 = (numTargeting - oldNumTargeting) as f32;
 																friendlyChampions[selfIndex].ar += 0.18 * difference;
 																friendlyChampions[selfIndex].mr += 0.18 * difference;
+																statusEffect.statusType = StatusType::Gargoyles(numTargeting);
+				},
+				StatusType::ShroudOfStillness() =>
+				{
+					for enemy in enemyChampions
+					{
+						
+					}
 				}
 				_ => ()//println!("Unimplemented")
 			}
@@ -1090,7 +1108,7 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 			}
 			return false;
 		}
-		StatusType::RedemptionGive() => {//discrepency Redemption Perma Heals
+		StatusType::RedemptionGive(false) => {//discrepency Redemption Perma Heals
 			let thisLocation = friendlyChampions[selfIndex].location;
 			for friendlyChamp in friendlyChampions
 			{
@@ -1099,7 +1117,20 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 					friendlyChamp.heal((friendlyChamp.initialHP - friendlyChamp.health) * 0.12)//discrepency check at multitarget damage time for redemption heal for reduction
 				}
 			}
+			statusEffect.statusType = StatusType::RedemptionGive(true);
 		}
+		StatusType::TitansResolve(mut oldStackNum) => {if oldStackNum != 25
+			{
+				let difference :f32 = (friendlyChampions[selfIndex].titansResolveStack - oldStackNum).into();
+				friendlyChampions[selfIndex].ad += 2.0 * difference;
+				friendlyChampions[selfIndex].ap += 0.02 * difference;
+				oldStackNum = friendlyChampions[selfIndex].titansResolveStack;
+				if oldStackNum == 25
+				{
+					friendlyChampions[selfIndex].ar += 0.25;
+					friendlyChampions[selfIndex].mr += 0.25;
+				}
+			}}
 		_ => ()//println!("Unimplemented")
 	}
 	true
