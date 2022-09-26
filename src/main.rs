@@ -4,11 +4,12 @@ use std::{cmp::min, cmp::max};
 use rand::{Rng};
 use std::collections::HashMap;//Optimisation change default hashing algorithm
 
-///It's in the name
-struct ABooleanWithExtraSteps
+
+
+struct shouldStun
 {
-	///A bool
-	value : bool,
+	///0 : no stun, 1 : stun, 2 : locked
+	stun : u8,
 }
 ///Champion (struct)<br />:
 ///Stores the basic information surrounding a champion
@@ -110,6 +111,10 @@ enum StatusType
 	TitansResolve(u8),
 
 	ShroudOfStillness(),
+
+	DragonClawHeal(),
+
+	CrowdControlImmune(),
 
 	///None
 	NoEffect()
@@ -587,6 +592,27 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 		47 => {friendlyChampions[selfIndex].ar += 0.2; friendlyChampions[selfIndex].dc += 15;
 				friendlyChampions[selfIndex].se.push(StatusEffect { duration: 0, statusType: StatusType::ShroudOfStillness(), ..Default::default() })
 		}
+		55 => {friendlyChampions[selfIndex].mr += 1.2;
+				friendlyChampions[selfIndex].se.push(StatusEffect{duration : 200, statusType : StatusType::DragonClawHeal(), ..Default::default()})
+
+		
+		}
+		56 => {friendlyChampions[selfIndex].mr += 0.2; friendlyChampions[selfIndex].attackSpeedModifier *= 1.1; friendlyChampions[selfIndex].ad += 10.0}//
+		57 => {friendlyChampions[selfIndex].mr += 0.2; friendlyChampions[selfIndex].dc += 15; friendlyChampions[selfIndex].attackSpeedModifier *= 1.2;
+				friendlyChampions[selfIndex].se.push(StatusEffect{duration : 15000, statusType: StatusType::CrowdControlImmune(), ..Default::default()});
+		}
+		58 => {friendlyChampions[selfIndex].cm += 15; friendlyChampions[selfIndex].mr += 0.2;
+			let thisLocation = friendlyChampions[selfIndex].location;
+			for friendlyChamp in friendlyChampions
+			  	{
+					if friendlyChamp.location[1] == thisLocation[1] && DistanceBetweenPoints(friendlyChamp.location, thisLocation) < 3 //discrepency distances
+					{
+						friendlyChamp.ap += 0.3; //discrepency shouldn't stack whether from multiple items on 1 person or from multiple champs
+					}
+			  	}
+		}
+		66 => {friendlyChampions[selfIndex].attackSpeedModifier *= 1.55;
+		friendlyChampions[selfIndex].ra += 1;}
 		_ => println!("Unimplemented Item"),
 	}
 }
@@ -984,7 +1010,7 @@ fn InGridHexagon(pos : [i8 ; 2]) -> bool//not going to attempt getting it workin
 	}
 	return false
 }
-fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, timeUnit : i8, selfIndex : usize, stun : &mut ABooleanWithExtraSteps, seToAdd : &mut Vec<StatusEffect>) -> bool
+fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, timeUnit : i8, selfIndex : usize, stun : &mut shouldStun, seToAdd : &mut Vec<StatusEffect>) -> bool
 {//discrepency on whether the last tick of a status applies or not etc
 	statusEffect.duration -= timeUnit as i16;
 	if friendlyChampions[selfIndex].shed == 2
@@ -1001,7 +1027,7 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 				StatusType::AttackSpeedBuff(_, modifier) => friendlyChampions[selfIndex].attackSpeedModifier /= modifier,
 				StatusType::IncreaseDamageTaken(_, modifier) => friendlyChampions[selfIndex].incomingDMGModifier = modifier,
 				StatusType::Untargetable(_) => friendlyChampions[selfIndex].targetable = true,//discrepency if have 2 untargetable effects this will untarget too early
-				StatusType::MorellonomiconBurn(_, dmgToDo, _) => friendlyChampions[selfIndex].health -= dmgToDo,
+				StatusType::MorellonomiconBurn(_, dmgToDo, _) => friendlyChampions[selfIndex].health -= dmgToDo,//does moremellicon dmg heal
 				StatusType::IonicSparkEffect() => {friendlyChampions[selfIndex].mr *= 2.0; friendlyChampions[selfIndex].zap = false}, //discrepency maybe if something like illaoi/ daega ult reduces mr it wont increase by equal amount 
 				StatusType::ArchangelStaff(_, apAmount) => {statusEffect.duration = 500; statusEffect.statusType = StatusType::ArchangelStaff(false, apAmount); return true},
 				StatusType::Banished(_) => {friendlyChampions[selfIndex].banish = false},
@@ -1029,6 +1055,21 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 						
 					}
 				}
+				StatusType::DragonClawHeal() =>
+				{
+					statusEffect.duration = 200;
+					let mut numTargeting : f32 = 0.0;
+					let ourID = friendlyChampions[selfIndex].id;
+					for enemyChamp in enemyChampions
+					{
+						if enemyChamp.target == ourID
+						{
+							numTargeting += 1.0;
+						}
+					}
+					let healingAmount = friendlyChampions[selfIndex].initialHP * 0.012 * numTargeting;
+					friendlyChampions[selfIndex].heal(healingAmount);
+				}
 				_ => ()//println!("Unimplemented")
 			}
 		return false
@@ -1037,7 +1078,10 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 	{
 		StatusType::AttackSpeedBuff(false, modifier) => {friendlyChampions[selfIndex].attackSpeedModifier *= modifier;
 															  statusEffect.statusType = StatusType::AttackSpeedBuff(true, modifier)},
-		StatusType::Stun() => stun.value = true,
+		StatusType::Stun() => {if stun.stun == 0
+			{
+				stun.stun = 1;
+			}}, 
 		StatusType::IncreaseDamageTaken(false, modifier) => {friendlyChampions[selfIndex].incomingDMGModifier *= modifier;
 																  statusEffect.statusType = StatusType::IncreaseDamageTaken(true, modifier)}
 		StatusType::EdgeOfNight() => {if friendlyChampions[selfIndex].health <= (friendlyChampions[selfIndex].initialHP / 2.0)
@@ -1131,7 +1175,11 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 					friendlyChampions[selfIndex].mr += 0.25;
 				}
 			}}
-		_ => ()//println!("Unimplemented")
+		StatusType::CrowdControlImmune() => 
+		{
+			stun.stun = 2;
+		}
+			_ => ()//println!("Unimplemented")
 	}
 	true
 }
@@ -1144,14 +1192,14 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 	timeUnit : time unit of a frame, in centiseconds
 	movementAmount : precalculated movement distance for 1 frame
 	gridSize : depreciated
-		*/
+	*/
 	//let mut thisChamp = &mut friendlyChampions[selfIndex]; //optimisation, maybe setting friendlyChampions[selfIndex] to a var is much faster than repeatedly calling access to a vector??
 	friendlyChampions[selfIndex].targetCountDown -= timeUnit;//Reduce cooldown to check target/ find new target
 	friendlyChampions[selfIndex].autoAttackDelay -= timeUnit as i16;//Risks going out of bounds as auto attack value may not be called for some time
 	friendlyChampions[selfIndex].gMD -= timeUnit as i16;
 	{
 		let mut statusEffects = friendlyChampions[selfIndex].se.clone();
-		let mut stun = ABooleanWithExtraSteps{value : false};
+		let mut stun = shouldStun { stun: 0 };
 		let mut seToAdd : Vec<StatusEffect> = Vec::new();
 		statusEffects.retain_mut(|x| performStatus(x, friendlyChampions, enemyChampions, timeUnit, selfIndex, &mut stun, &mut seToAdd));
 		friendlyChampions[selfIndex].se = statusEffects;
@@ -1166,7 +1214,7 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 			friendlyChampions[selfIndex].shed = 0;
 		}
 		friendlyChampions[selfIndex].shields.retain_mut(|x| UpdateShield(x, timeUnit));
-		if stun.value
+		if stun.stun == 1
 		{
 			println!("stunned");
 			return
@@ -1256,9 +1304,27 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 				}
 				println!("gain mana");
 			}
+
+
+			if friendlyChampions[selfIndex].items.contains(&56)//discrepency maybe if dodge then second runaans doesnt go thru
+			{
+				let locationToCheck = friendlyChampions[selfIndex].location; //discrepency maybe bolt goes to nearest from location of person being attacked
+				let mut lowestDistance = 100;
+				let mut indexOfChamp = 0;
+				for (i, enemyChamp) in enemyChampions.iter().enumerate()
+				{
+					let distanceToLocation = DistanceBetweenPoints(enemyChamp.location, locationToCheck);
+					if distanceToLocation < lowestDistance
+					{
+						lowestDistance = distanceToLocation;
+						indexOfChamp = i;
+					}
+				}
+				dealDamage(selfIndex, friendlyChampions, &mut enemyChampions[indexOfChamp], friendlyChampions[selfIndex].ad * 0.7, DamageType::Physical())//runaans can miss
+			}
 			println!("maybe dodge");
 			//discrepency maybe can  dodge actual ability
-			if enemyChampions[index].dc <= 0 || enemyChampions[index].dc < rand::thread_rng().gen_range(0..100) //calculating whether to dodge
+			if enemyChampions[index].dc <= 0 || enemyChampions[index].dc < rand::thread_rng().gen_range(0..100) || friendlyChampions[selfIndex].items.contains(&66)//calculating whether to dodge
 			{//optimisation from not generating random gen
 				println!("No Dodge");
 				dealDamage(selfIndex, friendlyChampions, &mut enemyChampions[index], friendlyChampions[selfIndex].ad, DamageType::Physical());
