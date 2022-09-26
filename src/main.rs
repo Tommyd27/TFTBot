@@ -24,9 +24,9 @@ struct Champion //Basic structure to store the base stats of a champ
 	///HP values for each star level
     hp : [f32; 3], 
 	///Starting mana
-    sm : u8,
+    sm : u16,
 	///Ability Mana Cost
-    mc : u8,
+    mc : u16,
 	///Base Armor Value
     ar : f32,
 	///Base Magic Resist Value
@@ -110,6 +110,8 @@ enum StatusType
 	TitansResolve(u8),
 
 	ShroudOfStillness(),
+
+	ProtectorsVow(),
 
 	///None
 	NoEffect()
@@ -289,11 +291,11 @@ struct SummonedChampion //Structure for champions on board in battle
 	location : [i8 ; 2], //array of p, q coordinates, r can be calculated with r = -p - q
 	movementProgress : [i8 ; 2], //progress of movement before moving to a new square, goes to 10 before moving
 	health : f32, //health
-	cm : u8, //current mana
+	cm : u16, //current mana
 	dc : u8, //dodge chance
 	cr : u8, //crit rate
 	critD : f32, // crit damage
-	mc : u8, //mana/ ability cost
+	mc : u16, //mana/ ability cost
 	ar : f32, //armor
 	mr : f32,  //magic resist
 	ad : f32, //attack damage
@@ -586,6 +588,9 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 		}
 		47 => {friendlyChampions[selfIndex].ar += 0.2; friendlyChampions[selfIndex].dc += 15;
 				friendlyChampions[selfIndex].se.push(StatusEffect { duration: 0, statusType: StatusType::ShroudOfStillness(), ..Default::default() })
+		}
+		48 => {friendlyChampions[selfIndex].ar += 0.2; friendlyChampions[selfIndex].cm += 15;
+			   friendlyChampions[selfIndex].se.push(StatusEffect { duration: 32767, statusType: StatusType::ProtectorsVow(), ..Default::default() })
 		}
 		_ => println!("Unimplemented Item"),
 	}
@@ -937,7 +942,7 @@ fn dealDamage(selfIndex : usize,
 
 	if target.gMD <= 0
 	{
-		target.cm += (0.7 * damage) as u8; //discrepency, should be 1% of premitigation and 7% of post.
+		target.cm += (0.7 * damage) as u16; //discrepency, should be 1% of premitigation and 7% of post.
 	}
 	for shield in &mut target.shields
 	{
@@ -1024,9 +1029,16 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 				},
 				StatusType::ShroudOfStillness() =>
 				{
+					let pos = friendlyChampions[selfIndex].location;
+					let halfY = pos[1] / 2;
 					for enemy in enemyChampions
 					{
-						
+						let yDist = enemy.location[1] / 2 - halfY;
+						let xDiff = pos[0] - yDist - enemy.location[0];
+						if xDiff <= 1 && xDiff >= 0
+						{
+							enemy.cm -= (7 * enemy.mc) / 20;
+						}
 					}
 				}
 				_ => ()//println!("Unimplemented")
@@ -1131,7 +1143,25 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 					friendlyChampions[selfIndex].mr += 0.25;
 				}
 			}}
-		_ => ()//println!("Unimplemented")
+		StatusType::ProtectorsVow() =>
+		{
+			if friendlyChampions[selfIndex].health <= (friendlyChampions[selfIndex].initialHP / 2.0)
+			{
+
+				let thisLocation = friendlyChampions[selfIndex].location; //does also shield self?
+				for friendlyChamp in friendlyChampions
+				{
+					if DistanceBetweenPoints(thisLocation, friendlyChamp.location) < 7
+					{
+						friendlyChamp.mr += 0.15;
+						friendlyChamp.ar += 0.15;
+						friendlyChamp.shields.push(Shield{duration : 200, size : friendlyChamp.initialHP / 5.0, ..Default::default()})
+					}
+				}
+				return false
+			}
+		}
+			_ => ()//println!("Unimplemented")
 	}
 	true
 }
