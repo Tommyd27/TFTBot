@@ -117,6 +117,8 @@ enum StatusType
 
 	CrowdControlImmune(),
 
+	LastWhisperShred(bool),
+
 	///None
 	NoEffect()
 }
@@ -617,6 +619,9 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 		}
 		66 => {friendlyChampions[selfIndex].attackSpeedModifier *= 1.55;
 		friendlyChampions[selfIndex].ra += 1;}
+		67 => {friendlyChampions[selfIndex].attackSpeedModifier *= 1.21;
+			   friendlyChampions[selfIndex].cr += 15;
+		}//discrepency
 		_ => println!("Unimplemented Item"),
 	}
 }
@@ -863,6 +868,21 @@ fn dealDamage(selfIndex : usize,
 			  {
 				friendlyChampions[selfIndex].heal(damage / 4.0);
 			  }
+			  if friendlyChampions[selfIndex].items.contains(&67)
+			  {
+				let mut alreadyHasShred = false;
+				for statusEffect in &target.se
+				{
+					if StatusType::LastWhisperShred(true) == statusEffect.statusType || StatusType::LastWhisperShred(false) == statusEffect.statusType //optimisation
+					{
+						alreadyHasShred = true;
+					}
+				}
+				if ! alreadyHasShred
+				{
+					target.se.push(StatusEffect{duration : 500, statusType : StatusType::LastWhisperShred(false), isNegative : true})
+				}
+			  }
 
 		},
 		DamageType::Magical() => {damage = (damageAmount * friendlyChampions[selfIndex].ap * target.incomingDMGModifier) / (1.0 + target.mr);
@@ -1081,6 +1101,7 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 					let healingAmount = friendlyChampions[selfIndex].initialHP * 0.012 * numTargeting;
 					friendlyChampions[selfIndex].heal(healingAmount);
 				}
+				StatusType::LastWhisperShred(_) => {friendlyChampions[selfIndex].ar *= 2.0}//discrepency if thingy was reduced during time then	
 				_ => ()//println!("Unimplemented")
 			}
 		return false
@@ -1203,6 +1224,11 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 				}
 				return false
 			}
+		}
+		StatusType::LastWhisperShred(false) =>
+		{
+			friendlyChampions[selfIndex].ar /= 2.0;
+			statusEffect.statusType = StatusType::LastWhisperShred(true);
 		}
 		StatusType::CrowdControlImmune() => 
 		{
