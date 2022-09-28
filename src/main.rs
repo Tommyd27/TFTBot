@@ -119,6 +119,8 @@ enum StatusType
 
 	LastWhisperShred(bool),
 
+	ShredMagicResist(bool, f32),
+
 	///None
 	NoEffect()
 }
@@ -385,7 +387,8 @@ struct SummonedChampion //Structure for champions on board in battle
 	traits : Vec<u8>, //trait abilities
 	zap : bool, //zap for ionic spark on ability cast
 	banish : bool,//zenith banish
-	titansResolveStack : u8
+	titansResolveStack : u8,
+	omnivamp : f32,
 }
 
 impl SummonedChampion 
@@ -432,6 +435,7 @@ impl SummonedChampion
 						   zap : false, //discrepency maybe if order of status Effects is ever affected, alternative would be to iterate through status Effects and check for ionic spark
 						   banish : false,//discrepency with this and many others if one status effect banishing ends and another is still going on etc.
 						   titansResolveStack : 0,
+						   omnivamp : 0.0,
 						}
 	}
 	fn heal(&mut self, mut healingAmount : f32)
@@ -536,8 +540,9 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 		14 => {friendlyChampions[selfIndex].ad += 10.0; friendlyChampions[selfIndex].ar += 0.2; 
 			   friendlyChampions[selfIndex].se.push(StatusEffect { duration: 32767, statusType: StatusType::EdgeOfNight(), ..Default::default()})},//
 		15 => {friendlyChampions[selfIndex].ad += 10.0; friendlyChampions[selfIndex].mr += 0.2;
-			   friendlyChampions[selfIndex].se.push(StatusEffect { duration: 32767, statusType: StatusType::Bloodthirster(), ..Default::default()})		
-		},
+			   friendlyChampions[selfIndex].se.push(StatusEffect { duration: 32767, statusType: StatusType::Bloodthirster(), ..Default::default()});		
+			   friendlyChampions[selfIndex].omnivamp += 0.25;
+			},
 		16 => {friendlyChampions[selfIndex].ad += 10.0; friendlyChampions[selfIndex].attackSpeedModifier *= 0.1},//
 		17 => {friendlyChampions[selfIndex].ad += 10.0; friendlyChampions[selfIndex].cr += 75; friendlyChampions[selfIndex].critD += 0.1},// //discrepency cuz crit rate ig
 		18 => {friendlyChampions[selfIndex].ad += 10.0; friendlyChampions[selfIndex].cm += 15},//
@@ -622,6 +627,26 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 		67 => {friendlyChampions[selfIndex].attackSpeedModifier *= 1.21;
 			   friendlyChampions[selfIndex].cr += 15;
 		}//discrepency
+		68 => {friendlyChampions[selfIndex].attackSpeedModifier *= 1.21; friendlyChampions[selfIndex].cm += 15;}
+		77 => {friendlyChampions[selfIndex].cr += 15; friendlyChampions[selfIndex].dc += 15;}
+		78 => {friendlyChampions[selfIndex].cm += 10; friendlyChampions[selfIndex].cr += 15; 
+		
+			if rand::thread_rng().gen_range(0..100) > 50//discrepency does this even mf'ing work
+			{
+				friendlyChampions[selfIndex].ad += 30.0;
+				friendlyChampions[selfIndex].ap += 0.3;
+				friendlyChampions[selfIndex].omnivamp += 0.15;
+			}
+			else
+			{
+				friendlyChampions[selfIndex].ad += 15.0;
+				friendlyChampions[selfIndex].ap += 0.15;
+				friendlyChampions[selfIndex].omnivamp += 0.3;
+			}
+		}
+		88 => {
+			friendlyChampions[selfIndex].cm += 50;
+		}
 		_ => println!("Unimplemented Item"),
 	}
 }
@@ -663,6 +688,22 @@ impl Board
 
 		for i in 0..self.p1Champions.len()//optimisation, discrepency slam item mid round?
 		{
+			if self.p1Champions[i].items[0] == 77//error if champ has 0 items.
+			{
+			//discrepency
+				//implement later yooo
+				let level = true; //implement getting level
+				if level
+				{
+					self.p1Champions[i].items[1] = rand::thread_rng().gen_range(0..9) * 10 + rand::thread_rng().gen_range(0..9);
+					self.p1Champions[i].items[2] = rand::thread_rng().gen_range(0..9);//discrepency do this properly later
+				}
+				else 
+				{
+					self.p1Champions[i].items[1] = rand::thread_rng().gen_range(0..9) * 10 + rand::thread_rng().gen_range(0..9);
+					self.p1Champions[i].items[2] = rand::thread_rng().gen_range(0..9) * 10 + rand::thread_rng().gen_range(0..9);
+				}
+			}
 			for item in self.p1Champions[i].items
 			{
 				GiveItemEffect(item, &mut self.p1Champions, &mut self.p2Champions, i);
@@ -864,10 +905,6 @@ fn dealDamage(selfIndex : usize,
 				}
 				damage += extraDamage;
 			  }
-			  if friendlyChampions[selfIndex].items.contains(&15)//maybe not only physical damage, discrepency?
-			  {
-				friendlyChampions[selfIndex].heal(damage / 4.0);
-			  }
 			  if friendlyChampions[selfIndex].items.contains(&67)
 			  {
 				let mut alreadyHasShred = false;
@@ -989,6 +1026,8 @@ fn dealDamage(selfIndex : usize,
 	{
 		target.cm += (0.7 * damage) as u16; //discrepency, should be 1% of premitigation and 7% of post.
 	}
+	let omnivamp = friendlyChampions[selfIndex].omnivamp;
+	friendlyChampions[selfIndex].heal(damage * omnivamp);
 	for shield in &mut target.shields
 	{
 		if damageType == shield.blocksType.unwrap_or(damageType)
@@ -1359,17 +1398,37 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 				}
 				println!("gain mana");
 			}
+			if friendlyChampions[selfIndex].items.contains(&68)//optimisation go through foreach in items and match statement
+			{
+				dealDamage(selfIndex, friendlyChampions, &mut enemyChampions[index], 50.0, DamageType::Magical());
+				enemyChampions[index].se.push(StatusEffect { duration: 500, statusType: StatusType::ShredMagicResist(false, 2.0), isNegative: true });
+				let mut count = 0;
+				for enemyChamp in enemyChampions.iter_mut()
+				{
+					if enemyChamp.id == friendlyChampions[selfIndex].target
+					{
+						continue;
+					}
+					count += 1;
+					dealDamage(selfIndex, friendlyChampions, enemyChamp, 50.0, DamageType::Magical());
+					enemyChamp.se.push(StatusEffect { duration: 500, statusType: StatusType::ShredMagicResist(false, 2.0), isNegative: true });
+					if count >= 3
+					{
+						break;
+					}
+				}
+			}
 
 
 			if friendlyChampions[selfIndex].items.contains(&56)//discrepency maybe if dodge then second runaans doesnt go thru
 			{
 				let locationToCheck = friendlyChampions[selfIndex].location; //discrepency maybe bolt goes to nearest from location of person being attacked
 				let mut lowestDistance = 100;
-				let mut indexOfChamp = 0;
+				let mut indexOfChamp = 0;//discrepency runaans will attack same person twice if its only person left alive
 				for (i, enemyChamp) in enemyChampions.iter().enumerate()
 				{
-					let distanceToLocation = DistanceBetweenPoints(enemyChamp.location, locationToCheck);
-					if distanceToLocation < lowestDistance
+					let distanceToLocation = DistanceBetweenPoints(enemyChamp.location, locationToCheck);//discrepency check that runaans isnt attacking same person
+					if distanceToLocation < lowestDistance && index != i
 					{
 						lowestDistance = distanceToLocation;
 						indexOfChamp = i;
@@ -1504,6 +1563,10 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 			friendlyChampions[selfIndex].health -= (friendlyChampions[selfIndex].mc as f32) * 2.5;
 		}
 		friendlyChampions[selfIndex].cm = 0;
+		if friendlyChampions[selfIndex].items.contains(&88)
+		{
+			friendlyChampions[selfIndex].cm = 20;
+		}
 		friendlyChampions[selfIndex].gMD = 100;
 		CHAMPIONABILITIES[friendlyChampions[selfIndex].aID](friendlyChampions, enemyChampions, selfIndex);	
 	}
