@@ -147,16 +147,10 @@ impl Default for StatusEffect{
 
 ///CHAMPIONS (const):<br />
 ///Stores all the champion information
-const CHAMPIONS : [Champion ; 3] = [Champion{id : 0, cost : 1, hp : [650.0, 1170.0, 2106.0], sm : 70, mc : 140, ar : 0.25, mr : 0.25, ad : [40.0, 72.0, 129.0], aS : 0.7, ra : 3, aID : 0, traits : [1, 2, 0]}, 
-                 					Champion{id : 1, cost : 2, hp : [650.0, 1170.0, 2106.0], sm : 50, mc : 100, ar : 0.45, mr : 0.45, ad : [55.0, 99.0, 178.0], aS : 0.7, ra : 1, aID : 1, traits : [2, 3, 0]}, 
+const CHAMPIONS : [Champion ; 3] = [Champion{id : 0, cost : 1, hp : [650.0, 1170.0, 2106.0], sm : 70, mc : 140, ar : 0.25, mr : 0.25, ad : [40.0, 72.0, 129.0], aS : 0.7, ra : 3, aID : 0, traits : [1, 2, 0]}, //Lulu
+                 					Champion{id : 1, cost : 2, hp : [650.0, 1170.0, 2106.0], sm : 50, mc : 100, ar : 0.45, mr : 0.45, ad : [55.0, 99.0, 178.0], aS : 0.7, ra : 1, aID : 1, traits : [2, 3, 0]}, //Aatrox
                  					Champion{id : 2, cost : 3, hp : [700.0, 1260.0, 2268.0], sm : 35, mc : 35, ar : 0.25, mr : 0.25, ad : [75.0, 135.0, 243.0], aS : 0.7, ra : 3, aID : 0, traits : [4, 5, 0]}];
-///LuluAbility (func):<br />
-///Whimsy
-///Lulu enchants the nearest targets. Enchanted allies gain Attack Speed for 1.5 seconds. Enchanted enemies are stunned and transformed into harmless dragonlings, taking increased damage while stunned. If there are fewer than 3 units nearby, Lulu will enchant herself.<br />
-///Targets:
-///3/4/5<br />
-///Attack Speed:
-///70/80/120%
+
 fn LuluAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize)
 {
 	let mut playerDistances : Vec<[i8 ; 2]> = Vec::new();
@@ -210,13 +204,6 @@ fn LuluAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : 
 	}
 }
 
-///AatroxAbility (func):
-///Deathbringer Strike
-///Aatrox strikes his target for physical damage and heals himself.
-///Attack Damage:
-///300/305/310%
-///Heal:
-///300/350/400
 fn AatroxAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize)
 {
 	let starLevel = friendlyChampions[selfIndex].starLevel;
@@ -473,11 +460,73 @@ struct Board
 {
 	p1Champions : Vec<SummonedChampion>, //Vector of player 1's champs
 	p2Champions : Vec<SummonedChampion>, //Vector of player 2's champs
-	p1Augments : [u8 ; 3],
-	p2Augments : [u8 ; 3],
+	//p1Augments : [u8 ; 3],
+	//p2Augments : [u8 ; 3],
 	timeUnit : i8, //time unit for board in centiseconds (1/100 of a second
 	//gridSize : [i8 ; 2], //grid size [x, y, gridType]
 	movementAmount : i8, //will be calculated, const / timeUnit
+}
+
+struct Projectile
+{
+	location : [i8 ; 2],
+	locationProgress : [i8 ; 2],
+	targetLocation : Option<[i8 ; 2]>,
+	targetID : usize,
+	damage : f32,
+	splashDamage : f32,
+	speed : i8,
+}
+
+impl Projectile
+{
+	fn SimulateTick(mut self : Projectile, possibleTargets : &mut Vec<SummonedChampion>) -> bool
+	{
+		//discrepency only checks after move to theoretically could phase through someone
+		let targetLocation = match self.targetLocation
+		{
+			Some(location) => {location},
+			None => {let mut outLocation = [-1, -1];
+				for possibleTarget in possibleTargets.iter()
+				{
+					if possibleTarget.id == self.targetID
+					{
+						outLocation = possibleTarget.location;
+					}
+				}
+				outLocation
+			},
+		};
+		if targetLocation[0] == -1
+		{
+			return false
+		}
+
+		self.locationProgress[0] += self.speed * sign(targetLocation[0] - self.location[0]);
+		self.locationProgress[1] += self.speed * sign(targetLocation[1] - self.location[1]);
+		if self.locationProgress[0].abs() >= 10
+		{
+			self.location[0] += sign(self.locationProgress[0]);
+		}
+		if self.locationProgress[1].abs() >= 10
+		{
+			self.location[1] += sign(self.locationProgress[1]);
+		}
+		if ! InGridHexagon(self.location)
+		{
+			return false;
+		}
+
+		for possibleTarget in possibleTargets.iter_mut()
+		{
+			if self.location == possibleTarget.location
+			{
+				dealDamage(selfIndex, friendlyChampions, target, damageAmount, damageType)
+				return false
+			}
+		}
+		true
+	}
 }
 
 /* 
@@ -670,8 +719,8 @@ impl Board
 		
 		Board{p1Champions : p1Champions,
 			  p2Champions : p2Champions,
-			  p1Augments : [0, 0, 0],
-			  p2Augments : [0, 0, 0],
+			  //p1Augments : [0, 0, 0],
+			  //p2Augments : [0, 0, 0],
 			  timeUnit : timeUnit,
 			  //gridSize : [7, 8],
 			  movementAmount : 10 / timeUnit as i8, //optimisation
@@ -684,7 +733,17 @@ impl Board
 	{
 		let mut debugCount : u32 = 0;
 
+		/* 
+		for augment in self.p1Augments
+		{
+			match augment
+			{
+				0 => continue,
+				1 => *p1Traits.entry(1).or_insert(1) += 1,
+				_ => (),
+			}
 
+		}*/
 
 		for i in 0..self.p1Champions.len()//optimisation, discrepency slam item mid round?
 		{
@@ -709,16 +768,9 @@ impl Board
 				GiveItemEffect(item, &mut self.p1Champions, &mut self.p2Champions, i);
 			}
 		}
-		for i in 0..self.p2Champions.len()
-		{
-			for item in self.p2Champions[i].items
-			{
-				GiveItemEffect(item, &mut self.p2Champions, &mut self.p1Champions, i);
-			}
-		}
-		/*
+		
 		let mut p1Traits : HashMap<u8, u8> = HashMap::new();
-		let mut p2Traits : HashMap<u8, u8> = HashMap::new();
+		//let mut p2Traits : HashMap<u8, u8> = HashMap::new();
 		for p1Champ in &mut self.p1Champions
 		{
 			for champTrait in &p1Champ.traits
@@ -731,47 +783,25 @@ impl Board
 				}
 			}
 		}
-		for p2Champ in &self.p2Champions
-		{
-			for champTrait in &p2Champ.traits
-			{
-				*p2Traits.entry(*champTrait).or_insert(1) += 1;
-			}
-		}
 
-		Augments:
-		0 => None
-		1 => Assassin Heart
-		for augment in self.p1Augments
-		{
-			match augment
-			{
-				0 => continue,
-				1 => *p1Traits.entry(1).or_insert(1) += 1,
-				_ => (),
-			}
 
-		}
-
-		for champTrait in p1Traits
+		for (traitType, level) in p1Traits
 		{	
 			/*Traits:
 			0 - 
 			1 - Assassin */
 
-
-
-			match champTrait.0
+			match traitType
 			{
 				1 => {
 					let mut extraCritChance = 15;
 					let mut extraCritDamage = 0.05;
-					if champTrait.1 > 5
+					if level > 5
 					{
 						extraCritChance = 45;
 						extraCritDamage = 0.45;
 					}
-					else if champTrait.1 > 3
+					else if level > 3
 					{
 						extraCritChance = 30;
 						extraCritDamage = 0.25;
@@ -787,16 +817,13 @@ impl Board
 				_ => ()
 			}
 		}
-		*/
+		
 		
 		for p1Champ in &mut self.p1Champions
 		{
 			p1Champ.initialHP = p1Champ.health;
 		}
-		for p2Champ in &mut self.p2Champions
-		{
-			p2Champ.initialHP = p2Champ.health;
-		}
+		let p1Projectiles : Vec<Projectile> = Vec::new();
 		while self.p1Champions.len() > 0 && self.p2Champions.len() > 0
 		{
 			println!("Debug : Iteration {}", debugCount);
@@ -809,10 +836,10 @@ impl Board
 			{
 				takeTurn(p2ChampionIndex, &mut self.p2Champions, &mut self.p1Champions, self.timeUnit, self.movementAmount)
 			}
-			/*for p1Champion in &mut *self.p1Champions
+			for projectile in &mut p1Projectiles
 			{
-				p1Champion.takeTurn(&mut self.p1Champions, &mut self.p2Champions, self.timeUnit, self.movementAmount, &mut randomGen)
-			}*/
+
+			}
 		}
 		println!("Debug : Battle Over");
 		if self.p1Champions.len() == 0
