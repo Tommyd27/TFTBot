@@ -222,7 +222,7 @@ fn AatroxAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions 
 	let ap = friendlyChampions[selfIndex].ap;
 	friendlyChampions[selfIndex].heal((300.0 + 50.0 * starLevel as f32) * ap);
 
-	dealDamage(selfIndex, friendlyChampions, &mut enemyChampions[targetIndex], (300.0 + 5.0 * starLevel as f32) * friendlyChampions[selfIndex].ad, DamageType::Physical())
+	dealDamage(selfIndex, friendlyChampions, &mut enemyChampions[targetIndex], (300.0 + 5.0 * starLevel as f32) * friendlyChampions[selfIndex].ad, DamageType::Physical(), false)
 }
 ///const CHAMPIONABILITIES :
 ///Stores all the champ abilities (index = abilityID)
@@ -474,13 +474,14 @@ struct Projectile
 	targetLocation : Option<[i8 ; 2]>,
 	targetID : usize,
 	damage : f32,
+	damageType : DamageType,
 	splashDamage : f32,
 	speed : i8,
 }
 
 impl Projectile
 {
-	fn SimulateTick(mut self : Projectile, possibleTargets : &mut Vec<SummonedChampion>) -> bool
+	fn SimulateTick(mut self : Projectile, possibleTargets : &mut Vec<SummonedChampion>, friendlyChampions : &mut Vec<SummonedChampion>, selfIndex : usize) -> bool
 	{
 		//discrepency only checks after move to theoretically could phase through someone
 		let targetLocation = match self.targetLocation
@@ -516,12 +517,16 @@ impl Projectile
 		{
 			return false;
 		}
-
+		
 		for possibleTarget in possibleTargets.iter_mut()
 		{
 			if self.location == possibleTarget.location
 			{
-				dealDamage(selfIndex, friendlyChampions, target, damageAmount, damageType)
+				dealDamage(selfIndex, friendlyChampions, possibleTarget, self.damage, self.damageType, false);
+				if self.splashDamage > 0.0
+				{
+					
+				}
 				return false
 			}
 		}
@@ -912,6 +917,7 @@ fn dealDamage(selfIndex : usize,
 			  target : &mut SummonedChampion,
 			  damageAmount : f32,
 			  damageType : DamageType,
+			  isSplash : bool
 			  )
 {
 	let mut damage : f32 = 0.0;
@@ -1427,7 +1433,7 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 			}
 			if friendlyChampions[selfIndex].items.contains(&68)//optimisation go through foreach in items and match statement
 			{
-				dealDamage(selfIndex, friendlyChampions, &mut enemyChampions[index], 50.0, DamageType::Magical());
+				dealDamage(selfIndex, friendlyChampions, &mut enemyChampions[index], 50.0, DamageType::Magical(), false);
 				enemyChampions[index].se.push(StatusEffect { duration: 500, statusType: StatusType::ShredMagicResist(false, 2.0), isNegative: true });
 				let mut count = 0;
 				for enemyChamp in enemyChampions.iter_mut()
@@ -1437,7 +1443,8 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 						continue;
 					}
 					count += 1;
-					dealDamage(selfIndex, friendlyChampions, enemyChamp, 50.0, DamageType::Magical());
+					dealDamage(selfIndex, friendlyChampions, enemyChamp, 50.0, DamageType::Magical(), false
+				);
 					enemyChamp.se.push(StatusEffect { duration: 500, statusType: StatusType::ShredMagicResist(false, 2.0), isNegative: true });
 					if count >= 3
 					{
@@ -1461,14 +1468,14 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 						indexOfChamp = i;
 					}
 				}
-				dealDamage(selfIndex, friendlyChampions, &mut enemyChampions[indexOfChamp], friendlyChampions[selfIndex].ad * 0.7, DamageType::Physical())//runaans can miss
+				dealDamage(selfIndex, friendlyChampions, &mut enemyChampions[indexOfChamp], friendlyChampions[selfIndex].ad * 0.7, DamageType::Physical(), false)//discrepency runaans can miss
 			}
 			println!("maybe dodge");
 			//discrepency maybe can  dodge actual ability
 			if enemyChampions[index].dc <= 0 || enemyChampions[index].dc < rand::thread_rng().gen_range(0..100) || friendlyChampions[selfIndex].items.contains(&66)//calculating whether to dodge
 			{//optimisation from not generating random gen
 				println!("No Dodge");
-				dealDamage(selfIndex, friendlyChampions, &mut enemyChampions[index], friendlyChampions[selfIndex].ad, DamageType::Physical());
+				dealDamage(selfIndex, friendlyChampions, &mut enemyChampions[index], friendlyChampions[selfIndex].ad, DamageType::Physical(), false);
 				
 				println!("Debug : Enemy Champion Health is {0}", enemyChampions[index].health);
 				if enemyChampions[index].health <= 0.0 //if enemy champion dead
