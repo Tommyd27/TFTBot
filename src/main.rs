@@ -151,7 +151,7 @@ const CHAMPIONS : [Champion ; 3] = [Champion{id : 0, cost : 1, hp : [650.0, 1170
                  					Champion{id : 1, cost : 2, hp : [650.0, 1170.0, 2106.0], sm : 50, mc : 100, ar : 0.45, mr : 0.45, ad : [55.0, 99.0, 178.0], aS : 0.7, ra : 1, aID : 1, traits : [2, 3, 0]}, //Aatrox
                  					Champion{id : 2, cost : 3, hp : [700.0, 1260.0, 2268.0], sm : 35, mc : 35, ar : 0.25, mr : 0.25, ad : [75.0, 135.0, 243.0], aS : 0.7, ra : 3, aID : 0, traits : [4, 5, 0]}];
 
-fn LuluAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize)
+fn LuluAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize, projectiles : &mut Vec<Projectile>)
 {
 	let mut playerDistances : Vec<[i8 ; 2]> = Vec::new();
 	let starLevel = friendlyChampions[selfIndex].starLevel;
@@ -204,7 +204,7 @@ fn LuluAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : 
 	}
 }
 
-fn AatroxAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize)
+fn AatroxAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize, projectiles : &mut Vec<Projectile>)
 {
 	let starLevel = friendlyChampions[selfIndex].starLevel;
 	//can strike from out of range
@@ -224,6 +224,14 @@ fn AatroxAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions 
 
 	dealDamage(selfIndex, friendlyChampions, &mut enemyChampions[targetIndex], (300.0 + 5.0 * starLevel as f32) * friendlyChampions[selfIndex].ad, DamageType::Physical(), false)
 }
+
+fn EzrealAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize, projectiles : &mut Vec<Projectile>)
+{
+	let targetLocation = enemyChampions[friendlyChampions[selfIndex].target];
+
+	projectiles.push()
+}
+
 ///const CHAMPIONABILITIES :
 ///Stores all the champ abilities (index = abilityID)
 ///All abilities are called in the form 
@@ -232,7 +240,7 @@ fn AatroxAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions 
 ///friendlyChampions : Mutable reference to allied champions
 ///enemyChampions : Mutable reference to enemy champions
 ///selfIndex : Index of champion (in friendlyChampions) who casted this ability
-const CHAMPIONABILITIES : [fn(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize) ; 2]	= 
+const CHAMPIONABILITIES : [fn(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize, projectiles : &mut Vec<Projectile>) ; 2]	= 
 	[LuluAbility, AatroxAbility];
 
 //discrepency, cast time = 0.5 seconds apparently
@@ -539,6 +547,24 @@ impl Projectile
 		}
 		true
 	}
+	fn new(location : [i8 ; 2], targetLocation : Option<[i8 ; 2]>, targetID : usize, damage : f32,
+		damageType : DamageType,
+		splashDamage : f32,
+		speed : i8,
+		shooterIndex : usize) -> Projectile
+		{
+			Projectile {
+				location : location,
+				locationProgress : [0, 0],
+				targetLocation : targetLocation,
+				targetID : targetID,
+				damage : damage,
+				damageType : damageType,
+				splashDamage : splashDamage,
+				speed : speed,
+				shooterIndex : shooterIndex,
+			}
+		}
 }
 
 /* 
@@ -842,12 +868,9 @@ impl Board
 			debugCount += 1;
 			for p1ChampionIndex in 0..self.p1Champions.len()
 			{
-				takeTurn(p1ChampionIndex, &mut self.p1Champions, &mut self.p2Champions, self.timeUnit, self.movementAmount)
+				takeTurn(p1ChampionIndex, &mut self.p1Champions, &mut self.p2Champions, self.timeUnit, self.movementAmount, &mut p1Projectiles)
 			}
-			for p2ChampionIndex in 0..self.p2Champions.len()
-			{
-				takeTurn(p2ChampionIndex, &mut self.p2Champions, &mut self.p1Champions, self.timeUnit, self.movementAmount)
-			}
+
 			p1Projectiles.retain_mut(|f| f.SimulateTick(&mut self.p2Champions, &mut self.p1Champions));
 		}
 		println!("Debug : Battle Over");
@@ -1314,7 +1337,7 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 	}
 	true
 }
-fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, timeUnit : i8, movementAmount : i8)
+fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>,timeUnit : i8, movementAmount : i8, projectiles : &mut Vec<Projectile>)
 {
 	/*
 	friendlyChampions[selfIndex] : this champion
@@ -1606,6 +1629,6 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 			friendlyChampions[selfIndex].cm = 20;
 		}
 		friendlyChampions[selfIndex].gMD = 100;
-		CHAMPIONABILITIES[friendlyChampions[selfIndex].aID](friendlyChampions, enemyChampions, selfIndex);	
+		CHAMPIONABILITIES[friendlyChampions[selfIndex].aID](friendlyChampions, enemyChampions, selfIndex, projectiles);	
 	}
 }
