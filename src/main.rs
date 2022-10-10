@@ -482,7 +482,7 @@ struct Projectile
 
 impl Projectile
 {
-	fn SimulateTick(mut self : Projectile, possibleTargets : &mut Vec<SummonedChampion>, friendlyChampions : &mut Vec<SummonedChampion>) -> bool
+	fn SimulateTick(self : &mut Projectile, possibleTargets : &mut Vec<SummonedChampion>, friendlyChampions : &mut Vec<SummonedChampion>) -> bool
 	{
 		//discrepency only checks after move to theoretically could phase through someone
 		let targetLocation = match self.targetLocation
