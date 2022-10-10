@@ -525,7 +525,10 @@ impl Projectile
 				dealDamage(selfIndex, friendlyChampions, possibleTarget, self.damage, self.damageType, false);
 				if self.splashDamage > 0.0
 				{
-					
+					for possibleTarget in possibleTargets.iter_mut()
+					{
+						
+					}
 				}
 				return false
 			}
