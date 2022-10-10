@@ -477,11 +477,12 @@ struct Projectile
 	damageType : DamageType,
 	splashDamage : f32,
 	speed : i8,
+	shooterIndex : usize,
 }
 
 impl Projectile
 {
-	fn SimulateTick(mut self : Projectile, possibleTargets : &mut Vec<SummonedChampion>, friendlyChampions : &mut Vec<SummonedChampion>, selfIndex : usize) -> bool
+	fn SimulateTick(mut self : Projectile, possibleTargets : &mut Vec<SummonedChampion>, friendlyChampions : &mut Vec<SummonedChampion>) -> bool
 	{
 		//discrepency only checks after move to theoretically could phase through someone
 		let targetLocation = match self.targetLocation
@@ -522,12 +523,15 @@ impl Projectile
 		{
 			if self.location == possibleTarget.location
 			{
-				dealDamage(selfIndex, friendlyChampions, possibleTarget, self.damage, self.damageType, false);
+				dealDamage(self.shooterIndex, friendlyChampions, possibleTarget, self.damage, self.damageType, false);
 				if self.splashDamage > 0.0
 				{
-					for possibleTarget in possibleTargets.iter_mut()
+					for possibleSecondaryTarget in possibleTargets.iter_mut()
 					{
-						
+						if DistanceBetweenPoints(self.location, possibleSecondaryTarget.location) < 3
+						{
+							dealDamage(self.shooterIndex, friendlyChampions, possibleSecondaryTarget, self.splashDamage, self.damageType, true);
+						}
 					}
 				}
 				return false
@@ -831,7 +835,7 @@ impl Board
 		{
 			p1Champ.initialHP = p1Champ.health;
 		}
-		let p1Projectiles : Vec<Projectile> = Vec::new();
+		let mut p1Projectiles : Vec<Projectile> = Vec::new();
 		while self.p1Champions.len() > 0 && self.p2Champions.len() > 0
 		{
 			println!("Debug : Iteration {}", debugCount);
@@ -844,10 +848,7 @@ impl Board
 			{
 				takeTurn(p2ChampionIndex, &mut self.p2Champions, &mut self.p1Champions, self.timeUnit, self.movementAmount)
 			}
-			for projectile in &mut p1Projectiles
-			{
-
-			}
+			p1Projectiles.retain_mut(|f| f.SimulateTick(&mut self.p2Champions, &mut self.p1Champions));
 		}
 		println!("Debug : Battle Over");
 		if self.p1Champions.len() == 0
