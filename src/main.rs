@@ -1220,7 +1220,7 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 												if DistanceBetweenPoints(enemyChamp.location, friendlyChampions[selfIndex].location) < 3
 												{
 													let dmg = enemyChamp.initialHP / 20.0;
-													enemyChamp.se.push(StatusEffect{duration : 300, statusType : StatusType::MorellonomiconBurn(enem, (), ())})
+													enemyChamp.se.push(StatusEffect{duration : 300, statusType : StatusType::MorellonomiconBurn(dmg, dmg / 3.0, 100), ..Default::default()})
 												}
 											 }
 				}
