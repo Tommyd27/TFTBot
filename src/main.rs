@@ -497,7 +497,7 @@ struct Projectile
 	damageType : DamageType,
 	splashDamage : f32,
 	speed : i8,
-	shooterIndex : usize,
+	shooterID : usize,
 }
 
 impl Projectile
@@ -543,6 +543,14 @@ impl Projectile
 		{
 			if self.location == possibleTarget.location
 			{
+				let shooterIndex : usize = usize::MAX;
+				for champ in friendlyChampions
+				{
+					if champ.id == self.shooterID
+					{
+						shooterIndex = //need to work on shooter index's/ ids
+					}
+				}
 				dealDamage(self.shooterIndex, friendlyChampions, possibleTarget, self.damage, self.damageType, false);
 				if self.splashDamage > 0.0
 				{
@@ -563,7 +571,7 @@ impl Projectile
 		damageType : DamageType,
 		splashDamage : f32,
 		speed : i8,
-		shooterIndex : usize) -> Projectile
+		shooterID : usize) -> Projectile
 		{
 			Projectile {
 				location : location,
@@ -574,7 +582,7 @@ impl Projectile
 				damageType : damageType,
 				splashDamage : splashDamage,
 				speed : speed,
-				shooterIndex : shooterIndex,
+				shooterID : shooterID,
 			}
 		}
 }
@@ -818,8 +826,31 @@ impl Board
 				GiveItemEffect(item, &mut self.p1Champions, &mut self.p2Champions, i);
 			}
 		}
+		for i in 0..self.p2Champions.len()//optimisation, discrepency slam item mid round?
+		{
+			if self.p2Champions[i].items[0] == 77//error if champ has 0 items.
+			{
+			//discrepency
+				//implement later yooo
+				let level = true; //implement getting level
+				if level
+				{
+					self.p2Champions[i].items[1] = rand::thread_rng().gen_range(0..9) * 10 + rand::thread_rng().gen_range(0..9);
+					self.p2Champions[i].items[2] = rand::thread_rng().gen_range(0..9);//discrepency do this properly later
+				}
+				else 
+				{
+					self.p2Champions[i].items[1] = rand::thread_rng().gen_range(0..9) * 10 + rand::thread_rng().gen_range(0..9);
+					self.p2Champions[i].items[2] = rand::thread_rng().gen_range(0..9) * 10 + rand::thread_rng().gen_range(0..9);
+				}
+			}
+			for item in self.p2Champions[i].items
+			{
+				GiveItemEffect(item, &mut self.p2Champions, &mut self.p1Champions, i);
+			}
+		}
 		
-		let mut p1Traits : HashMap<u8, u8> = HashMap::new();
+		/*let mut p1Traits : HashMap<u8, u8> = HashMap::new();
 		//let mut p2Traits : HashMap<u8, u8> = HashMap::new();
 		for p1Champ in &mut self.p1Champions
 		{
@@ -866,14 +897,19 @@ impl Board
 					}}
 				_ => ()
 			}
-		}
+		}*/
 		
 		
 		for p1Champ in &mut self.p1Champions
 		{
 			p1Champ.initialHP = p1Champ.health;
 		}
+		for p2Champ in &mut self.p2Champions
+		{
+			p2Champ.initialHP = p2Champ.health;
+		}
 		let mut p1Projectiles : Vec<Projectile> = Vec::new();
+		let mut p2Projectiles : Vec<Projectile> = Vec::new();
 		while self.p1Champions.len() > 0 && self.p2Champions.len() > 0
 		{
 			println!("Debug : Iteration {}", debugCount);
@@ -883,7 +919,14 @@ impl Board
 				takeTurn(p1ChampionIndex, &mut self.p1Champions, &mut self.p2Champions, self.timeUnit, self.movementAmount, &mut p1Projectiles)
 			}
 
+			
+
+			for p2ChampionIndex in 0..self.p2Champions.len()
+			{
+				takeTurn(p2ChampionIndex, &mut self.p2Champions, &mut self.p1Champions, self.timeUnit, self.movementAmount, &mut p2Projectiles)
+			}
 			p1Projectiles.retain_mut(|f| f.SimulateTick(&mut self.p2Champions, &mut self.p1Champions));
+			p2Projectiles.retain_mut(|f| f.SimulateTick(&mut self.p1Champions, &mut self.p2Champions));
 		}
 		println!("Debug : Battle Over");
 		if self.p1Champions.len() == 0
