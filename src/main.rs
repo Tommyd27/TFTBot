@@ -121,6 +121,8 @@ enum StatusType
 
 	ShredMagicResist(bool, f32),
 
+	GiveSunfire(),
+
 	///None
 	NoEffect()
 }
@@ -147,11 +149,13 @@ impl Default for StatusEffect{
 
 ///CHAMPIONS (const):<br />
 ///Stores all the champion information
-const CHAMPIONS : [Champion ; 3] = [Champion{id : 0, cost : 1, hp : [650.0, 1170.0, 2106.0], sm : 70, mc : 140, ar : 0.25, mr : 0.25, ad : [40.0, 72.0, 129.0], aS : 0.7, ra : 3, aID : 0, traits : [1, 2, 0]}, //Lulu
-                 					Champion{id : 1, cost : 2, hp : [650.0, 1170.0, 2106.0], sm : 50, mc : 100, ar : 0.45, mr : 0.45, ad : [55.0, 99.0, 178.0], aS : 0.7, ra : 1, aID : 1, traits : [2, 3, 0]}, //Aatrox
-                 					Champion{id : 2, cost : 3, hp : [700.0, 1260.0, 2268.0], sm : 35, mc : 35, ar : 0.25, mr : 0.25, ad : [75.0, 135.0, 243.0], aS : 0.7, ra : 3, aID : 0, traits : [4, 5, 0]}];
+const CHAMPIONS : [Champion ; 4] = [Champion{id : 0, cost : 1, hp : [650.0, 1100.0, 2100.0], sm : 70, mc : 140, ar : 0.25, mr : 0.25, ad : [40.0, 70.0, 130.0], aS : 0.6, ra : 2, aID : 0, traits : [0, 0, 0]}, //Support
+                 					Champion{id : 1, cost : 2, hp : [800.0, 1400.0, 2500.0], sm : 50, mc : 100, ar : 0.45, mr : 0.45, ad : [75.0, 100.0, 175.0], aS : 0.7, ra : 1, aID : 1, traits : [0, 0, 0]}, //Bruiser
+                 					Champion{id : 2, cost : 3, hp : [700.0, 1200.0, 2200.0], sm : 35, mc : 100, ar : 0.25, mr : 0.25, ad : [65.0, 120.0, 240.0], aS : 0.7, ra : 3, aID : 2, traits : [0, 0, 0]}, //AD Ranged
+									 Champion{id : 2, cost : 3, hp : [700.0, 1200.0, 2200.0], sm : 35, mc : 150, ar : 0.25, mr : 0.25, ad : [50.0, 60.0, 70.0], aS : 0.6, ra : 3, aID : 3, traits : [0, 0, 0]} //AP Ranged
+									];
 
-fn LuluAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize, projectiles : &mut Vec<Projectile>)
+fn SupportAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize, projectiles : &mut Vec<Projectile>)
 {
 	let mut playerDistances : Vec<[i8 ; 2]> = Vec::new();
 	let starLevel = friendlyChampions[selfIndex].starLevel;
@@ -174,6 +178,7 @@ fn LuluAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : 
 	playerDistances.sort_unstable_by_key(|a| a[0]);
 	let champCount : usize = [3, 4, 5][starLevel];
 	let mut i = 0;//optimisation
+	let ap = friendlyChampions[selfIndex].ap;
 	for [_, champIndex] in playerDistances//optimise
 	{
 		if i >= champCount
@@ -185,7 +190,7 @@ fn LuluAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : 
 			//give allies attack speed for 5 seconds
 			friendlyChampions[(champIndex - 1) as usize].se.push(StatusEffect{
 																	duration : 500,
-																	statusType : StatusType::AttackSpeedBuff(false, 1.7),
+																	statusType : StatusType::AttackSpeedBuff(false, 1.7 * ap),
 																	..Default::default()	
 			});
 		}
@@ -193,18 +198,18 @@ fn LuluAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : 
 		{
 			//stun enemies for 1.5 seconds and increase damage for 20%
 			enemyChampions[-(champIndex + 1) as usize].se.push(StatusEffect { duration: 150, statusType: StatusType::Stun(), isNegative : true });
-			enemyChampions[-(champIndex + 1) as usize].se.push(StatusEffect { duration: 150, statusType: StatusType::IncreaseDamageTaken(false, 1.2), isNegative : true});
+			enemyChampions[-(champIndex + 1) as usize].se.push(StatusEffect { duration: 150, statusType: StatusType::IncreaseDamageTaken(false, 1.2 * ap), isNegative : true});
 		}
 		i += 1;
 	}
 	if i < champCount - 1
 	{
-		friendlyChampions[selfIndex].se.push(StatusEffect{duration : 500, statusType : StatusType::AttackSpeedBuff(false, 1.7), ..Default::default()});
+		friendlyChampions[selfIndex].se.push(StatusEffect{duration : 500, statusType : StatusType::AttackSpeedBuff(false, 1.7 * ap), ..Default::default()});
 		println!("attack speed buff");
 	}
 }
 
-fn AatroxAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize, projectiles : &mut Vec<Projectile>)
+fn BruiserAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize, projectiles : &mut Vec<Projectile>)
 {
 	let starLevel = friendlyChampions[selfIndex].starLevel;
 	//can strike from out of range
@@ -222,14 +227,21 @@ fn AatroxAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions 
 	let ap = friendlyChampions[selfIndex].ap;
 	friendlyChampions[selfIndex].heal((300.0 + 50.0 * starLevel as f32) * ap);
 
-	dealDamage(selfIndex, friendlyChampions, &mut enemyChampions[targetIndex], (300.0 + 5.0 * starLevel as f32) * friendlyChampions[selfIndex].ad, DamageType::Physical(), false)
+	dealDamage(selfIndex, friendlyChampions, &mut enemyChampions[targetIndex], (25.0 * starLevel as f32) * 4.0 * friendlyChampions[selfIndex].ad, DamageType::Physical(), false)
 }
 
-fn EzrealAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize, projectiles : &mut Vec<Projectile>)
+fn ADStrikerAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize, projectiles : &mut Vec<Projectile>)
 {
-	let targetLocation = enemyChampions[friendlyChampions[selfIndex].target];
+	let targetLocation = enemyChampions[friendlyChampions[selfIndex].target].location;
+	let damage : f32 = friendlyChampions[selfIndex].ad * 3.0 * (friendlyChampions[selfIndex].starLevel as f32);
+	projectiles.push(Projectile::new(friendlyChampions[selfIndex].location, Option::Some(targetLocation), friendlyChampions[selfIndex].target, damage, DamageType::Physical(), 0.0, 5, selfIndex))
+}
 
-	projectiles.push()
+fn APStrikerAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize, projectiles : &mut Vec<Projectile>)
+{
+	let targetLocation = enemyChampions[friendlyChampions[selfIndex].target].location;
+	let damage : f32 = 250.0 * friendlyChampions[selfIndex].ap * (friendlyChampions[selfIndex].starLevel as f32);
+	projectiles.push(Projectile::new(friendlyChampions[selfIndex].location, Option::Some(targetLocation), friendlyChampions[selfIndex].target, damage, DamageType::Magical(), damage / 3.0, 3, selfIndex))
 }
 
 ///const CHAMPIONABILITIES :
@@ -240,8 +252,8 @@ fn EzrealAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions 
 ///friendlyChampions : Mutable reference to allied champions
 ///enemyChampions : Mutable reference to enemy champions
 ///selfIndex : Index of champion (in friendlyChampions) who casted this ability
-const CHAMPIONABILITIES : [fn(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize, projectiles : &mut Vec<Projectile>) ; 2]	= 
-	[LuluAbility, AatroxAbility];
+const CHAMPIONABILITIES : [fn(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize, projectiles : &mut Vec<Projectile>) ; 4]	= 
+	[SupportAbility, BruiserAbility, APStrikerAbility, ADStrikerAbility];
 
 //discrepency, cast time = 0.5 seconds apparently
 #[derive(PartialEq, Clone, Copy)]
@@ -654,7 +666,7 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 		28 => {friendlyChampions[selfIndex].ap += 0.1; friendlyChampions[selfIndex].cm += 15; friendlyChampions[selfIndex].se.push(StatusEffect { duration: 500, statusType: StatusType::ArchangelStaff(false, 0.2), isNegative: false })}
 		29 => {friendlyChampions[selfIndex].ap += 0.1; },//add next trait
 		33 => {friendlyChampions[selfIndex].health += 1000.0},
-		34 => {friendlyChampions[selfIndex].health += 300.0; friendlyChampions[selfIndex].ar += 0.2}// discrepency not done LOL +have to test how sunfire works before i feel comfortable implementing it
+		34 => {friendlyChampions[selfIndex].health += 300.0; friendlyChampions[selfIndex].ar += 0.2; friendlyChampions[selfIndex].se.push(StatusEffect { duration: 0, statusType: StatusType::GiveSunfire(), ..Default::default() })}// discrepency not done LOL +have to test how sunfire works before i feel comfortable implementing it
 		35 => {friendlyChampions[selfIndex].health += 150.0; friendlyChampions[selfIndex].mr += 0.2; friendlyChampions[selfIndex].se.push(StatusEffect { duration : 32767, statusType: StatusType::Zephyr(false, 500), ..Default::default()})}//donE?????????????????????????????????????????????????????????????
 		36 => {friendlyChampions[selfIndex].health += 150.0; friendlyChampions[selfIndex].attackSpeedModifier *= 0.1; //close enough, doesnt reset fully
 			   for enemyChamp in enemyChampions
@@ -1018,7 +1030,7 @@ fn dealDamage(selfIndex : usize,
 			  if friendlyChampions[selfIndex].items.contains(&23)
 			  {
 				target.se.push(StatusEffect { duration: 1000, statusType: StatusType::GreviousWounds(), isNegative: true });
-				let dmgToDo = target.initialHP / 4.0;
+				let dmgToDo = target.initialHP / 10.0;
 				target.se.push(StatusEffect { duration: 1000, statusType: StatusType::MorellonomiconBurn(dmgToDo / 10.0, dmgToDo, 100), isNegative : true})//discrepency unsure whether burn just reapplies itself
 			}
 			},
@@ -1201,6 +1213,17 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 					friendlyChampions[selfIndex].heal(healingAmount);
 				}
 				StatusType::LastWhisperShred(_) => {friendlyChampions[selfIndex].ar *= 2.0}//discrepency if thingy was reduced during time then	
+				
+				StatusType::GiveSunfire() => {statusEffect.duration = 300;
+											 for enemyChamp in enemyChampions
+											 {
+												if DistanceBetweenPoints(enemyChamp.location, friendlyChampions[selfIndex].location) < 3
+												{
+													let dmg = enemyChamp.initialHP / 20.0;
+													enemyChamp.se.push(StatusEffect{duration : 300, statusType : StatusType::MorellonomiconBurn(enem, (), ())})
+												}
+											 }
+				}
 				_ => ()//println!("Unimplemented")
 			}
 		return false
