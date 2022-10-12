@@ -543,22 +543,23 @@ impl Projectile
 		{
 			if self.location == possibleTarget.location
 			{
-				let shooterIndex : usize = usize::MAX;
-				for champ in friendlyChampions
+				let mut shooterIndex : usize = usize::MAX;
+				for (i, champ) in friendlyChampions.iter().enumerate()
 				{
 					if champ.id == self.shooterID
 					{
-						shooterIndex = //need to work on shooter index's/ ids
+						shooterIndex = i;//need to work on shooter index's/ ids
+						break;
 					}
 				}
-				dealDamage(self.shooterIndex, friendlyChampions, possibleTarget, self.damage, self.damageType, false);
+				dealDamage(shooterIndex, friendlyChampions, possibleTarget, self.damage, self.damageType, false);
 				if self.splashDamage > 0.0
 				{
 					for possibleSecondaryTarget in possibleTargets.iter_mut()
 					{
 						if DistanceBetweenPoints(self.location, possibleSecondaryTarget.location) < 3
 						{
-							dealDamage(self.shooterIndex, friendlyChampions, possibleSecondaryTarget, self.splashDamage, self.damageType, true);
+							dealDamage(shooterIndex, friendlyChampions, possibleSecondaryTarget, self.splashDamage, self.damageType, true);
 						}
 					}
 				}
@@ -1006,7 +1007,9 @@ fn dealDamage(selfIndex : usize,
 	match damageType
 	{
 		DamageType::Physical() => {damage = (damageAmount * target.incomingDMGModifier) / ( 1.0 + target.ar);
-			  if friendlyChampions[selfIndex].cr > rand::thread_rng().gen_range(0..100)//optimisation
+			if selfIndex != usize::MAX
+			{
+				if friendlyChampions[selfIndex].cr > rand::thread_rng().gen_range(0..100)//optimisation
 			  {
 				let mut critD = friendlyChampions[selfIndex].critD;
 				if friendlyChampions[selfIndex].cr > 100 && friendlyChampions[selfIndex].items.contains(&17)
@@ -1035,97 +1038,105 @@ fn dealDamage(selfIndex : usize,
 					target.se.push(StatusEffect{duration : 500, statusType : StatusType::LastWhisperShred(false), isNegative : true})
 				}
 			  }
-
+			}
+			
 		},
 		DamageType::Magical() => {damage = (damageAmount * friendlyChampions[selfIndex].ap * target.incomingDMGModifier) / (1.0 + target.mr);
-			  if friendlyChampions[selfIndex].items.contains(&27)
-			  {
-				if friendlyChampions[selfIndex].cr > rand::thread_rng().gen_range(0..100)
+			  
+			if selfIndex != usize::MAX
+			{
+				if friendlyChampions[selfIndex].items.contains(&27)
 				{
-					let mut critD = friendlyChampions[selfIndex].critD;
-					let mut extraDamage = damage * critD;
-					if target.items.contains(&44)
-					{
-						extraDamage /= 4.0;
-					}
-					damage += extraDamage;
+				  if friendlyChampions[selfIndex].cr > rand::thread_rng().gen_range(0..100)
+				  {
+					  let mut critD = friendlyChampions[selfIndex].critD;
+					  let mut extraDamage = damage * critD;
+					  if target.items.contains(&44)
+					  {
+						  extraDamage /= 4.0;
+					  }
+					  damage += extraDamage;
+				  }
 				}
+				if friendlyChampions[selfIndex].items.contains(&12)
+				{
+				  let healing = damage / 4.0;
+				  friendlyChampions[selfIndex].heal(healing);
+				  let mut lowestHP : f32 = 999999.0;
+				  let mut lowestHPID : usize = 0;
+				  for (i, champ) in friendlyChampions.iter().enumerate()
+				  {
+					  if i != selfIndex && champ.health < lowestHP
+					  {
+						  lowestHP = champ.health;
+						  lowestHPID = i;
+					  }
+				  }
+				  if lowestHPID != selfIndex
+				  {
+					  friendlyChampions[lowestHPID].heal(healing);
+				  }
+				}
+				if friendlyChampions[selfIndex].items.contains(&23)
+				{
+				  target.se.push(StatusEffect { duration: 1000, statusType: StatusType::GreviousWounds(), isNegative: true });
+				  let dmgToDo = target.initialHP / 10.0;
+				  target.se.push(StatusEffect { duration: 1000, statusType: StatusType::MorellonomiconBurn(dmgToDo / 10.0, dmgToDo, 100), isNegative : true})//discrepency unsure whether burn just reapplies itself
 			  }
-			  if friendlyChampions[selfIndex].items.contains(&12)
-			  {
-				let healing = damage / 4.0;
-				friendlyChampions[selfIndex].heal(healing);
-				let mut lowestHP : f32 = 999999.0;
-				let mut lowestHPID : usize = 0;
-				for (i, champ) in friendlyChampions.iter().enumerate()
-				{
-					if i != selfIndex && champ.health < lowestHP
-					{
-						lowestHP = champ.health;
-						lowestHPID = i;
-					}
-				}
-				if lowestHPID != selfIndex
-				{
-					friendlyChampions[lowestHPID].heal(healing);
-				}
-			  }
-			  if friendlyChampions[selfIndex].items.contains(&23)
-			  {
-				target.se.push(StatusEffect { duration: 1000, statusType: StatusType::GreviousWounds(), isNegative: true });
-				let dmgToDo = target.initialHP / 10.0;
-				target.se.push(StatusEffect { duration: 1000, statusType: StatusType::MorellonomiconBurn(dmgToDo / 10.0, dmgToDo, 100), isNegative : true})//discrepency unsure whether burn just reapplies itself
 			}
 			},
 		DamageType::True() => {//discrepency does lulu ability etc affect true dmg
-			if friendlyChampions[selfIndex].items.contains(&27)
+			if selfIndex != usize::MAX
 			{
-			  if friendlyChampions[selfIndex].cr > rand::thread_rng().gen_range(0..100)
-			  {
-				  let mut extraDamage = damage * friendlyChampions[selfIndex].critD;
-				  if target.items.contains(&44)
-					{
-						extraDamage /= 4.0; //discrepency not sure if it applies to true dmg
+				if friendlyChampions[selfIndex].items.contains(&27)
+				{
+				  if friendlyChampions[selfIndex].cr > rand::thread_rng().gen_range(0..100)
+				  {
+					  let mut extraDamage = damage * friendlyChampions[selfIndex].critD;
+					  if target.items.contains(&44)
+						{
+							extraDamage /= 4.0; //discrepency not sure if it applies to true dmg
+						}
+						damage += extraDamage;
 					}
-					damage += extraDamage;
+				}
+				
+				
+				if friendlyChampions[selfIndex].items.contains(&12)
+				{
+				  let healing = damage / 4.0;
+				  friendlyChampions[selfIndex].heal(healing);
+				  let mut lowestHP : f32 = 999999.0;
+				  let mut lowestHPID : usize = 0;
+	
+	
+	
+				  
+				  for (i, champ) in friendlyChampions.iter().enumerate()
+				  {
+					  if i != selfIndex && champ.health < lowestHP
+					  {
+						  lowestHP = champ.health;
+						  lowestHPID = i;
+					  }
+				  }
+				  if lowestHPID != selfIndex
+				  {
+					  friendlyChampions[lowestHPID].heal(healing);
+				  }}
+				if friendlyChampions[selfIndex].items.contains(&23)
+				{
+					target.se.push(StatusEffect { duration: 1000, statusType: StatusType::GreviousWounds(), isNegative: true });
+					let dmgToDo = target.initialHP / 4.0;
+					target.se.push(StatusEffect { duration: 1000, statusType: StatusType::MorellonomiconBurn(dmgToDo / 10.0, dmgToDo, 100), isNegative : true})//discrepency unsure whether burn just reapplies itself
 				}
 			}
-			
-			
-			if friendlyChampions[selfIndex].items.contains(&12)
-			{
-			  let healing = damage / 4.0;
-			  friendlyChampions[selfIndex].heal(healing);
-			  let mut lowestHP : f32 = 999999.0;
-			  let mut lowestHPID : usize = 0;
-
-
-
-			  
-			  for (i, champ) in friendlyChampions.iter().enumerate()
-			  {
-				  if i != selfIndex && champ.health < lowestHP
-				  {
-					  lowestHP = champ.health;
-					  lowestHPID = i;
-				  }
-			  }
-			  if lowestHPID != selfIndex
-			  {
-				  friendlyChampions[lowestHPID].heal(healing);
-			  }}
-			if friendlyChampions[selfIndex].items.contains(&23)
-			{
-				target.se.push(StatusEffect { duration: 1000, statusType: StatusType::GreviousWounds(), isNegative: true });
-				let dmgToDo = target.initialHP / 4.0;
-				target.se.push(StatusEffect { duration: 1000, statusType: StatusType::MorellonomiconBurn(dmgToDo / 10.0, dmgToDo, 100), isNegative : true})//discrepency unsure whether burn just reapplies itself
-			}
-	
 		},
-			
-		_ => ()
 	}
-	if friendlyChampions[selfIndex].items.contains(&16)
+	
+	if selfIndex != usize::MAX
+	{
+		if friendlyChampions[selfIndex].items.contains(&16)
 	{
 		if target.initialHP >= 2200.0
 		{
@@ -1137,10 +1148,7 @@ fn dealDamage(selfIndex : usize,
 	}
 
 
-	if target.gMD <= 0
-	{
-		target.cm += (0.7 * damage) as u16; //discrepency, should be 1% of premitigation and 7% of post.
-	}
+	
 	let omnivamp = friendlyChampions[selfIndex].omnivamp;
 	friendlyChampions[selfIndex].heal(damage * omnivamp);
 	for shield in &mut target.shields
@@ -1165,9 +1173,17 @@ fn dealDamage(selfIndex : usize,
 			}
 		}
 	}
+
+	friendlyChampions[selfIndex].titansResolveStack = min(friendlyChampions[selfIndex].titansResolveStack + 1, 25);
+	}
+	
 	target.health -= damage;
 	target.titansResolveStack = min(target.titansResolveStack + 1, 25);
-	friendlyChampions[selfIndex].titansResolveStack = min(friendlyChampions[selfIndex].titansResolveStack + 1, 25)
+	if target.gMD <= 0
+	{
+		target.cm += (0.7 * damage) as u16; //discrepency, should be 1% of premitigation and 7% of post.
+	}
+	
 }
 
 fn UpdateShield(shield : &mut Shield, timeUnit : i8) -> bool
