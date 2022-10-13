@@ -5,7 +5,7 @@ use rand::{Rng};
 use std::collections::HashMap;//Optimisation change default hashing algorithm
 
 
-
+//
 struct shouldStun
 {
 	///0 : no stun, 1 : stun, 2 : locked
