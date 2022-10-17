@@ -11,7 +11,7 @@ struct shouldStun
 	///0 : no stun, 1 : stun, 2 : locked
 	stun : u8,
 }
-///Champion (struct)<br />:
+///Champion (struct)<br />:.
 ///Stores the basic information surrounding a champion
 struct Champion //Basic structure to store the base stats of a champ
 {
