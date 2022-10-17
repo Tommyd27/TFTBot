@@ -1,4 +1,8 @@
+#![allow(non_snake_case)] //Allows snake case
 use pyo3::prelude::*;
+use std::{cmp::min, cmp::max};
+use rand::{Rng};
+use std::collections::HashMap;//Optimisation change default hashing algorithm
 
 /// Formats the sum of two numbers as string.
 #[pyfunction]
@@ -12,11 +16,7 @@ fn TFTBot(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(sum_as_string, m)?)?;
     Ok(())
 }
-#![allow(non_snake_case)] //Allows snake case
 
-use std::{cmp::min, cmp::max};
-use rand::{Rng};
-use std::collections::HashMap;//Optimisation change default hashing algorithm
 
 
 //
