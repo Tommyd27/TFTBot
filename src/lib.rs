@@ -2,22 +2,15 @@
 use pyo3::prelude::*;
 use std::{cmp::min, cmp::max};
 use rand::{Rng};
-use std::collections::HashMap;//Optimisation change default hashing algorithm
-
-/// Formats the sum of two numbers as string.
-#[pyfunction]
-fn sum_as_string(a: usize, b: usize) -> PyResult<String> {
-    Ok((a + b).to_string())
-}
+//use std::collections::HashMap;//Optimisation change default hashing algorithm
 
 /// A Python module implemented in Rust.
 #[pymodule]
 fn TFTBot(_py: Python, m: &PyModule) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(sum_as_string, m)?)?;
+   // m.add_function(wrap_pyfunction!(sum_as_string, m)?)?;
+   m.add_function(wrap_pyfunction!(main, m)?)?;
     Ok(())
 }
-
-
 
 //
 struct shouldStun
@@ -801,7 +794,6 @@ impl Board
 	}
 
 
-
 	fn StartBattle(mut self : Board) -> i8
 	{
 		let mut debugCount : u32 = 0;
@@ -965,22 +957,14 @@ impl Board
 	}
 		
 }
-
-fn main() {
+#[pyfunction]
+fn main() -> i8 {
     //let playerOneChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [3, 0]}, PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [9, 0]}, PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [6, 0]}];
 	let playerOneChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 0, star : 0, items : [0, 0, 0], location : [3, 0]}];
 	let playerTwoChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 1, star : 0, items : [0, 0, 0], location : [6, 7]}];
-	let mut boardOutcome = 1;
-	let mut iterationCount = 0;
-	while boardOutcome != 2
-	{
-		iterationCount += 1;
-		let board : Board = Board::new(&playerOneChamps, &playerTwoChamps, 10);
-		println!("Debug : Starting Battle");
-		boardOutcome = board.StartBattle()
-		
-	}
-	println!("Debug : Iteration Count {}", iterationCount);
+    let board : Board = Board::new(&playerOneChamps, &playerTwoChamps, 10);
+    println!("Debug : Starting Battle");
+    board.StartBattle()
 	
 										 //let mut Chadden = Summ1dChampion{id : 0, star : 1, items : [0, 0, 0]};
     //let mut SomeGuy = Summ1dChampion{id : 1, star : 2, items : [0, 0, 0]};
