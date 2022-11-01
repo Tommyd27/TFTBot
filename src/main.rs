@@ -1,7 +1,9 @@
 #![allow(non_snake_case)] //Allows snake case
+
 use std::{cmp::min, cmp::max};
 use rand::{Rng};
-//use std::collections::HashMap;//Optimisation change default hashing algorithm
+use std::collections::HashMap;//Optimisation change default hashing algorithm
+
 
 //
 struct shouldStun
@@ -785,6 +787,7 @@ impl Board
 	}
 
 
+
 	fn StartBattle(mut self : Board) -> i8
 	{
 		let mut debugCount : u32 = 0;
@@ -949,13 +952,21 @@ impl Board
 		
 }
 
-fn main() -> i8 {
+fn main() {
     //let playerOneChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [3, 0]}, PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [9, 0]}, PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [6, 0]}];
 	let playerOneChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 0, star : 0, items : [0, 0, 0], location : [3, 0]}];
 	let playerTwoChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 1, star : 0, items : [0, 0, 0], location : [6, 7]}];
-    let board : Board = Board::new(&playerOneChamps, &playerTwoChamps, 10);
-    println!("Debug : Starting Battle");
-    board.StartBattle()
+	let mut boardOutcome = 1;
+	let mut iterationCount = 0;
+	while boardOutcome != 2
+	{
+		iterationCount += 1;
+		let board : Board = Board::new(&playerOneChamps, &playerTwoChamps, 10);
+		println!("Debug : Starting Battle");
+		boardOutcome = board.StartBattle()
+		
+	}
+	println!("Debug : Iteration Count {}", iterationCount);
 	
 										 //let mut Chadden = Summ1dChampion{id : 0, star : 1, items : [0, 0, 0]};
     //let mut SomeGuy = Summ1dChampion{id : 1, star : 2, items : [0, 0, 0]};
