@@ -1,16 +1,7 @@
 #![allow(non_snake_case)] //Allows snake case
-use pyo3::prelude::*;
 use std::{cmp::min, cmp::max};
 use rand::{Rng};
 //use std::collections::HashMap;//Optimisation change default hashing algorithm
-
-/// A Python module implemented in Rust.
-#[pymodule]
-fn TFTBot(_py: Python, m: &PyModule) -> PyResult<()> {
-   // m.add_function(wrap_pyfunction!(sum_as_string, m)?)?;
-   m.add_function(wrap_pyfunction!(main, m)?)?;
-    Ok(())
-}
 
 //
 struct shouldStun
@@ -957,7 +948,7 @@ impl Board
 	}
 		
 }
-#[pyfunction]
+
 fn main() -> i8 {
     //let playerOneChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [3, 0]}, PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [9, 0]}, PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [6, 0]}];
 	let playerOneChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 0, star : 0, items : [0, 0, 0], location : [3, 0]}];
