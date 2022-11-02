@@ -1,45 +1,54 @@
 #![allow(non_snake_case)] //Allows snake case
 
-use std::{cmp::min, cmp::max};
+use std::cmp::{min, max};
 use rand::{Rng};
-use std::collections::HashMap;//Optimisation change default hashing algorithm
 
-
-//
-struct shouldStun
+///ShouldStun<br />
+///Simple struct to pass by reference to record whether stunned.<br />
+struct ShouldStun
 {
-	///0 : no stun, 1 : stun, 2 : locked
+	///Records whether champ is stunned. 0 = not stunned, 1 = stunned, 2 = locked (cannot be stunned)
 	stun : u8,
 }
 ///Champion (struct)<br />:.
-///Stores the basic information surrounding a champion
-struct Champion //Basic structure to store the base stats of a champ
+///Stores the basic information surrounding a champion<br />
+struct Champion
 {
-	///Champion ID
-	///Index in
+	///Champion ID<br />
+	///same as index in CHAMPIONS
     id : u8,
 
 	///Cost in Gold
     cost : u8, 
     
-	///HP values for each star level
+	///Healpoints for each Star Level
     hp : [f32; 3], 
+
 	///Starting mana
     sm : u16,
+
 	///Ability Mana Cost
     mc : u16,
+
 	///Base Armor Value
     ar : f32,
+
 	///Base Magic Resist Value
     mr : f32,
-	///Autoattack damage for each star level
+
+	///Auto Attack Damage for each Star Level
     ad : [f32; 3],
-	///Attack speed in attacks per second
+
+	///Attack Speed in Attacks per Second
     aS : f32,
+	
 	///Auto attack range
     ra : u8,
-    ///Ability ID, same as index in const CHAMPIONABILITIES
+
+    ///Ability ID<br />
+	///same as index in CHAMPIONABILITIES
     aID : usize, 
+
 	///Trait IDs
     traits : [u8 ; 3],
 }
@@ -588,33 +597,7 @@ impl Projectile
 		}
 }
 
-/* 
-struct Item
-{
-	ad : i32,
-	ap : i32,
-	hp : i32,
-	ar : i32,
-	mr : i32,
-	aSModifier : f32,
-	cr : u8,
-	critD : i32,
-	dc : u8,
-	cm : u8,
 
-}
-impl Default for Item
-{
-	fn default() -> Item
-	{
-		Item
-		{
-
-		}
-	}
-}
-
-*/
 
 ///GiveItemEffect : (func)<br />
 ///Gives an item effect to a champion<br />
@@ -1204,7 +1187,7 @@ fn InGridHexagon(pos : [i8 ; 2]) -> bool//not going to attempt getting it workin
 	}
 	return false
 }
-fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, timeUnit : i8, selfIndex : usize, stun : &mut shouldStun, seToAdd : &mut Vec<StatusEffect>) -> bool
+fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, timeUnit : i8, selfIndex : usize, stun : &mut ShouldStun, seToAdd : &mut Vec<StatusEffect>) -> bool
 {//discrepency on whether the last tick of a status applies or not etc
 	statusEffect.duration -= timeUnit as i16;
 	if friendlyChampions[selfIndex].shed == 2
@@ -1435,7 +1418,7 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 	friendlyChampions[selfIndex].gMD -= timeUnit as i16;
 	{
 		let mut statusEffects = friendlyChampions[selfIndex].se.clone();
-		let mut stun = shouldStun { stun: 0 };
+		let mut stun = ShouldStun { stun: 0 };
 		let mut seToAdd : Vec<StatusEffect> = Vec::new();
 		statusEffects.retain_mut(|x| performStatus(x, friendlyChampions, enemyChampions, timeUnit, selfIndex, &mut stun, &mut seToAdd));
 		friendlyChampions[selfIndex].se = statusEffects;
