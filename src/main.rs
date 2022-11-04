@@ -10,7 +10,7 @@ struct ShouldStun
 	///Records whether champ is stunned. 0 = not stunned, 1 = stunned, 2 = locked (cannot be stunned)
 	stun : u8,
 }
-///Champion (struct)<br />:.
+///Champion (struct):<br />.
 ///Stores the basic information surrounding a champion<br />
 struct Champion
 {
@@ -21,7 +21,7 @@ struct Champion
 	///Cost in Gold
     cost : u8, 
     
-	///Healpoints for each Star Level
+	///Healthpoints for each Star Level
     hp : [f32; 3], 
 
 	///Starting mana
@@ -52,84 +52,98 @@ struct Champion
 	///Trait IDs
     traits : [u8 ; 3],
 }
-///Status Type (enum)<br />:
-///Holds information about what the status actually is
+///Status Type (enum):<br />
+///Holds information about what the status does
 #[derive(Clone)]
 #[derive(PartialEq)]
 enum StatusType
 {
-	///Attack Speed Buff
+	///Attack Speed Buff:<br />
 	///(bool : whether the buff has been applied, f32 : actual modifier)
 	AttackSpeedBuff(bool, f32),
-	///Increase Damage Taken
+	///Increase Damage Taken:<br />
 	///(bool : whether the buff has been applied, i32 : actual modifier in % (so 120 = 120% or 20% increase))
 	IncreaseDamageTaken(bool, f32),
+
 	///Stun
-	///()
 	Stun(),
 
-	///Grevious Wounds
+	///Grevious Wounds:<br />
 	///Reduces healing by 50%
 	GreviousWounds(),
-	///Gives edge of night buff
+
+	///Gives edge of night buff<br />:
 	EdgeOfNight(),
+	
 	///Whether the target is targetable
 	///bool : Whether the buff has been applied
 	Untargetable(bool),
 
 	///Bloodthirster shield at 40%
 	Bloodthirster(),
+
 	///Assassin trait leap
 	Assassin(),
 
-	///Morellonomicon Burn
-	///i32 : damage per tick
-	///i32 : damage to do
-	///i16 : time til next tick
+	///Morellonomicon Burn:<br />
+	///(f32 : damage per tick, f32 : damage to do, i16 : time til next tick)
 	MorellonomiconBurn(f32, f32, i16),
 
-	///Ionic spark effect
-	///Reduces MR by 50%
+	///Ionic spark effect:<br />
+	///Reduces MR by 50%<br />
 	///bool : applied - remove as doesnt need as only lasts 1 frame?
 	IonicSparkEffect(),//maybe discrepencies? awkward cuz only lasts 1 frame?
 
-	///Archangel Staff
-	///bool : applied
-	///i32 : ap increase
+	///Archangel Staff:<br />
+	///(bool : applied. f32 : ap increase)
 	ArchangelStaff(bool, f32),
 
-	///Zephyr Item
-	///bool : applied
-	///i16 : banish duration
+	///Zephyr Item:<br />
+	///(bool : applied, i16 : banish duration)
 	Zephyr(bool, i16),
 
-	///Banished
-	///bool : applied
+	///Banished:<br />
+	///(bool : applied)
 	Banished(bool),
 
-	///Taunted
-	///usize : ID of taunter
+	///Taunted:<br />
+	///(usize : ID of taunter)
 	Taunted(usize),
 
-	///Redemption
-	///Give effect
+	///Redemption:<br />
+	///(bool : applied)
 	RedemptionGive(bool),
 
+	///Gargoyles Item Effect:<br />
+	///(u8: How many were targeting previous frame)
 	Gargoyles(u8),
-
+	///Titans Resolve Item Effect:<br />
+	///(u8: Number of stacks previous frame)
 	TitansResolve(u8),
 
+	///Shroud of Stillness Item Effect:<br />
+	///Immediately removed/ used at start of game
 	ShroudOfStillness(),
 
+	///Protectors Vow Item Effect:<br />
 	ProtectorsVow(),
+
+	///Dragon Claw Heal Item Effect:<br />
 	DragonClawHeal(),
 
+	///Immune of CC Effect:<br />
 	CrowdControlImmune(),
 
+	///Last Whisper Armor Shred Effect:<br />
+	///(bool : applied)
 	LastWhisperShred(bool),
 
+	///Shreds Magic Resist Effect:<br />
+	///(bool : applied, f32 : multiplyer/ effect)
 	ShredMagicResist(bool, f32),
 
+	///Gives sunfire effect:<br />
+	///Not implemented
 	GiveSunfire(),
 
 	///None
@@ -146,9 +160,10 @@ struct StatusEffect
 	duration : i16,//optimisation so uses Option<i16> rather than i16
 	///Stores status type
 	statusType : StatusType,
+	///Whether is negative for shred
 	isNegative : bool,
 }
-
+///Default Status Effect Values
 impl Default for StatusEffect{
 	fn default() -> StatusEffect
 	{
@@ -164,25 +179,30 @@ const CHAMPIONS : [Champion ; 4] = [Champion{id : 0, cost : 1, hp : [650.0, 1100
 									 Champion{id : 2, cost : 3, hp : [700.0, 1200.0, 2200.0], sm : 35, mc : 150, ar : 0.25, mr : 0.25, ad : [50.0, 60.0, 70.0], aS : 0.6, ra : 3, aID : 3, traits : [0, 0, 0]} //AP Ranged
 									];
 
+///Ability for Support Champion:<br />
+///friendlyChampions : mut reference to allied champions<br />
+///enemyChampions : mut reference to enemy champions<br />
+///selfIndex : index of self in friendlyChampions<br />
+///projectiles : mut reference to all projectiles
 fn SupportAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize, projectiles : &mut Vec<Projectile>)
 {
-	let mut playerDistances : Vec<[i8 ; 2]> = Vec::new();
-	let starLevel = friendlyChampions[selfIndex].starLevel;
-	for (index, champ) in friendlyChampions.iter().enumerate()
+	let mut playerDistances : Vec<[i8 ; 2]> = Vec::new(); //instantiates empty vec to hold distance to friendly and enemy champions
+	let starLevel = friendlyChampions[selfIndex].starLevel; //gets current star level
+	for (index, champ) in friendlyChampions.iter().enumerate() //iterate through all friendly champions to add them to distances
 	{
-		if index == selfIndex
+		if index == selfIndex //skip self
 		{
 			continue;
 		}
-		playerDistances.push([DistanceBetweenPoints(champ.location, friendlyChampions[selfIndex].location), (index + 1) as i8])//optimisation
+		playerDistances.push([DistanceBetweenPoints(champ.location, friendlyChampions[selfIndex].location), (index + 1) as i8]) //(!O) pushes distance between self and champ location, as well as (index + 1) to be able to tell it is friendlyChampion
 	}
-	for (index, champ) in enemyChampions.iter().enumerate()
+	for (index, champ) in enemyChampions.iter().enumerate() //iterate through all enemy champions
 	{
 		if index == selfIndex
 		{
 			continue;
 		}
-		playerDistances.push([DistanceBetweenPoints(champ.location, friendlyChampions[selfIndex].location), -((index + 1) as i8)])//optimisation
+		playerDistances.push([DistanceBetweenPoints(champ.location, friendlyChampions[selfIndex].location), -((index + 1) as i8)]) //(!O) pushes distance between self and champ location, as well as -(index + 1) to be able to tell it is enemyChampion
 	}
 	playerDistances.sort_unstable_by_key(|a| a[0]);
 	let champCount : usize = [3, 4, 5][starLevel];
