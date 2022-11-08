@@ -179,6 +179,26 @@ const CHAMPIONS : [Champion ; 4] = [Champion{id : 0, cost : 1, hp : [650.0, 1100
 									 Champion{id : 2, cost : 3, hp : [700.0, 1200.0, 2200.0], sm : 35, mc : 150, ar : 0.25, mr : 0.25, ad : [50.0, 60.0, 70.0], aS : 0.6, ra : 3, aID : 3, traits : [0, 0, 0]} //AP Ranged
 									];
 
+///findChampionIndexFromID:<br />
+///champions : &Vec<SummonedChampion> - List of champions to iterate through<br />
+///id : usize - ID wanted<br />
+///returns : Option<usize> - Some(correct id) or None if not found
+fn findChampionIndexFromID(champions : &Vec<SummonedChampion>, id : usize) -> Option<usize>
+{
+	if champions[id].id == id
+	{
+		return Some(id)
+	}
+	for champ in champions
+	{
+		if champ.id == id
+		{
+			return Some(id)
+		}
+	}
+	None
+}
+
 ///Ability for Support Champion:<br />
 ///friendlyChampions : mut reference to allied champions<br />
 ///enemyChampions : mut reference to enemy champions<br />
@@ -190,7 +210,7 @@ fn SupportAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions
 	let starLevel = friendlyChampions[selfIndex].starLevel; //gets current star level
 	for (index, champ) in friendlyChampions.iter().enumerate() //iterate through all friendly champions to add them to distances
 	{
-		if index == selfIndex //skip self
+		if index == selfIndex //skips self
 		{
 			continue;
 		}
@@ -198,24 +218,20 @@ fn SupportAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions
 	}
 	for (index, champ) in enemyChampions.iter().enumerate() //iterate through all enemy champions
 	{
-		if index == selfIndex
-		{
-			continue;
-		}
 		playerDistances.push([DistanceBetweenPoints(champ.location, friendlyChampions[selfIndex].location), -((index + 1) as i8)]) //(!O) pushes distance between self and champ location, as well as -(index + 1) to be able to tell it is enemyChampion
 	}
-	playerDistances.sort_unstable_by_key(|a| a[0]);
-	let champCount : usize = [3, 4, 5][starLevel];
-	let mut i = 0;//optimisation
-	let ap = friendlyChampions[selfIndex].ap;
-	for [_, champIndex] in playerDistances//optimise
+	playerDistances.sort_unstable_by_key(|a| a[0]);//sorts the player distances
+	let champCount : usize = [3, 4, 5][starLevel]; //how many champions it can hit/ effect
+	let mut i = 0;//(!O) counts how many have been given effect
+	let ap = friendlyChampions[selfIndex].ap;//get ability power
+	for [_, champIndex] in playerDistances//(!O) just fetch the champion index, distance is irrelevant as already sorted
 	{
 		if i >= champCount
 		{
 			break;
 		}
-		if champIndex > 0
-		{//champIndex - 1
+		if champIndex > 0//if friendly champ
+		{
 			//give allies attack speed for 5 seconds
 			friendlyChampions[(champIndex - 1) as usize].se.push(StatusEffect{
 																	duration : 500,
@@ -223,69 +239,81 @@ fn SupportAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions
 																	..Default::default()	
 			});
 		}
-		else //-(champ index + 1)
+		else //enemy champ
 		{
 			//stun enemies for 1.5 seconds and increase damage for 20%
 			enemyChampions[-(champIndex + 1) as usize].se.push(StatusEffect { duration: 150, statusType: StatusType::Stun(), isNegative : true });
 			enemyChampions[-(champIndex + 1) as usize].se.push(StatusEffect { duration: 150, statusType: StatusType::IncreaseDamageTaken(false, 1.2 * ap), isNegative : true});
 		}
-		i += 1;
+		i += 1;//add 1 to count of hit enemies
 	}
-	if i < champCount - 1
+	if i < champCount//give self effect if there aren't enough champs to hit
 	{
 		friendlyChampions[selfIndex].se.push(StatusEffect{duration : 500, statusType : StatusType::AttackSpeedBuff(false, 1.7 * ap), ..Default::default()});
-		println!("attack speed buff");
 	}
 }
-
+///Ability for Bruiser Champion:<br />
+///friendlyChampions : mut reference to allied champions<br />
+///enemyChampions : mut reference to enemy champions<br />
+///selfIndex : index of self in friendlyChampions<br />
+///projectiles : mut reference to all projectiles
 fn BruiserAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize, projectiles : &mut Vec<Projectile>)
 {
 	let starLevel = friendlyChampions[selfIndex].starLevel;
-	//can strike from out of range
-	let mut targetIndex = friendlyChampions[selfIndex].target;
-	if targetIndex != enemyChampions[friendlyChampions[selfIndex].target as usize].id
-	{
-		for (i, champ) in enemyChampions.iter().enumerate()
-		{
-			if champ.id == targetIndex
-			{
-				targetIndex = i;
-			}
-		}
-	}
-	let ap = friendlyChampions[selfIndex].ap;
-	friendlyChampions[selfIndex].heal((300.0 + 50.0 * starLevel as f32) * ap);
+	let targetIndex = findChampionIndexFromID(&enemyChampions, friendlyChampions[selfIndex].target).unwrap_or(0);//(!D) Can strike from out of range
+	let ap = friendlyChampions[selfIndex].ap;//gets ap
+	friendlyChampions[selfIndex].heal((300.0 + 50.0 * starLevel as f32) * ap); //heals
 
+	//deals damage
 	dealDamage(selfIndex, friendlyChampions, &mut enemyChampions[targetIndex], (25.0 * starLevel as f32) * 4.0 * friendlyChampions[selfIndex].ad, DamageType::Physical(), false)
 }
 
+///Ability for Attack Damage Champion:<br />
+///friendlyChampions : mut reference to allied champions<br />
+///enemyChampions : mut reference to enemy champions<br />
+///selfIndex : index of self in friendlyChampions<br />
+///projectiles : mut reference to all projectiles
 fn ADStrikerAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize, projectiles : &mut Vec<Projectile>)
 {
-	let targetLocation = enemyChampions[friendlyChampions[selfIndex].target].location;
+	//fetches target index
+	let target = findChampionIndexFromID(&enemyChampions, friendlyChampions[selfIndex].target).unwrap_or(0);//(!D) Can strike from out of range
+	//gets their location
+	let targetLocation = enemyChampions[target].location;
+	//calculates damage
 	let damage : f32 = friendlyChampions[selfIndex].ad * 3.0 * (friendlyChampions[selfIndex].starLevel as f32);
+	//adds projectile to vec
 	projectiles.push(Projectile::new(friendlyChampions[selfIndex].location, Option::Some(targetLocation), friendlyChampions[selfIndex].target, damage, DamageType::Physical(), 0.0, 5, selfIndex))
 }
-
+///Ability for Ability Power Champion:<br />
+///friendlyChampions : mut reference to allied champions<br />
+///enemyChampions : mut reference to enemy champions<br />
+///selfIndex : index of self in friendlyChampions<br />
+///projectiles : mut reference to all projectiles
 fn APStrikerAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize, projectiles : &mut Vec<Projectile>)
 {
-	let targetLocation = enemyChampions[friendlyChampions[selfIndex].target].location;
+	//fetches target index
+	let target = findChampionIndexFromID(&enemyChampions, friendlyChampions[selfIndex].target).unwrap_or(0);//(!D) Can strike from out of range
+	//gets their location
+	let targetLocation = enemyChampions[target].location;
+	//calculates damage
 	let damage : f32 = 250.0 * friendlyChampions[selfIndex].ap * (friendlyChampions[selfIndex].starLevel as f32);
+	//adds projectile to vec
 	projectiles.push(Projectile::new(friendlyChampions[selfIndex].location, Option::Some(targetLocation), friendlyChampions[selfIndex].target, damage, DamageType::Magical(), damage / 3.0, 3, selfIndex))
 }
 
-///const CHAMPIONABILITIES :
-///Stores all the champ abilities (index = abilityID)
-///All abilities are called in the form 
-///(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize)
-///Arguments:
-///friendlyChampions : Mutable reference to allied champions
-///enemyChampions : Mutable reference to enemy champions
-///selfIndex : Index of champion (in friendlyChampions) who casted this ability
+///const CHAMPIONABILITIES :<br />
+///Stores all the champ abilities (index = abilityID)<br />
+///All abilities are called in the form <br />
+///(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize)<br />
+///Arguments:<br />
+///friendlyChampions : Mutable reference to allied champions<br />
+///enemyChampions : Mutable reference to enemy champions<br />
+///selfIndex : Index of champion (in friendlyChampions) who casted this ability<br />
 const CHAMPIONABILITIES : [fn(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize, projectiles : &mut Vec<Projectile>) ; 4]	= 
-	[SupportAbility, BruiserAbility, APStrikerAbility, ADStrikerAbility];
+	[SupportAbility, BruiserAbility, APStrikerAbility, ADStrikerAbility];//(!D) Doesn't account for casting time
 
-//discrepency, cast time = 0.5 seconds apparently
-#[derive(PartialEq, Clone, Copy)]
+///Enum for the 3 damage types Physical, Magical and True
+#[derive(PartialEq, Clone, Copy)]//derives clone copy and partial equal
 enum DamageType
 {
 	Physical(),
@@ -300,22 +328,34 @@ enum DamageType
 ///Not used in battles, only for planning phase
 struct PlacedChampion 
 {
-	///
+	///id given at instantiation
     id : usize, 
 
-    star : usize, //star level
-    items : [u8 ; 3], //items given
-    location : [i8; 2] //location on board
+	///star level of champion
+    star : usize, 
+
+	///items
+    items : [u8 ; 3],
+	
+	///location on board
+    location : [i8; 2]
 }
+
+///Implementation for Shields
 struct Shield
 {
+	///duration of shield
 	duration : i16,
+	///number of damage blocked
 	size : f32,
-
+	///Optional choice for whether it only blocks a certain type
 	blocksType : Option<DamageType>,
+
+	///Whether it pops after receiving any damage
 	pop : bool,
 }
 
+///Default for shield
 impl Default for Shield
 {
 	fn default() -> Shield
@@ -330,18 +370,37 @@ impl Default for Shield
 	}
 }
 
-struct SummonedChampion //Structure for champions on board in battle
+///Struct for champion placed on board in a battle
+struct SummonedChampion
 {
-	location : [i8 ; 2], //array of p, q coordinates, r can be calculated with r = -p - q
-	movementProgress : [i8 ; 2], //progress of movement before moving to a new square, goes to 10 before moving
-	health : f32, //health
-	cm : u16, //current mana
-	dc : u8, //dodge chance
-	cr : u8, //crit rate
-	critD : f32, // crit damage
-	mc : u16, //mana/ ability cost
-	ar : f32, //armor
-	mr : f32,  //magic resist
+	///array of p, q coordinates, r can be calculated with r = -p - q
+	location : [i8 ; 2],
+
+	///progress of movement before new square, goes up to 10 then moves
+	movementProgress : [i8 ; 2],
+
+	///health
+	health : f32,
+	///current mana
+	cm : u16,
+
+	///dodge chance in %
+	dc : u8,
+	///crit rate in %
+	cr : u8,
+	///crit damage
+	critD : f32,
+
+	///ability mana cost
+	mc : u16,
+
+	///armor
+	ar : f32,
+
+	///magic resist
+	mr : f32, 
+
+	///attack
 	ad : f32, //attack damage
 	aS : f32, //attacks per second
 	ra : u8, //auto attack range
