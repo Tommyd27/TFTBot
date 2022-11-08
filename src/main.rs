@@ -400,17 +400,36 @@ struct SummonedChampion
 	///magic resist
 	mr : f32, 
 
-	///attack
-	ad : f32, //attack damage
-	aS : f32, //attacks per second
-	ra : u8, //auto attack range
-	aID : usize, //ability ID
-	id : usize, //id
-	targetCountDown : i8, //cooldown before target change
-	autoAttackDelay : i16, //cooldown before auto attackng again
-	attackSpeedModifier : f32, //increase from items/ from base attack speed
-	target : usize, //ID of target
-	targetCells : [i8 ; 2], //pathfinding target cell
+	///attack damage
+	ad : f32, 
+
+	///attacks per second/ attack speed
+	aS : f32,
+	
+	///auto attack range
+	ra : u8,
+
+	///ability ID/ index
+	aID : usize,
+
+	///id
+	id : usize,
+
+	///cooldown before target chance
+	targetCountDown : i8, 
+
+	///cooldown before auto attacking again
+	autoAttackDelay : i16,
+
+	///attack speed modifier from items and effects
+	attackSpeedModifier : f32, 
+
+	///id of target
+	target : usize, 
+
+	///pathfinding target cell
+	targetCells : [i8 ; 2], 
+
 	///Stores all the item IDs the champion is holding.<br />
 	///**Item IDS:**<br />
 	///0 : Null<br />
@@ -468,33 +487,58 @@ struct SummonedChampion
 	///88 : Blue Buff (+20 Starting Mana. Gain 20 mana after casting an ability)<br />
 	///89 : Mage Emblem (Wearer becomes a mage, cannot equip on a mage)<br />
 	///99 : Tacticians Crown (Increase board unit size by 1)<br />
-	items : [u8 ; 3], //item abilities 
-	ap : f32, //ability power
-	se : Vec<StatusEffect>, //status effects
-	gMD : i16, //generate mana delay, after abilities 1 second before can start generating mana again
+	items : [u8 ; 3], 
+	
+	///ability power
+	ap : f32, 
+
+	///vec of status effects
+	se : Vec<StatusEffect>,
+
+	///generate mana delay (can't generate mana 1 secomnd after casting ability)
+	gMD : i16, 
+	
+	///star level
 	starLevel : usize,
+
+	///incoming DMG modifier
 	incomingDMGModifier : f32,
+
+	///starting HP
 	initialHP : f32,
+
+	///can be targeted or not
 	targetable : bool,
+
+	///needs to shed negative status effects
 	shed : u8,
+
+	///vec of all shields
 	shields : Vec<Shield>,
-	//sortBy : i8,
-	traits : Vec<u8>, //trait abilities
-	zap : bool, //zap for ionic spark on ability cast
-	banish : bool,//zenith banish
+
+	/*///trait abilities
+	traits : Vec<u8>,*/
+
+	///whether zapped from ionic spark
+	zap : bool, 
+
+	///whether zenith banished
+	banish : bool,
+
+	///titan's resolve stacks
 	titansResolveStack : u8,
+
+	///omnivamp (% of healing from damage done)
 	omnivamp : f32,
 }
 
 impl SummonedChampion 
 {
-	//Method for converting PlacedChampion into SummonChampion
+	///converts PlacedChampion into SummonChampion
 	fn new(placedChampion : &PlacedChampion, id : usize) -> SummonedChampion
 	{
-		let starLevel = placedChampion.star; //Get STart Level
-		let ofChampion = &CHAMPIONS[placedChampion.id];
-		let mut traits = ofChampion.traits.to_vec();
-		traits.retain(|x| *x != 0);//optimisation
+		let starLevel = placedChampion.star; //get star level
+		let ofChampion = &CHAMPIONS[placedChampion.id];//get champ info
 		SummonedChampion { location: [placedChampion.location[0], placedChampion.location[1]], //create summoned champ with all details
 						   movementProgress : [0, 0],
 						   health: ofChampion.hp[starLevel], 
@@ -514,7 +558,7 @@ impl SummonedChampion
 						   autoAttackDelay : 0,
 						   attackSpeedModifier : 1.0,
 						   target : 255,
-						   targetCells : [-1, -1], //Optimisation, list in path
+						   targetCells : [-1, -1], //(!O)
 						   aID: ofChampion.aID, 
 						   items: placedChampion.items,
 						   ap : 1.0,
@@ -526,65 +570,77 @@ impl SummonedChampion
 						   shed : 0,
 						   shields : Vec::new(),
 						   //sortBy : 0,
-						   traits : traits,
+						   //traits : traits,
 						   zap : false, //discrepency maybe if order of status Effects is ever affected, alternative would be to iterate through status Effects and check for ionic spark
 						   banish : false,//discrepency with this and many others if one status effect banishing ends and another is still going on etc.
 						   titansResolveStack : 0,
 						   omnivamp : 0.0,
 						}
 	}
+	///fn to heal set amount
 	fn heal(&mut self, mut healingAmount : f32)
 	{
-		for statusEffect in &self.se
+		for statusEffect in &self.se//checks for grevious wounds
 		{
 			if statusEffect.statusType == StatusType::GreviousWounds()
 			{
-				healingAmount /= 2.0;
+				healingAmount /= 2.0;//halves healing
 				break;
 			}
 		}
 		self.health += healingAmount;
 		if self.health > self.initialHP
 		{
-			self.health = self.initialHP
+			self.health = self.initialHP//makes sure to limit it to initial HP, so no healing to infinity
 		}
 	}
 }
 
-struct Player
-{
-    id : u8, //p id
-    gold : u8, //gold stored
-    winstreak : i8, //win streak, can be +-
-    health : u8, //p health
-    level : u8, //p level
-    xp : u8, //p xp
-
-    champions : Vec<PlacedChampion>, //all p champions
-	augments : [u8 ; 3] //augments
-}
-
+///Board Struct:<br />
+///Simulates battles
 struct Board
 {
-	p1Champions : Vec<SummonedChampion>, //Vector of player 1's champs
-	p2Champions : Vec<SummonedChampion>, //Vector of player 2's champs
-	//p1Augments : [u8 ; 3],
-	//p2Augments : [u8 ; 3],
-	timeUnit : i8, //time unit for board in centiseconds (1/100 of a second
-	//gridSize : [i8 ; 2], //grid size [x, y, gridType]
-	movementAmount : i8, //will be calculated, const / timeUnit
+	///Vec of player 1's champs
+	p1Champions : Vec<SummonedChampion>, 
+	
+	///Vec of player 2's champs
+	p2Champions : Vec<SummonedChampion>, 
+
+	///Time unit for board in centiseconds (1/100 of a second)
+	timeUnit : i8, 
+
+	///movement amount per tick, is calculated by const / time unit
+	movementAmount : i8, 
 }
 
+///Projectile struct
 struct Projectile
 {
+	///location of projectile
 	location : [i8 ; 2],
+
+	///location progress
 	locationProgress : [i8 ; 2],
+
+	///target location
 	targetLocation : Option<[i8 ; 2]>,
+
+	///enemy Champion index
 	targetID : usize,
+
+	///projectile damage
 	damage : f32,
+
+	///projectile damage type
 	damageType : DamageType,
+
+	///amount of splash damage
 	splashDamage : f32,
+
+	///speed of projectile
 	speed : i8,
+
+	///id of shooter (so can give item effects etc)
 	shooterID : usize,
 }
 
