@@ -17,9 +17,6 @@ struct Champion
 	///Champion ID<br />
 	///same as index in CHAMPIONS
     id : u8,
-
-	///Cost in Gold
-    cost : u8, 
     
 	///Healthpoints for each Star Level
     hp : [f32; 3], 
@@ -49,8 +46,8 @@ struct Champion
 	///same as index in CHAMPIONABILITIES
     aID : usize, 
 
-	///Trait IDs
-    traits : [u8 ; 3],
+	/*///Trait IDs
+    traits : [u8 ; 3],*/
 }
 ///Status Type (enum):<br />
 ///Holds information about what the status does
@@ -173,10 +170,10 @@ impl Default for StatusEffect{
 
 ///CHAMPIONS (const):<br />
 ///Stores all the champion information
-const CHAMPIONS : [Champion ; 4] = [Champion{id : 0, cost : 1, hp : [650.0, 1100.0, 2100.0], sm : 70, mc : 140, ar : 0.25, mr : 0.25, ad : [40.0, 70.0, 130.0], aS : 0.6, ra : 2, aID : 0, traits : [0, 0, 0]}, //Support
-                 					Champion{id : 1, cost : 2, hp : [800.0, 1400.0, 2500.0], sm : 50, mc : 100, ar : 0.45, mr : 0.45, ad : [75.0, 100.0, 175.0], aS : 0.7, ra : 1, aID : 1, traits : [0, 0, 0]}, //Bruiser
-                 					Champion{id : 2, cost : 3, hp : [700.0, 1200.0, 2200.0], sm : 35, mc : 100, ar : 0.25, mr : 0.25, ad : [65.0, 120.0, 240.0], aS : 0.7, ra : 3, aID : 2, traits : [0, 0, 0]}, //AD Ranged
-									 Champion{id : 2, cost : 3, hp : [700.0, 1200.0, 2200.0], sm : 35, mc : 150, ar : 0.25, mr : 0.25, ad : [50.0, 60.0, 70.0], aS : 0.6, ra : 3, aID : 3, traits : [0, 0, 0]} //AP Ranged
+const CHAMPIONS : [Champion ; 4] = [Champion{id : 0, hp : [650.0, 1100.0, 2100.0], sm : 70, mc : 140, ar : 0.25, mr : 0.25, ad : [40.0, 70.0, 130.0], aS : 0.6, ra : 2, aID : 0}, //Support
+                 					Champion{id : 1, hp : [800.0, 1400.0, 2500.0], sm : 50, mc : 100, ar : 0.45, mr : 0.45, ad : [75.0, 100.0, 175.0], aS : 0.7, ra : 1, aID : 1}, //Bruiser
+                 					Champion{id : 2, hp : [700.0, 1200.0, 2200.0], sm : 35, mc : 100, ar : 0.25, mr : 0.25, ad : [65.0, 120.0, 240.0], aS : 0.7, ra : 3, aID : 2}, //AD Ranged
+									 Champion{id : 2, hp : [700.0, 1200.0, 2200.0], sm : 35, mc : 150, ar : 0.25, mr : 0.25, ad : [50.0, 60.0, 70.0], aS : 0.6, ra : 3, aID : 3,} //AP Ranged
 									];
 
 ///findChampionIndexFromID:<br />
@@ -646,31 +643,29 @@ struct Projectile
 
 impl Projectile
 {
+	///Simulates a single tick of a projectile
 	fn SimulateTick(self : &mut Projectile, possibleTargets : &mut Vec<SummonedChampion>, friendlyChampions : &mut Vec<SummonedChampion>) -> bool
 	{
-		//discrepency only checks after move to theoretically could phase through someone
-		let targetLocation = match self.targetLocation
+		let targetLocation = match self.targetLocation //discrepency only checks after move to theoretically could phase through someone
 		{
-			Some(location) => {location},
-			None => {let mut outLocation = [-1, -1];
-				for possibleTarget in possibleTargets.iter()
+			Some(location) => {location}, //gets target location
+			None => {let outLocation = findChampionIndexFromID(&possibleTargets, self.targetID);//gets location of target champion
+				match outLocation
 				{
-					if possibleTarget.id == self.targetID
-					{
-						outLocation = possibleTarget.location;
-					}
+					Some(index) => possibleTargets[index].location,
+					None => [-1, -1],
 				}
-				outLocation
-			},
-		};
-		if targetLocation[0] == -1
+
+
+		}};
+		if targetLocation[0] == -1//not found, remove projectile
 		{
 			return false
 		}
 
 		self.locationProgress[0] += self.speed * sign(targetLocation[0] - self.location[0]);
-		self.locationProgress[1] += self.speed * sign(targetLocation[1] - self.location[1]);
-		if self.locationProgress[0].abs() >= 10
+		self.locationProgress[1] += self.speed * sign(targetLocation[1] - self.location[1]);//add location progress
+		if self.locationProgress[0].abs() >= 10//if above 10, move
 		{
 			self.location[0] += sign(self.locationProgress[0]);
 		}
@@ -678,40 +673,33 @@ impl Projectile
 		{
 			self.location[1] += sign(self.locationProgress[1]);
 		}
-		if ! InGridHexagon(self.location)
+		if ! InGridHexagon(self.location)//if out of grid, remove
 		{
 			return false;
 		}
 		
-		for possibleTarget in possibleTargets.iter_mut()
+		for possibleTarget in possibleTargets.iter_mut()//iterate through all possible collisions
 		{
-			if self.location == possibleTarget.location
+			if self.location == possibleTarget.location//has a hit
 			{
-				let mut shooterIndex : usize = usize::MAX;
-				for (i, champ) in friendlyChampions.iter().enumerate()
+				let shooterIndex = findChampionIndexFromID(&friendlyChampions, self.shooterID).unwrap_or(usize::MAX);//finds shooter id
+				dealDamage(shooterIndex, friendlyChampions, possibleTarget, self.damage, self.damageType, false);//deals damage
+				if self.splashDamage > 0.0//if there is splash damage
 				{
-					if champ.id == self.shooterID
-					{
-						shooterIndex = i;//need to work on shooter index's/ ids
-						break;
-					}
-				}
-				dealDamage(shooterIndex, friendlyChampions, possibleTarget, self.damage, self.damageType, false);
-				if self.splashDamage > 0.0
-				{
-					for possibleSecondaryTarget in possibleTargets.iter_mut()
+					for possibleSecondaryTarget in possibleTargets.iter_mut()//iterate through possible splash hits
 					{
 						if DistanceBetweenPoints(self.location, possibleSecondaryTarget.location) < 3
 						{
-							dealDamage(shooterIndex, friendlyChampions, possibleSecondaryTarget, self.splashDamage, self.damageType, true);
+							dealDamage(shooterIndex, friendlyChampions, possibleSecondaryTarget, self.splashDamage, self.damageType, true);//deal secondary dmg
 						}
 					}
 				}
-				return false
+				return false//remove self
 			}
 		}
 		true
 	}
+	///Makes new projectile
 	fn new(location : [i8 ; 2], targetLocation : Option<[i8 ; 2]>, targetID : usize, damage : f32,
 		damageType : DamageType,
 		splashDamage : f32,
@@ -743,17 +731,17 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 	match item
 	{
 		0 => (),
-		1  => friendlyChampions[selfIndex].ad += 10.0, //
-		2  => friendlyChampions[selfIndex].ap += 0.1, //
-		3 => friendlyChampions[selfIndex].health += 150.0, //
-		4 => friendlyChampions[selfIndex].ar += 0.2, //
-		5 => friendlyChampions[selfIndex].mr += 0.2,//
-		6 => friendlyChampions[selfIndex].attackSpeedModifier *= 1.1,//discrepency, + 0.1 or * 0.1
-		7 => {friendlyChampions[selfIndex].cr += 5; friendlyChampions[selfIndex].dc += 10},//
-		8 => friendlyChampions[selfIndex].cm += 15,//
-		11 => friendlyChampions[selfIndex].ad += [40.0, 70.0, 100.0][friendlyChampions[selfIndex].starLevel],//
-		12 => {friendlyChampions[selfIndex].ad += 10.0; friendlyChampions[selfIndex].ap += 0.1},//
-		13 => {friendlyChampions[selfIndex].ad += 10.0; friendlyChampions[selfIndex].health += 150.0;//
+		1  => friendlyChampions[selfIndex].ad += 10.0, //BF Sword
+		2  => friendlyChampions[selfIndex].ap += 0.1, //Needlessly Large Rod
+		3 => friendlyChampions[selfIndex].health += 150.0, //Giants Belt
+		4 => friendlyChampions[selfIndex].ar += 0.2, //Chain Vest
+		5 => friendlyChampions[selfIndex].mr += 0.2,//Negatron Cloak
+		6 => friendlyChampions[selfIndex].attackSpeedModifier *= 1.1,//Recurve Bow
+		7 => {friendlyChampions[selfIndex].cr += 5; friendlyChampions[selfIndex].dc += 10},//Sparring Glove
+		8 => friendlyChampions[selfIndex].cm += 15,//Tear of the Goddess
+		11 => friendlyChampions[selfIndex].ad += [15.0, 30.0, 45.0][friendlyChampions[selfIndex].starLevel],//Deathblade
+		12 => {friendlyChampions[selfIndex].ad += 10.0; friendlyChampions[selfIndex].ap += 0.1},//Hextech Gunblade
+		13 => {friendlyChampions[selfIndex].ad += 10.0; friendlyChampions[selfIndex].health += 150.0;//Zekes Herald
 			  let thisLocation = friendlyChampions[selfIndex].location;
 			  for friendlyChamp in friendlyChampions
 			  {
