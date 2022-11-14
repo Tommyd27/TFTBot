@@ -895,7 +895,7 @@ impl Board
 		let mut debugCount : u32 = 0;
 		for i in 0..self.p1Champions.len()//(!O), (!D) slam item mid round?
 		{
-			if self.p1Champions[i].items[0] == 77
+			if self.p1Champions[i].items[0] == 77//if they have thieves gloves, give them random other items
 			{
 				//(!D) doesnt give accurate item pairs
 				let level = true; //implement getting level
@@ -915,17 +915,15 @@ impl Board
 				GiveItemEffect(item, &mut self.p1Champions, &mut self.p2Champions, i);
 			}
 		}
-		for i in 0..self.p2Champions.len()//optimisation, discrepency slam item mid round?
+		for i in 0..self.p2Champions.len()//repeat but for p2 Champions
 		{
-			if self.p2Champions[i].items[0] == 77//error if champ has 0 items.
+			if self.p2Champions[i].items[0] == 77
 			{
-			//discrepency
-				//implement later yooo
-				let level = true; //implement getting level
+				let level = true;
 				if level
 				{
 					self.p2Champions[i].items[1] = rand::thread_rng().gen_range(0..9) * 10 + rand::thread_rng().gen_range(0..9);
-					self.p2Champions[i].items[2] = rand::thread_rng().gen_range(0..9);//discrepency do this properly later
+					self.p2Champions[i].items[2] = rand::thread_rng().gen_range(0..9);
 				}
 				else 
 				{
@@ -937,59 +935,8 @@ impl Board
 			{
 				GiveItemEffect(item, &mut self.p2Champions, &mut self.p1Champions, i);
 			}
-		}
-		
-		/*let mut p1Traits : HashMap<u8, u8> = HashMap::new();
-		//let mut p2Traits : HashMap<u8, u8> = HashMap::new();
-		for p1Champ in &mut self.p1Champions
-		{
-			for champTrait in &p1Champ.traits
-			{
-				*p1Traits.entry(*champTrait).or_insert(1) += 1;
-				match champTrait
-				{
-					1 => p1Champ.se.push(StatusEffect { duration: 32767, statusType: StatusType::Assassin(), ..Default::default() }),
-					_ => ()
-				}
-			}
-		}
-
-
-		for (traitType, level) in p1Traits
-		{	
-			/*Traits:
-			0 - 
-			1 - Assassin */
-
-			match traitType
-			{
-				1 => {
-					let mut extraCritChance = 15;
-					let mut extraCritDamage = 0.05;
-					if level > 5
-					{
-						extraCritChance = 45;
-						extraCritDamage = 0.45;
-					}
-					else if level > 3
-					{
-						extraCritChance = 30;
-						extraCritDamage = 0.25;
-					}
-					for p1Champ in &mut self.p1Champions
-					{
-						if p1Champ.traits.contains(&1)
-						{
-							p1Champ.cr += extraCritChance;//discrepency maybe doesnt apply like this
-							p1Champ.critD += extraCritDamage;
-						}
-					}}
-				_ => ()
-			}
-		}*/
-		
-		
-		for p1Champ in &mut self.p1Champions
+		}	
+		for p1Champ in &mut self.p1Champions//set all initial health to correct value
 		{
 			p1Champ.initialHP = p1Champ.health;
 		}
@@ -997,28 +944,28 @@ impl Board
 		{
 			p2Champ.initialHP = p2Champ.health;
 		}
-		let mut p1Projectiles : Vec<Projectile> = Vec::new();
+		let mut p1Projectiles : Vec<Projectile> = Vec::new();//instantiate projectiles vecs
 		let mut p2Projectiles : Vec<Projectile> = Vec::new();
-		while self.p1Champions.len() > 0 && self.p2Champions.len() > 0
+		while self.p1Champions.len() > 0 && self.p2Champions.len() > 0//take turns while there are champions alive
 		{
 			println!("Debug : Iteration {}", debugCount);
-			debugCount += 1;
-			for p1ChampionIndex in 0..self.p1Champions.len()
+			debugCount += 1;//count turns
+			for p1ChampionIndex in 0..self.p1Champions.len()//take turn for all p1Champs
 			{
 				takeTurn(p1ChampionIndex, &mut self.p1Champions, &mut self.p2Champions, self.timeUnit, self.movementAmount, &mut p1Projectiles)
 			}
 
 			
 
-			for p2ChampionIndex in 0..self.p2Champions.len()
+			for p2ChampionIndex in 0..self.p2Champions.len()//take turn for all p2Champs
 			{
 				takeTurn(p2ChampionIndex, &mut self.p2Champions, &mut self.p1Champions, self.timeUnit, self.movementAmount, &mut p2Projectiles)
 			}
 			p1Projectiles.retain_mut(|f| f.SimulateTick(&mut self.p2Champions, &mut self.p1Champions));
-			p2Projectiles.retain_mut(|f| f.SimulateTick(&mut self.p1Champions, &mut self.p2Champions));
+			p2Projectiles.retain_mut(|f| f.SimulateTick(&mut self.p1Champions, &mut self.p2Champions));//simulate projectile ticks
 		}
 		println!("Debug : Battle Over");
-		if self.p1Champions.len() == 0
+		if self.p1Champions.len() == 0//check winner and get champ information
 		{
 			println!("Debug : Player 2 Won");
 			for champion in &self.p2Champions
@@ -1041,7 +988,6 @@ impl Board
 }
 
 fn main() {
-    //let playerOneChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [3, 0]}, PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [9, 0]}, PlacedChampion{id : 0, star : 1, items : [0, 0, 0], location : [6, 0]}];
 	let playerOneChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 0, star : 0, items : [0, 0, 0], location : [3, 0]}];
 	let playerTwoChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 1, star : 0, items : [0, 0, 0], location : [6, 7]}];
 	let mut boardOutcome = 1;
@@ -1055,18 +1001,16 @@ fn main() {
 		
 	}
 	println!("Debug : Iteration Count {}", iterationCount);
-	
-										 //let mut Chadden = Summ1dChampion{id : 0, star : 1, items : [0, 0, 0]};
-    //let mut SomeGuy = Summ1dChampion{id : 1, star : 2, items : [0, 0, 0]};
 
 }
 ///Returns a distance twice as large (a distance of 1 hex returns 2)
-fn DistanceBetweenPoints(point1 : [i8 ; 2], point2 : [i8 ; 2]) -> i8//optimisation doesnt need to borrow?
+fn DistanceBetweenPoints(point1 : [i8 ; 2], point2 : [i8 ; 2]) -> i8//(!O)
 {
 	let zPoints : [i8 ; 2] = [-point1[0] - point1[1], -point2[0] - point2[1]];
 	(point1[0] - point2[0]).abs() + (point1[1] - point2[1]).abs() + (zPoints[0] - zPoints[1]).abs()
 }
 
+///0 if num is 0, 1 if num > 0, -1 if num < 0
 fn sign(num : i8) -> i8
 {
 	if num == 0
@@ -1083,45 +1027,47 @@ fn sign(num : i8) -> i8
 	}
 }
 ///damageType : 0 = physical, 1 = magical, 2 = true
-fn dealDamage(selfIndex : usize,
-			  friendlyChampions : &mut Vec<SummonedChampion>,
-			  target : &mut SummonedChampion,
-			  damageAmount : f32,
-			  damageType : DamageType,
-			  isSplash : bool
+fn dealDamage(selfIndex : usize, //selfIndex == usize::max if the champion who dealt the damage is dead but a projectile they fired still exists
+			  friendlyChampions : &mut Vec<SummonedChampion>,//all friendlyChamps
+			  target : &mut SummonedChampion,//target enemy champ
+			  damageAmount : f32,//amount of damage
+			  damageType : DamageType,//whether damage is physical, magical or true
+			  isSplash : bool//is splash, currently unused
 			  )
 {
 	let mut damage : f32 = 0.0;
 	match damageType
 	{
-		DamageType::Physical() => {damage = (damageAmount * target.incomingDMGModifier) / ( 1.0 + target.ar);
-			if selfIndex != usize::MAX
+		DamageType::Physical() => {damage = (damageAmount * target.incomingDMGModifier) / ( 1.0 + target.ar);//reduction in dmg due to target armor
+			if selfIndex != usize::MAX//if damage dealer exists
 			{
-				if friendlyChampions[selfIndex].cr > rand::thread_rng().gen_range(0..100)//optimisation
+
+				if friendlyChampions[selfIndex].cr > rand::thread_rng().gen_range(0..100)// if crit   (!O)  
 			  {
 				let mut critD = friendlyChampions[selfIndex].critD;
-				if friendlyChampions[selfIndex].cr > 100 && friendlyChampions[selfIndex].items.contains(&17)
+				if friendlyChampions[selfIndex].cr > 100 && friendlyChampions[selfIndex].items.contains(&17)//if they have infinity edge
 				{
-					critD += (friendlyChampions[selfIndex].cr - 100) as f32
+					critD += (friendlyChampions[selfIndex].cr - 100) as f32//give extra crit damage
 				}
 				let mut extraDamage = damage * critD;
-				if target.items.contains(&44)
+				if target.items.contains(&44) //if target has bramble vest
 				{
-					extraDamage /= 4.0;
+					extraDamage /= 4.0;//reduce damage
 				}
-				damage += extraDamage;
+				damage += extraDamage;//add extraDamage onto damage
 			  }
-			  if friendlyChampions[selfIndex].items.contains(&67)
+			  if friendlyChampions[selfIndex].items.contains(&67)//if attacker has last whisper
 			  {
 				let mut alreadyHasShred = false;
-				for statusEffect in &target.se
+				for statusEffect in &target.se//check if they already have armor shred
 				{
 					if StatusType::LastWhisperShred(true) == statusEffect.statusType || StatusType::LastWhisperShred(false) == statusEffect.statusType //optimisation
 					{
 						alreadyHasShred = true;
+						break;
 					}
 				}
-				if ! alreadyHasShred
+				if ! alreadyHasShred//if they don't, give it
 				{
 					target.se.push(StatusEffect{duration : 500, statusType : StatusType::LastWhisperShred(false), isNegative : true})
 				}
@@ -1129,15 +1075,15 @@ fn dealDamage(selfIndex : usize,
 			}
 			
 		},
-		DamageType::Magical() => {damage = (damageAmount * friendlyChampions[selfIndex].ap * target.incomingDMGModifier) / (1.0 + target.mr);
+		DamageType::Magical() => {damage = (damageAmount * friendlyChampions[selfIndex].ap * target.incomingDMGModifier) / (1.0 + target.mr);//damage reduction due to resistances
 			  
-			if selfIndex != usize::MAX
+			if selfIndex != usize::MAX//if attacker alive
 			{
-				if friendlyChampions[selfIndex].items.contains(&27)
+				if friendlyChampions[selfIndex].items.contains(&27)//if they have jeweled gauntlet
 				{
-				  if friendlyChampions[selfIndex].cr > rand::thread_rng().gen_range(0..100)
+				  if friendlyChampions[selfIndex].cr > rand::thread_rng().gen_range(0..100)//check for crit
 				  {
-					  let mut critD = friendlyChampions[selfIndex].critD;
+					  let mut critD = friendlyChampions[selfIndex].critD;//calculate crit damage
 					  let mut extraDamage = damage * critD;
 					  if target.items.contains(&44)
 					  {
@@ -1146,13 +1092,13 @@ fn dealDamage(selfIndex : usize,
 					  damage += extraDamage;
 				  }
 				}
-				if friendlyChampions[selfIndex].items.contains(&12)
+				if friendlyChampions[selfIndex].items.contains(&12)//if they have gunblade
 				{
-				  let healing = damage / 4.0;
-				  friendlyChampions[selfIndex].heal(healing);
-				  let mut lowestHP : f32 = 999999.0;
+				  let healing = damage / 4.0;//calculate healing
+				  friendlyChampions[selfIndex].heal(healing);//heal self
+				  let mut lowestHP : f32 = f32::MAX;
 				  let mut lowestHPID : usize = 0;
-				  for (i, champ) in friendlyChampions.iter().enumerate()
+				  for (i, champ) in friendlyChampions.iter().enumerate()//find lowest health ally
 				  {
 					  if i != selfIndex && champ.health < lowestHP
 					  {
@@ -1162,25 +1108,25 @@ fn dealDamage(selfIndex : usize,
 				  }
 				  if lowestHPID != selfIndex
 				  {
-					  friendlyChampions[lowestHPID].heal(healing);
+					  friendlyChampions[lowestHPID].heal(healing);//heal them
 				  }
 				}
-				if friendlyChampions[selfIndex].items.contains(&23)
+				if friendlyChampions[selfIndex].items.contains(&23)//if they have morellonomiocon
 				{
-				  target.se.push(StatusEffect { duration: 1000, statusType: StatusType::GreviousWounds(), isNegative: true });
+				  target.se.push(StatusEffect { duration: 1000, statusType: StatusType::GreviousWounds(), isNegative: true });//give morello effect
 				  let dmgToDo = target.initialHP / 10.0;
 				  target.se.push(StatusEffect { duration: 1000, statusType: StatusType::MorellonomiconBurn(dmgToDo / 10.0, dmgToDo, 100), isNegative : true})//discrepency unsure whether burn just reapplies itself
 			  }
 			}
 			},
-		DamageType::True() => {//discrepency does lulu ability etc affect true dmg
+		DamageType::True() => {//(!D) does lulu ability etc affect true dmg
 			if selfIndex != usize::MAX
 			{
-				if friendlyChampions[selfIndex].items.contains(&27)
+				if friendlyChampions[selfIndex].items.contains(&27)//if they have jeweled gauntlet
 				{
-				  if friendlyChampions[selfIndex].cr > rand::thread_rng().gen_range(0..100)
+				  if friendlyChampions[selfIndex].cr > rand::thread_rng().gen_range(0..100)//if crit
 				  {
-					  let mut extraDamage = damage * friendlyChampions[selfIndex].critD;
+					  let mut extraDamage = damage * friendlyChampions[selfIndex].critD;//calculate extra dmg
 					  if target.items.contains(&44)
 						{
 							extraDamage /= 4.0; //discrepency not sure if it applies to true dmg
@@ -1190,9 +1136,9 @@ fn dealDamage(selfIndex : usize,
 				}
 				
 				
-				if friendlyChampions[selfIndex].items.contains(&12)
+				if friendlyChampions[selfIndex].items.contains(&12)//if attacker has gunblade
 				{
-				  let healing = damage / 4.0;
+				  let healing = damage / 4.0;//do gunblade effect
 				  friendlyChampions[selfIndex].heal(healing);
 				  let mut lowestHP : f32 = 999999.0;
 				  let mut lowestHPID : usize = 0;
@@ -1212,8 +1158,8 @@ fn dealDamage(selfIndex : usize,
 				  {
 					  friendlyChampions[lowestHPID].heal(healing);
 				  }}
-				if friendlyChampions[selfIndex].items.contains(&23)
-				{
+				if friendlyChampions[selfIndex].items.contains(&23)//if attacker has morellos
+				{//give morello effect
 					target.se.push(StatusEffect { duration: 1000, statusType: StatusType::GreviousWounds(), isNegative: true });
 					let dmgToDo = target.initialHP / 4.0;
 					target.se.push(StatusEffect { duration: 1000, statusType: StatusType::MorellonomiconBurn(dmgToDo / 10.0, dmgToDo, 100), isNegative : true})//discrepency unsure whether burn just reapplies itself
@@ -1222,115 +1168,120 @@ fn dealDamage(selfIndex : usize,
 		},
 	}
 	
-	if selfIndex != usize::MAX
+	if selfIndex != usize::MAX//if attacker exists
 	{
-		if friendlyChampions[selfIndex].items.contains(&16)
-	{
-		if target.initialHP >= 2200.0
+		if friendlyChampions[selfIndex].items.contains(&16)//if attacker has giants slayer
 		{
-			damage *= 1.45;//discrepency in division yada
+			if target.initialHP >= 2200.0//if target has enough hp
+			{
+				damage *= 1.45;//give extra dmg
+			}
+			else {
+				damage *= 1.2;
+			}
 		}
-		else {
-			damage *= 1.2;
-		}
-	}
 
 
 	
-	let omnivamp = friendlyChampions[selfIndex].omnivamp;
+	let omnivamp = friendlyChampions[selfIndex].omnivamp;//give omnivamp healing
 	friendlyChampions[selfIndex].heal(damage * omnivamp);
-	for shield in &mut target.shields
+	for shield in &mut target.shields//go through shields
 	{
-		if damageType == shield.blocksType.unwrap_or(damageType)
+		if damageType == shield.blocksType.unwrap_or(damageType)//if shield is of correct dmg type (or doesn't specify)
 		{
-			if damage > shield.size
+			if damage > shield.size//if damage greater than shield
 			{
-				damage -= shield.size;
+				damage -= shield.size;//reduce dmg but remove shield
 				shield.size = 0.0;
 				shield.duration = 0;
 			}
 			else {
-				shield.size -= damage;
-				damage = 0.0;
-				if shield.pop
+				shield.size -= damage;//reduce shield size
+				damage = 0.0;//set dmg to 0
+				if shield.pop//if shield has pop
 				{
-					shield.size = 0.0;
+					shield.size = 0.0;//remove shield
 					shield.duration = 0;
 				}
 				break;
 			}
 		}
 	}
-
-	friendlyChampions[selfIndex].titansResolveStack = min(friendlyChampions[selfIndex].titansResolveStack + 1, 25);
 	}
-	
-	target.health -= damage;
-	target.titansResolveStack = min(target.titansResolveStack + 1, 25);
-	if target.gMD <= 0
-	{
-		target.cm += (0.7 * damage) as u16; //discrepency, should be 1% of premitigation and 7% of post.
+	friendlyChampions[selfIndex].titansResolveStack = min(friendlyChampions[selfIndex].titansResolveStack + 1, 25);//add titan's resolve stacks
+	target.health -= damage;//deal damage
+	target.titansResolveStack = min(target.titansResolveStack + 1, 25);//give enemy titan's resolve stacks
+	if target.gMD <= 0//if can gain mana
+	{//give mana
+		target.cm += (0.7 * damage) as u16; //(!D) should be 1% of premitigation and 7% of post.
 	}
 	
 }
-
+///returns if shield has duration > 0 after current tick, for use in retain_mut
 fn UpdateShield(shield : &mut Shield, timeUnit : i8) -> bool
 {
-	shield.duration -= timeUnit as i16;//optimisation
+	shield.duration -= timeUnit as i16;//(!O)
 	return shield.duration > 0
 }
-fn InGridHexagon(pos : [i8 ; 2]) -> bool//not going to attempt getting it working for different grid sizes yet
+///calcalates whether position is in grid
+fn InGridHexagon(pos : [i8 ; 2]) -> bool
 {
 	if pos[0] >= 0 && pos[0] < 10 &&
 	   pos[1] >= 0 && pos[1] < 8
 	{
-		if 2 - (pos[1] / 2) < pos[0] && //doesnt work for different grid sizes has to be changed manually
+		if 2 - (pos[1] / 2) < pos[0] && 
 		   10 - (pos[1] / 2) > pos[0]
 		{
 			return true
 		}
 	}
-	return false
+	false
 }
+///returns if status effect should be kept in .se used in retain_mut
 fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, timeUnit : i8, selfIndex : usize, stun : &mut ShouldStun, seToAdd : &mut Vec<StatusEffect>) -> bool
-{//discrepency on whether the last tick of a status applies or not etc
-	statusEffect.duration -= timeUnit as i16;
-	if friendlyChampions[selfIndex].shed == 2
+{//(!D) on whether the last tick of a status applies or not etc
+	statusEffect.duration -= timeUnit as i16;//reduce duration
+	if friendlyChampions[selfIndex].shed == 2 && statusEffect.isNegative//if shed and statusEffect is negative
 	{
-		if statusEffect.isNegative
-		{
-			statusEffect.duration = 0;
-		}
+		statusEffect.duration = 0;//remove status
 	}
-	if statusEffect.duration <= 0
+	if statusEffect.duration <= 0//if remove
 	{
-		match statusEffect.statusType
+		match statusEffect.statusType//undo status effect/ remove effect. some effects aren't actually removed but just reinitialise
 			{
 				StatusType::AttackSpeedBuff(_, modifier) => friendlyChampions[selfIndex].attackSpeedModifier /= modifier,
 				StatusType::IncreaseDamageTaken(_, modifier) => friendlyChampions[selfIndex].incomingDMGModifier = modifier,
-				StatusType::Untargetable(_) => friendlyChampions[selfIndex].targetable = true,//discrepency if have 2 untargetable effects this will untarget too early
-				StatusType::MorellonomiconBurn(_, dmgToDo, _) => friendlyChampions[selfIndex].health -= dmgToDo,//does moremellicon dmg heal
-				StatusType::IonicSparkEffect() => {friendlyChampions[selfIndex].mr *= 2.0; friendlyChampions[selfIndex].zap = false}, //discrepency maybe if something like illaoi/ daega ult reduces mr it wont increase by equal amount 
+				StatusType::Untargetable(_) => friendlyChampions[selfIndex].targetable = true,//(!D) if have 2 untargetable effects this will untarget too early
+				StatusType::MorellonomiconBurn(_, dmgToDo, _) => {
+					if !friendlyChampions[selfIndex].shed == 2//make sure it doesnt do all dmg after shed
+					{
+						friendlyChampions[selfIndex].health -= dmgToDo
+					}
+					},
+				StatusType::IonicSparkEffect() => {friendlyChampions[selfIndex].mr *= 2.0; friendlyChampions[selfIndex].zap = false}, //(!D) maybe if something like illaoi/ daega ult reduces mr it wont increase by equal amount 
 				StatusType::ArchangelStaff(_, apAmount) => {statusEffect.duration = 500; statusEffect.statusType = StatusType::ArchangelStaff(false, apAmount); return true},
 				StatusType::Banished(_) => {friendlyChampions[selfIndex].banish = false},
-				StatusType::RedemptionGive(_) => {statusEffect.duration = 100;
-												  statusEffect.statusType = StatusType::RedemptionGive(false)},
-				StatusType::Gargoyles(oldNumTargeting) => {statusEffect.duration = 100;
+				StatusType::RedemptionGive(_) => {statusEffect.duration = 100;//increase duration
+												  statusEffect.statusType = StatusType::RedemptionGive(false);
+												  return true//keep effect
+												},
+				StatusType::Gargoyles(oldNumTargeting) => {statusEffect.duration = 100;//increase duration
 																let mut numTargeting : u8 = 0;
 																let ourID = friendlyChampions[selfIndex].id;
-																for enemyChamp in enemyChampions
+																for enemyChamp in enemyChampions//get number of people targeting
 																{
 																	if enemyChamp.target == ourID
 																	{
 																		numTargeting += 1;
 																	}
 																}
-																let difference : f32 = (numTargeting - oldNumTargeting) as f32;
+																let difference : f32 = (numTargeting - oldNumTargeting) as f32;//get change
 																friendlyChampions[selfIndex].ar += 0.18 * difference;
 																friendlyChampions[selfIndex].mr += 0.18 * difference;
 																statusEffect.statusType = StatusType::Gargoyles(numTargeting);
+																return true//keep effect
 				},
-				StatusType::ShroudOfStillness() =>
+				StatusType::ShroudOfStillness() =>//give shroud effect
 				{
 					let pos = friendlyChampions[selfIndex].location;
 					let halfY = pos[1] / 2;
@@ -1338,7 +1289,7 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 					{
 						let yDist = enemy.location[1] / 2 - halfY;
 						let xDiff = pos[0] - yDist - enemy.location[0];
-						if xDiff <= 1 && xDiff >= 0
+						if xDiff <= 1 && xDiff >= 0//calcaulte whether 
 						{
 							enemy.cm -= (7 * enemy.mc) / 20;
 						}
