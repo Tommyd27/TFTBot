@@ -739,56 +739,56 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 		6 => friendlyChampions[selfIndex].attackSpeedModifier *= 1.1,//Recurve Bow
 		7 => {friendlyChampions[selfIndex].cr += 5; friendlyChampions[selfIndex].dc += 10},//Sparring Glove
 		8 => friendlyChampions[selfIndex].cm += 15,//Tear of the Goddess
-		11 => friendlyChampions[selfIndex].ad += [15.0, 30.0, 45.0][friendlyChampions[selfIndex].starLevel],//Deathblade
-		12 => {friendlyChampions[selfIndex].ad += 10.0; friendlyChampions[selfIndex].ap += 0.1},//Hextech Gunblade
-		13 => {friendlyChampions[selfIndex].ad += 10.0; friendlyChampions[selfIndex].health += 150.0;//Zekes Herald
+		11 => friendlyChampions[selfIndex].ad += [15.0, 30.0, 45.0][friendlyChampions[selfIndex].starLevel],
+		12 => {friendlyChampions[selfIndex].ad += 10.0; friendlyChampions[selfIndex].ap += 0.1},
+		13 => {friendlyChampions[selfIndex].ad += 10.0; friendlyChampions[selfIndex].health += 150.0;
 			  let thisLocation = friendlyChampions[selfIndex].location;
 			  for friendlyChamp in friendlyChampions
 			  {
-				if friendlyChamp.location[1] == thisLocation[1] && DistanceBetweenPoints(friendlyChamp.location, thisLocation) < 3
+				if friendlyChamp.location[1] == thisLocation[1] && DistanceBetweenPoints(friendlyChamp.location, thisLocation) < 3//checks units are adjacent and on same row
 				{
-					friendlyChamp.attackSpeedModifier *= 1.3; //discrepency, if this is activated before another attack speed bonus that should be before combat, it will not be accurate
+					friendlyChamp.attackSpeedModifier *= 1.3;//increases attack speed
 				}
 			  }
 			  },
 		14 => {friendlyChampions[selfIndex].ad += 10.0; friendlyChampions[selfIndex].ar += 0.2; 
-			   friendlyChampions[selfIndex].se.push(StatusEffect { duration: 32767, statusType: StatusType::EdgeOfNight(), ..Default::default()})},//
+			   friendlyChampions[selfIndex].se.push(StatusEffect { duration: 32767, statusType: StatusType::EdgeOfNight(), ..Default::default()})},//gives edge of night buff
 		15 => {friendlyChampions[selfIndex].ad += 10.0; friendlyChampions[selfIndex].mr += 0.2;
-			   friendlyChampions[selfIndex].se.push(StatusEffect { duration: 32767, statusType: StatusType::Bloodthirster(), ..Default::default()});		
+			   friendlyChampions[selfIndex].se.push(StatusEffect { duration: 32767, statusType: StatusType::Bloodthirster(), ..Default::default()});//gives bloodthirster buff
 			   friendlyChampions[selfIndex].omnivamp += 0.25;
 			},
 		16 => {friendlyChampions[selfIndex].ad += 10.0; friendlyChampions[selfIndex].attackSpeedModifier *= 0.1},//
-		17 => {friendlyChampions[selfIndex].ad += 10.0; friendlyChampions[selfIndex].cr += 75; friendlyChampions[selfIndex].critD += 0.1},// //discrepency cuz crit rate ig
+		17 => {friendlyChampions[selfIndex].ad += 10.0; friendlyChampions[selfIndex].cr += 75; friendlyChampions[selfIndex].critD += 0.1},//(!D)?
 		18 => {friendlyChampions[selfIndex].ad += 10.0; friendlyChampions[selfIndex].cm += 15},//
-		19 => {friendlyChampions[selfIndex].ad += 10.0; /*friendlyChampions[selfIndex].traits.push() - Shimmerscale*/},
+		19 => {friendlyChampions[selfIndex].ad += 10.0;},//(!U)
 		22 => {friendlyChampions[selfIndex].ap += 0.75},
 		23 => {friendlyChampions[selfIndex].ap += 0.40; friendlyChampions[selfIndex].health += 150.0}//
-		24 => {friendlyChampions[selfIndex].ap += 0.1; friendlyChampions[selfIndex].ar += 0.2;//
+		24 => {friendlyChampions[selfIndex].ap += 0.1; friendlyChampions[selfIndex].ar += 0.2;//Gives locket shield
 			   	let shieldAmount = [300.0, 350.0, 400.0][friendlyChampions[selfIndex].starLevel];
 			   	let thisLocation = friendlyChampions[selfIndex].location;
-				for friendlyChamp in friendlyChampions
+				for friendlyChamp in friendlyChampions//iterates through friendly champs
 				{
-					if friendlyChamp.location[1] == thisLocation[1] && DistanceBetweenPoints(friendlyChamp.location, thisLocation) < 5 //discrepency distances
+					if friendlyChamp.location[1] == thisLocation[1] && DistanceBetweenPoints(friendlyChamp.location, thisLocation) < 5 //(!D) gives shield to those within 2 cells and same row
 					{
-						friendlyChamp.shields.push(Shield{duration : 1500, size : shieldAmount, ..Default::default()});
+						friendlyChamp.shields.push(Shield{duration : 1500, size : shieldAmount, ..Default::default()});//gives shield
 					}
 				}
 			   
 		},
 		25 => {friendlyChampions[selfIndex].ap += 0.1; friendlyChampions[selfIndex].mr += 0.2;},//
 		26 => {friendlyChampions[selfIndex].ap += 0.1; friendlyChampions[selfIndex].attackSpeedModifier *= 0.1},//
-		27 => {friendlyChampions[selfIndex].ap += 0.5; friendlyChampions[selfIndex].cr += 15; friendlyChampions[selfIndex].critD += 0.4}// //discrepency does bonus ability damage include from components? //
+		27 => {friendlyChampions[selfIndex].ap += 0.5; friendlyChampions[selfIndex].cr += 15; friendlyChampions[selfIndex].critD += 0.4}// //(!D) does bonus ability damage include from components? //
 		28 => {friendlyChampions[selfIndex].ap += 0.1; friendlyChampions[selfIndex].cm += 15; friendlyChampions[selfIndex].se.push(StatusEffect { duration: 500, statusType: StatusType::ArchangelStaff(false, 0.2), isNegative: false })}
 		29 => {friendlyChampions[selfIndex].ap += 0.1; },//add next trait
 		33 => {friendlyChampions[selfIndex].health += 1000.0},
-		34 => {friendlyChampions[selfIndex].health += 300.0; friendlyChampions[selfIndex].ar += 0.2; friendlyChampions[selfIndex].se.push(StatusEffect { duration: 0, statusType: StatusType::GiveSunfire(), ..Default::default() })}// discrepency not done LOL +have to test how sunfire works before i feel comfortable implementing it
-		35 => {friendlyChampions[selfIndex].health += 150.0; friendlyChampions[selfIndex].mr += 0.2; friendlyChampions[selfIndex].se.push(StatusEffect { duration : 32767, statusType: StatusType::Zephyr(false, 500), ..Default::default()})}//donE?????????????????????????????????????????????????????????????
+		34 => {friendlyChampions[selfIndex].health += 300.0; friendlyChampions[selfIndex].ar += 0.2; friendlyChampions[selfIndex].se.push(StatusEffect { duration: 0, statusType: StatusType::GiveSunfire(), ..Default::default() })}//(!U)
+		35 => {friendlyChampions[selfIndex].health += 150.0; friendlyChampions[selfIndex].mr += 0.2; friendlyChampions[selfIndex].se.push(StatusEffect { duration : 32767, statusType: StatusType::Zephyr(false, 500), ..Default::default()})}//gives zephyr effect
 		36 => {friendlyChampions[selfIndex].health += 150.0; friendlyChampions[selfIndex].attackSpeedModifier *= 0.1; //close enough, doesnt reset fully
 			   for enemyChamp in enemyChampions
 			   {
-					if DistanceBetweenPoints(enemyChamp.location, friendlyChampions[selfIndex].location) < 9
+					if DistanceBetweenPoints(enemyChamp.location, friendlyChampions[selfIndex].location) < 9 //if in range
 					{
-						enemyChamp.se.push(StatusEffect { duration: 32767, statusType: StatusType::Taunted(friendlyChampions[selfIndex].id), isNegative: true })//discrepency does shed cleanse taunt?
+						enemyChamp.se.push(StatusEffect { duration: 32767, statusType: StatusType::Taunted(friendlyChampions[selfIndex].id), isNegative: true })//(!D) does shed cleanse taunt? gives taunt effect
 					}
 			   }
 		}
@@ -796,17 +796,17 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 			let thisLocation = friendlyChampions[selfIndex].location;
 			for friendlyChamp in friendlyChampions
 			  	{
-					if friendlyChamp.location[1] == thisLocation[1] && DistanceBetweenPoints(friendlyChamp.location, thisLocation) < 3 //discrepency distances
+					if friendlyChamp.location[1] == thisLocation[1] && DistanceBetweenPoints(friendlyChamp.location, thisLocation) < 3//gives banshee's shield
 					{
-						friendlyChamp.shields.push(Shield{duration : 1500, size : 600.0, blocksType : Some(DamageType::Magical()), pop : true}); //discrepency shouldn't stack whether from multiple items on 1 person or from multiple champs
+						friendlyChamp.shields.push(Shield{duration : 1500, size : 600.0, blocksType : Some(DamageType::Magical()), pop : true}); //(!D) shouldn't stack whether from multiple items on 1 person or from multiple champs
 					}
 			  	}
 		}
-		38 => {friendlyChampions[selfIndex].health += 150.0; friendlyChampions[selfIndex].cm += 15; friendlyChampions[selfIndex].se.push(StatusEffect { duration: 100, statusType: StatusType::RedemptionGive(false), ..Default::default() })}  //discrepency does it give redemption bonus to self
-		39 => {friendlyChampions[selfIndex].health += 150.0}//add trait
-		44 => {friendlyChampions[selfIndex].ar += 0.8}//says grants 40 bonus armor, is that the 40 from the two chain vests? discrepency
+		38 => {friendlyChampions[selfIndex].health += 150.0; friendlyChampions[selfIndex].cm += 15; friendlyChampions[selfIndex].se.push(StatusEffect { duration: 100, statusType: StatusType::RedemptionGive(false), ..Default::default() })}//Gives redemption effect
+		39 => {friendlyChampions[selfIndex].health += 150.0}//(!U)
+		44 => {friendlyChampions[selfIndex].ar += 0.8}//(!D) says grants 40 bonus armor, is that the 40 from the two chain vests?
 		45 => {friendlyChampions[selfIndex].ar += 0.2; friendlyChampions[selfIndex].mr += 0.2;//
-				friendlyChampions[selfIndex].se.push(StatusEffect{duration : 100, statusType: StatusType::Gargoyles(0), ..Default::default() })//discrepency only updates every second
+				friendlyChampions[selfIndex].se.push(StatusEffect{duration : 100, statusType: StatusType::Gargoyles(0), ..Default::default() })//(!D) only updates every second
 		}
 		46 => {friendlyChampions[selfIndex].ar += 0.2; friendlyChampions[selfIndex].attackSpeedModifier *= 1.1;
 			friendlyChampions[selfIndex].se.push(StatusEffect { duration: 32726, statusType: StatusType::TitansResolve(0), ..Default::default() })
@@ -832,7 +832,7 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 			  	{
 					if friendlyChamp.location[1] == thisLocation[1] && DistanceBetweenPoints(friendlyChamp.location, thisLocation) < 3 //discrepency distances
 					{
-						friendlyChamp.ap += 0.3; //discrepency shouldn't stack whether from multiple items on 1 person or from multiple champs
+						friendlyChamp.ap += 0.3; //(!D) shouldn't stack whether from multiple items on 1 person or from multiple champs
 					}
 			  	}
 		}
@@ -845,7 +845,7 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 		77 => {friendlyChampions[selfIndex].cr += 15; friendlyChampions[selfIndex].dc += 15;}
 		78 => {friendlyChampions[selfIndex].cm += 10; friendlyChampions[selfIndex].cr += 15; 
 		
-			if rand::thread_rng().gen_range(0..100) > 50//discrepency does this even mf'ing work
+			if rand::thread_rng().gen_range(0..100) > 50//(!D) does this even mf'ing work
 			{
 				friendlyChampions[selfIndex].ad += 30.0;
 				friendlyChampions[selfIndex].ap += 0.3;
@@ -868,28 +868,24 @@ impl Board
 {
 	fn new(p1PlacedChamps : &Vec<PlacedChampion>, p2PlacedChamps : &Vec<PlacedChampion>, timeUnit : i8) -> Board
 	{
-		/*P1 and P2 placed champs to convert into Summoned Champs for  */
 		let mut p1Champions = Vec::new();
 		let mut p2Champions = Vec::new();
-		for (i, p1Champion) in p1PlacedChamps.iter().enumerate()//place for optimisation
+		for (i, p1Champion) in p1PlacedChamps.iter().enumerate()//(!O) converts placed champions to summoned champions
 		{
 			p1Champions.push(SummonedChampion::new(&p1Champion, i));//converts into summoned champ
 
 		}
 
-		for (i, p2Champion) in p2PlacedChamps.iter().enumerate()//place for optimisation
+		for (i, p2Champion) in p2PlacedChamps.iter().enumerate()
 		{
 			p2Champions.push(SummonedChampion::new(&p2Champion, i));//converts into summoned champ
 		}
 		
 		Board{p1Champions : p1Champions,
 			  p2Champions : p2Champions,
-			  //p1Augments : [0, 0, 0],
-			  //p2Augments : [0, 0, 0],
 			  timeUnit : timeUnit,
-			  //gridSize : [7, 8],
-			  movementAmount : 10 / timeUnit as i8, //optimisation
-			}
+			  movementAmount : 10 / timeUnit as i8, //(!O)
+			}//creates new board
 	}
 
 
@@ -897,25 +893,11 @@ impl Board
 	fn StartBattle(mut self : Board) -> i8
 	{
 		let mut debugCount : u32 = 0;
-
-		/* 
-		for augment in self.p1Augments
+		for i in 0..self.p1Champions.len()//(!O), (!D) slam item mid round?
 		{
-			match augment
+			if self.p1Champions[i].items[0] == 77
 			{
-				0 => continue,
-				1 => *p1Traits.entry(1).or_insert(1) += 1,
-				_ => (),
-			}
-
-		}*/
-
-		for i in 0..self.p1Champions.len()//optimisation, discrepency slam item mid round?
-		{
-			if self.p1Champions[i].items[0] == 77//error if champ has 0 items.
-			{
-			//discrepency
-				//implement later yooo
+				//(!D) doesnt give accurate item pairs
 				let level = true; //implement getting level
 				if level
 				{
@@ -928,7 +910,7 @@ impl Board
 					self.p1Champions[i].items[2] = rand::thread_rng().gen_range(0..9) * 10 + rand::thread_rng().gen_range(0..9);
 				}
 			}
-			for item in self.p1Champions[i].items
+			for item in self.p1Champions[i].items//gives item effects
 			{
 				GiveItemEffect(item, &mut self.p1Champions, &mut self.p2Champions, i);
 			}
