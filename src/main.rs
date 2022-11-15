@@ -1289,7 +1289,7 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 					{
 						let yDist = enemy.location[1] / 2 - halfY;
 						let xDiff = pos[0] - yDist - enemy.location[0];
-						if xDiff <= 1 && xDiff >= 0//calcaulte whether 
+						if xDiff <= 1 && xDiff >= 0//calculate whether in line
 						{
 							enemy.cm -= (7 * enemy.mc) / 20;
 						}
@@ -1297,7 +1297,7 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 				}
 				StatusType::DragonClawHeal() =>
 				{
-					statusEffect.duration = 200;
+					statusEffect.duration = 200;//reset status effect
 					let mut numTargeting : f32 = 0.0;
 					let ourID = friendlyChampions[selfIndex].id;
 					for enemyChamp in enemyChampions
@@ -1326,11 +1326,11 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 			}
 		return false
 	}
-	match statusEffect.statusType
+	match statusEffect.statusType//read up on items https://tftactics.gg/item-builder
 	{
 		StatusType::AttackSpeedBuff(false, modifier) => {friendlyChampions[selfIndex].attackSpeedModifier *= modifier;
 															  statusEffect.statusType = StatusType::AttackSpeedBuff(true, modifier)},
-		StatusType::Stun() => {if stun.stun == 0
+		StatusType::Stun() => {if stun.stun == 0//has to check stun.stun == 0 as if stun.stun == 2 it is immune
 			{
 				stun.stun = 1;
 			}}, 
@@ -1458,17 +1458,15 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 	}
 	true
 }
+
+///simulates a tick/ turn for a champion<br />
+///friendlyChampions[selfIndex] : this champion<br />
+///friendlyChampionsLocations : location of all friend champs (array of positions), for pathfinding<br />
+///enemyChampions : all enemy champions, for targetting<br />
+///timeUnit : time unit of a frame, in centiseconds<br />
+///movementAmount : precalculated movement distance for 1 frame<br />
 fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>,timeUnit : i8, movementAmount : i8, projectiles : &mut Vec<Projectile>)
 {
-	/*
-	friendlyChampions[selfIndex] : this champion
-	friendlyChampionsLocations : location of all friend champs (array of positions), for pathfinding
-	enemyChampions : all enemy champions, for targetting
-	timeUnit : time unit of a frame, in centiseconds
-	movementAmount : precalculated movement distance for 1 frame
-	gridSize : depreciated
-	*/
-	//let mut thisChamp = &mut friendlyChampions[selfIndex]; //optimisation, maybe setting friendlyChampions[selfIndex] to a var is much faster than repeatedly calling access to a vector??
 	friendlyChampions[selfIndex].targetCountDown -= timeUnit;//Reduce cooldown to check target/ find new target
 	friendlyChampions[selfIndex].autoAttackDelay -= timeUnit as i16;//Risks going out of bounds as auto attack value may not be called for some time
 	friendlyChampions[selfIndex].gMD -= timeUnit as i16;
