@@ -1117,7 +1117,7 @@ fn dealDamage(selfIndex : usize, //selfIndex == usize::max if the champion who d
 				{
 				  target.se.push(StatusEffect { duration: 1000, statusType: StatusType::GreviousWounds(), isNegative: true, ..Default::default()});//give morello effect
 				  let dmgToDo = target.initialHP / 10.0;
-				  target.se.push(StatusEffect { duration: 1000, statusType: StatusType::MorellonomiconBurn(dmgToDo / 10.0, dmgToDo, 100), isNegative : true, ..Default::default()})//discrepency unsure whether burn just reapplies itself
+				  target.se.push(StatusEffect { duration: 100, statusType: StatusType::MorellonomiconBurn(dmgToDo / 10.0, dmgToDo, 100), isNegative : true, ..Default::default()})//discrepency unsure whether burn just reapplies itself
 			  }
 			}
 			},
@@ -1164,7 +1164,7 @@ fn dealDamage(selfIndex : usize, //selfIndex == usize::max if the champion who d
 				{//give morello effect
 					target.se.push(StatusEffect { duration: 1000, statusType: StatusType::GreviousWounds(), isNegative: true, ..Default::default()});
 					let dmgToDo = target.initialHP / 4.0;
-					target.se.push(StatusEffect { duration: 1000, statusType: StatusType::MorellonomiconBurn(dmgToDo / 10.0, dmgToDo, 100), isNegative : true, ..Default::default()})//discrepency unsure whether burn just reapplies itself
+					target.se.push(StatusEffect { duration: 100, statusType: StatusType::MorellonomiconBurn(dmgToDo / 10.0, dmgToDo, 100), isNegative : true, ..Default::default()})//discrepency unsure whether burn just reapplies itself
 				}
 			}
 		},
@@ -1255,16 +1255,27 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 				friendlyChampions[selfIndex].attackSpeedModifier /= modifier
 			}
 			StatusType::IncreaseDamageTaken(modifier) => {
-				friendlyChampions[selfIndex].incomingDMGModifier = modifier
+				friendlyChampions[selfIndex].incomingDMGModifier /= modifier
 			}
 			StatusType::Untargetable() => {
 				friendlyChampions[selfIndex].targetable = true//(!D) if have 2 untargetable effects this will untarget too early
 			}
-			StatusType::MorellonomiconBurn(_, dmgToDo, _) => {
-				if !friendlyChampions[selfIndex].shed == 2//make sure it doesnt do all dmg after shed
+			StatusType::MorellonomiconBurn(dmgPerTick, mut dmgToDo, timeTillNextTick) => {
+				if friendlyChampions[selfIndex].shed == 2
 				{
-					friendlyChampions[selfIndex].health -= dmgToDo
+					return false;
 				}
+				if dmgPerTick > dmgToDo
+				{
+					friendlyChampions[selfIndex].health -= dmgToDo;
+				}
+				else
+				{
+					statusEffect.duration = timeTillNextTick;
+					dmgToDo -= dmgPerTick;
+					return true;
+				}
+				
 			}
 			StatusType::IonicSparkEffect() => {
 				friendlyChampions[selfIndex].mr *= 2.0; //(!D) Possible discrepency
@@ -1272,8 +1283,7 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 			}  
 			StatusType::ArchangelStaff(apAmount) => {
 				statusEffect.duration = 500; 
-				statusEffect.applied = false; 
-				statusEffect.statusType = StatusType::ArchangelStaff(apAmount); 
+				friendlyChampions[selfIndex].ap += apAmount;
 				return true
 			}
 			StatusType::Banished() => {
@@ -1281,8 +1291,14 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 			}
 			StatusType::RedemptionGive() => {
 				statusEffect.duration = 100;//increase duration
-				statusEffect.applied = false;
-				statusEffect.statusType = StatusType::RedemptionGive();
+				let thisLocation = friendlyChampions[selfIndex].location;
+				for friendlyChamp in friendlyChampions
+				{
+					if DistanceBetweenPoints(thisLocation, friendlyChamp.location) < 3
+					{
+						friendlyChamp.heal((friendlyChamp.initialHP - friendlyChamp.health) * 0.12)//discrepency check at multitarget damage time for redemption heal for reduction
+					}
+				}
 				return true//keep effect
 			}
 			StatusType::Gargoyles(oldNumTargeting) => {
@@ -1339,11 +1355,11 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 					if DistanceBetweenPoints(enemyChamp.location, friendlyChampions[selfIndex].location) < 3
 					{
 						let dmg = enemyChamp.initialHP / 20.0;
-						enemyChamp.se.push(StatusEffect{duration : 300, statusType : StatusType::MorellonomiconBurn(dmg, dmg / 3.0, 100), ..Default::default()})
+						enemyChamp.se.push(StatusEffect{duration : 100, statusType : StatusType::MorellonomiconBurn(dmg, dmg / 3.0, 100), ..Default::default()})
 					}
 				}
 			}
-			_ => ()//println!("Unimplemented")
+			_ => ()
 		}
 		return false
 	}
@@ -1401,32 +1417,16 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 			StatusType::Untargetable() => {
 				friendlyChampions[selfIndex].targetable = false
 			} 
-			StatusType::MorellonomiconBurn(dmgPerTick, dmgToDo, duration) => {
-				statusEffect.applied = false;
-				let newDuration = duration - (timeUnit as i16);
-				if newDuration <= 0
-				{
-					friendlyChampions[selfIndex].health -= dmgPerTick;
-					statusEffect.statusType = StatusType::MorellonomiconBurn(dmgPerTick, dmgToDo - dmgPerTick, 100);//discrepency maybe apply burn more often like every half second
-				}
-				else 
-				{
-					statusEffect.statusType = StatusType::MorellonomiconBurn(dmgPerTick, dmgToDo, newDuration);	
-				}
-			}
 			StatusType::IonicSparkEffect() => {	
 				statusEffect.applied = false; 
 				friendlyChampions[selfIndex].mr /= 2.0; 
 				friendlyChampions[selfIndex].zap = true
 			}
-			StatusType::ArchangelStaff(apAmount) => {
-				friendlyChampions[selfIndex].ap += apAmount
-			}
 			StatusType::Banished() => {
 				friendlyChampions[selfIndex].banish = true
 			}																
 			StatusType::Zephyr(banishDuration) => {
-				let oppositeLocation = [friendlyChampions[selfIndex].location[1], friendlyChampions[selfIndex].location[0]];
+				let oppositeLocation = [friendlyChampions[selfIndex].location[1], friendlyChampions[selfIndex].location[0]];//(!D) probs not opposite
 				let mut smallestDistance : i8 = 99;
 				let mut smallestDistanceID : usize = 0;
 				for (i , enemyChampion) in enemyChampions.iter().enumerate()
@@ -1446,27 +1446,14 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 				return false
 			}
 			StatusType::Taunted(tauntID) => {
-				statusEffect.applied = false;
-				for enemyChamp in enemyChampions
+				if findChampionIndexFromID(enemyChampions, tauntID).is_some()
 				{
-					if enemyChamp.id == tauntID
-					{
-						friendlyChampions[selfIndex].target = tauntID;
-						friendlyChampions[selfIndex].targetCountDown = 100;
-						return true;
-					}
+					statusEffect.applied = false;
+					friendlyChampions[selfIndex].target = tauntID;
+					friendlyChampions[selfIndex].targetCountDown = 100;
+					return true;
 				}
 				return false;
-			}
-			StatusType::RedemptionGive() => {//(!D) Redemption Perma Heals
-				let thisLocation = friendlyChampions[selfIndex].location;
-				for friendlyChamp in friendlyChampions
-				{
-					if DistanceBetweenPoints(thisLocation, friendlyChamp.location) < 3
-					{
-						friendlyChamp.heal((friendlyChamp.initialHP - friendlyChamp.health) * 0.12)//discrepency check at multitarget damage time for redemption heal for reduction
-					}
-				}
 			}
 			StatusType::TitansResolve(mut oldStackNum) => {
 				statusEffect.applied = false;
@@ -1507,7 +1494,7 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 				statusEffect.applied = false;
 				stun.stun = 2;
 			}
-			_ => ()//println!("Unimplemented")
+			_ => ()
 		}
 	}
 	true
