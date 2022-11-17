@@ -16,6 +16,7 @@ struct Champion
 {
 	///Champion ID<br />
 	///same as index in CHAMPIONS
+	#[allow(dead_code)]
     id : u8,
     
 	///Healthpoints for each Star Level
@@ -80,6 +81,7 @@ enum StatusType
 	Bloodthirster(),
 
 	///Assassin trait leap
+	#[allow(dead_code)]
 	Assassin(),
 
 	///Morellonomicon Burn:<br />
@@ -203,7 +205,7 @@ fn findChampionIndexFromID(champions : &Vec<SummonedChampion>, id : usize) -> Op
 ///enemyChampions : mut reference to enemy champions<br />
 ///selfIndex : index of self in friendlyChampions<br />
 ///projectiles : mut reference to all projectiles
-fn SupportAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize, projectiles : &mut Vec<Projectile>)
+fn SupportAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize, _projectiles : &mut Vec<Projectile>)
 {
 	let mut playerDistances : Vec<[i8 ; 2]> = Vec::new(); //instantiates empty vec to hold distance to friendly and enemy champions
 	let starLevel = friendlyChampions[selfIndex].starLevel; //gets current star level
@@ -256,7 +258,7 @@ fn SupportAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions
 ///enemyChampions : mut reference to enemy champions<br />
 ///selfIndex : index of self in friendlyChampions<br />
 ///projectiles : mut reference to all projectiles
-fn BruiserAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize, projectiles : &mut Vec<Projectile>)
+fn BruiserAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize, _projectiles : &mut Vec<Projectile>)
 {
 	let starLevel = friendlyChampions[selfIndex].starLevel;
 	let targetIndex = findChampionIndexFromID(&enemyChampions, friendlyChampions[selfIndex].target).unwrap_or(0);//(!D) Can strike from out of range
@@ -317,6 +319,8 @@ enum DamageType
 {
 	Physical(),
 	Magical(),
+	
+	#[allow(dead_code)]
 	True(),
 }
 
@@ -1034,7 +1038,7 @@ fn dealDamage(selfIndex : usize, //selfIndex == usize::max if the champion who d
 			  target : &mut SummonedChampion,//target enemy champ
 			  damageAmount : f32,//amount of damage
 			  damageType : DamageType,//whether damage is physical, magical or true
-			  isSplash : bool//is splash, currently unused
+			  _isSplash : bool//is splash, currently unused
 			  )
 {
 	let mut damage : f32 = 0.0;
@@ -1085,7 +1089,7 @@ fn dealDamage(selfIndex : usize, //selfIndex == usize::max if the champion who d
 				{
 				  if friendlyChampions[selfIndex].cr > rand::thread_rng().gen_range(0..100)//check for crit
 				  {
-					  let mut critD = friendlyChampions[selfIndex].critD;//calculate crit damage
+					  let critD = friendlyChampions[selfIndex].critD;//calculate crit damage
 					  let mut extraDamage = damage * critD;
 					  if target.items.contains(&44)
 					  {
@@ -1260,7 +1264,7 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 			StatusType::Untargetable() => {
 				friendlyChampions[selfIndex].targetable = true//(!D) if have 2 untargetable effects this will untarget too early
 			}
-			StatusType::MorellonomiconBurn(dmgPerTick, mut dmgToDo, timeTillNextTick) => {
+			StatusType::MorellonomiconBurn(dmgPerTick, dmgToDo, timeTillNextTick) => {
 				if friendlyChampions[selfIndex].shed == 2
 				{
 					return false;
@@ -1272,7 +1276,7 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 				else
 				{
 					statusEffect.duration = timeTillNextTick;
-					dmgToDo -= dmgPerTick;
+					statusEffect.statusType = StatusType::MorellonomiconBurn(dmgPerTick, dmgToDo - dmgPerTick, timeTillNextTick);
 					return true;
 				}
 				
