@@ -600,6 +600,47 @@ impl SummonedChampion
 	}
 }
 
+impl Default for SummonedChampion
+{
+	fn default() -> Self {
+		SummonedChampion { 
+			location: [0, 0], 
+			movementProgress: [0, 0], 
+			health: 0.0, 
+			cm: 0, 
+			dc: 0, 
+			cr: 0, 
+			critD: 0.0, 
+			mc: 0, 
+			ar: 0.0, 
+			mr: 0.0, 
+			ad: 0.0, 
+			aS: 0.0, 
+			ra: 0, 
+			aID: 0, 
+			id: 0, 
+			targetCountDown: 0, 
+			autoAttackDelay: 0, 
+			attackSpeedModifier: 0.0, 
+			target: 0, 
+			targetCells: [0, 0], 
+			items: [0, 0, 0], 
+			ap: 0.0, 
+			se: Vec::new(), 
+			gMD: 0, 
+			starLevel: 0, 
+			incomingDMGModifier: 0.0, 
+			initialHP: 0.0, 
+			targetable: false, 
+			shed: 0, 
+			shields: Vec::new(), 
+			zap: false, 
+			banish: false, 
+			titansResolveStack: 0, 
+			omnivamp: 0.0
+		}
+	}
+}
 ///Board Struct:<br />
 ///Simulates battles
 struct Board
@@ -961,6 +1002,8 @@ impl Board
 			{
 				takeTurn(p1ChampionIndex, &mut self.p1Champions, &mut self.p2Champions, self.timeUnit, self.movementAmount, &mut p1Projectiles)
 			}
+
+
 
 			
 
@@ -1803,4 +1846,9 @@ fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, e
 		friendlyChampions[selfIndex].gMD = 100;
 		CHAMPIONABILITIES[friendlyChampions[selfIndex].aID](friendlyChampions, enemyChampions, selfIndex, projectiles);	
 	}
+}
+
+fn NOMNOMNOM(champs : &mut Vec<SummonedChampion>, champ : &mut SummonedChampion)
+{
+
 }
