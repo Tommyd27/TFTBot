@@ -2,6 +2,7 @@
 
 use std::cmp::{min, max};
 use rand::{Rng};
+use std::collections::VecDeque;
 
 ///ShouldStun<br />
 ///Simple struct to pass by reference to record whether stunned.<br />
@@ -185,7 +186,7 @@ const CHAMPIONS : [Champion ; 4] = [Champion{id : 0, hp : [650.0, 1100.0, 2100.0
 ///champions : &Vec<SummonedChampion> - List of champions to iterate through<br />
 ///id : usize - ID wanted<br />
 ///returns : Option<usize> - Some(correct id) or None if not found
-fn findChampionIndexFromID(champions : &Vec<SummonedChampion>, id : usize) -> Option<usize>
+fn findChampionIndexFromID(champions : &VecDeque<SummonedChampion>, id : usize) -> Option<usize>
 {
 	if champions[id].id == id
 	{
@@ -201,74 +202,6 @@ fn findChampionIndexFromID(champions : &Vec<SummonedChampion>, id : usize) -> Op
 	None
 }
 
-///Ability for Support Champion:<br />
-///friendlyChampions : mut reference to allied champions<br />
-///enemyChampions : mut reference to enemy champions<br />
-///selfIndex : index of self in friendlyChampions<br />
-///projectiles : mut reference to all projectiles
-fn SupportAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize, _projectiles : &mut Vec<Projectile>)
-{
-	let mut playerDistances : Vec<[i8 ; 2]> = Vec::new(); //instantiates empty vec to hold distance to friendly and enemy champions
-	let starLevel = friendlyChampions[selfIndex].starLevel; //gets current star level
-	for (index, champ) in friendlyChampions.iter().enumerate() //iterate through all friendly champions to add them to distances
-	{
-		if index == selfIndex //skips self
-		{
-			continue;
-		}
-		playerDistances.push([DistanceBetweenPoints(champ.location, friendlyChampions[selfIndex].location), (index + 1) as i8]) //(!O) pushes distance between self and champ location, as well as (index + 1) to be able to tell it is friendlyChampion
-	}
-	for (index, champ) in enemyChampions.iter().enumerate() //iterate through all enemy champions
-	{
-		playerDistances.push([DistanceBetweenPoints(champ.location, friendlyChampions[selfIndex].location), -((index + 1) as i8)]) //(!O) pushes distance between self and champ location, as well as -(index + 1) to be able to tell it is enemyChampion
-	}
-	playerDistances.sort_unstable_by_key(|a| a[0]);//sorts the player distances
-	let champCount : usize = [3, 4, 5][starLevel]; //how many champions it can hit/ effect
-	let mut i = 0;//(!O) counts how many have been given effect
-	let ap = friendlyChampions[selfIndex].ap;//get ability power
-	for [_, champIndex] in playerDistances//(!O) just fetch the champion index, distance is irrelevant as already sorted
-	{
-		if i >= champCount
-		{
-			break;
-		}
-		if champIndex > 0//if friendly champ
-		{
-			//give allies attack speed for 5 seconds
-			friendlyChampions[(champIndex - 1) as usize].se.push(StatusEffect{
-																	duration : Some(500),
-																	statusType : StatusType::AttackSpeedBuff(1.7 * ap),
-																	..Default::default()	
-			});
-		}
-		else //enemy champ
-		{
-			//stun enemies for 1.5 seconds and increase damage for 20%
-			enemyChampions[-(champIndex + 1) as usize].se.push(StatusEffect { duration: Some(150), statusType: StatusType::Stun(), isNegative : true, ..Default::default() });
-			enemyChampions[-(champIndex + 1) as usize].se.push(StatusEffect { duration: Some(150), statusType: StatusType::IncreaseDamageTaken(1.2 * ap), isNegative : true, ..Default::default()});
-		}
-		i += 1;//add 1 to count of hit enemies
-	}
-	if i < champCount//give self effect if there aren't enough champs to hit
-	{
-		friendlyChampions[selfIndex].se.push(StatusEffect{duration : Some(500), statusType : StatusType::AttackSpeedBuff(1.7 * ap), ..Default::default()});
-	}
-}
-///Ability for Bruiser Champion:<br />
-///friendlyChampions : mut reference to allied champions<br />
-///enemyChampions : mut reference to enemy champions<br />
-///selfIndex : index of self in friendlyChampions<br />
-///projectiles : mut reference to all projectiles
-fn BruiserAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize, _projectiles : &mut Vec<Projectile>)
-{
-	let starLevel = friendlyChampions[selfIndex].starLevel;
-	let targetIndex = findChampionIndexFromID(&enemyChampions, friendlyChampions[selfIndex].target).unwrap_or(0);//(!D) Can strike from out of range
-	let ap = friendlyChampions[selfIndex].ap;//gets ap
-	friendlyChampions[selfIndex].heal((300.0 + 50.0 * starLevel as f32) * ap); //heals
-
-	//deals damage
-	dealDamage(selfIndex, friendlyChampions, &mut enemyChampions[targetIndex], (25.0 * starLevel as f32) * 4.0 * friendlyChampions[selfIndex].ad, DamageType::Physical(), false)
-}
 
 ///Ability for Attack Damage Champion:<br />
 ///friendlyChampions : mut reference to allied champions<br />
@@ -303,16 +236,6 @@ fn APStrikerAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampio
 	projectiles.push(Projectile::new(friendlyChampions[selfIndex].location, Option::Some(targetLocation), friendlyChampions[selfIndex].target, damage, DamageType::Magical(), damage / 3.0, 3, selfIndex))
 }
 
-///const CHAMPIONABILITIES :<br />
-///Stores all the champ abilities (index = abilityID)<br />
-///All abilities are called in the form <br />
-///(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize)<br />
-///Arguments:<br />
-///friendlyChampions : Mutable reference to allied champions<br />
-///enemyChampions : Mutable reference to enemy champions<br />
-///selfIndex : Index of champion (in friendlyChampions) who casted this ability<br />
-const CHAMPIONABILITIES : [fn(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize, projectiles : &mut Vec<Projectile>) ; 4]	= 
-	[SupportAbility, BruiserAbility, APStrikerAbility, ADStrikerAbility];//(!D) Doesn't account for casting time
 
 ///Enum for the 3 damage types Physical, Magical and True
 #[derive(PartialEq, Clone, Copy)]//derives clone copy and partial equal
@@ -598,6 +521,539 @@ impl SummonedChampion
 			self.health = self.initialHP//makes sure to limit it to initial HP, so no healing to infinity
 		}
 	}
+	///simulates a tick/ turn for a champion<br />
+	///friendlyChampions[selfIndex] : this champion<br />
+	///friendlyChampionsLocations : location of all friend champs (array of positions), for pathfinding<br />
+	///enemyChampions : all enemy champions, for targetting<br />
+	///timeUnit : time unit of a frame, in centiseconds<br />
+	///movementAmount : precalculated movement distance for 1 frame<br />
+	fn takeTurn(&mut self, friendlyChampions : &mut VecDeque<SummonedChampion>, enemyChampions : &mut VecDeque<SummonedChampion>,timeUnit : i8, movementAmount : i8, projectiles : &mut Vec<Projectile>)
+	{
+		self.targetCountDown -= timeUnit;//Reduce cooldown to check target/ find new target
+		self.autoAttackDelay -= timeUnit as i16;//Risks going out of bounds as auto attack value may not be called for some time
+		self.gMD -= timeUnit as i16;
+		{
+			let mut statusEffects = self.se.clone();
+			let mut stun = ShouldStun { stun: 0 };
+			let mut seToAdd : Vec<StatusEffect> = Vec::new();
+			statusEffects.retain_mut(|x| performStatus(x, friendlyChampions, enemyChampions, timeUnit, selfIndex, &mut stun, &mut seToAdd));
+			self.se = statusEffects;
+			//deffo optimisation around statusEffects
+			self.se.extend(seToAdd);
+			if self.shed == 1
+			{
+				self.shed = 2;
+			}
+			else if self.shed == 2
+			{
+				self.shed = 0;
+			}
+			self.shields.retain_mut(|x| UpdateShield(x, timeUnit));
+			if stun.stun == 1
+			{
+				println!("stunned");
+				return
+			}
+		}
+		
+		//does auto attack delay need to reset on pathing? does attack instantly after reaching path/ in range
+
+		if self.banish
+		{
+			return
+		}
+		let mut index : usize = 99;//Cache index of target in enemyChampions
+		let mut distanceToTarget : i8 = 127;//Distance to target (is set either while finding target or when target found)
+		let mut needNewTargetCell : bool = false;//Bool to store whether new path is needed
+		if self.targetCountDown >= 0 //if already has target and doesnt want to change targets 
+		{
+			//maybe optimisation to first check for if enemyChampions[friendlyChampions.target]
+			for (i, enemyChampion) in enemyChampions.iter().enumerate() //every enemy champ
+			{
+				if enemyChampion.id == self.target && enemyChampion.targetable  && ! enemyChampion.banish//if they share id
+				{
+					println!("Debug : Found Target");
+					index = i;//set index
+					distanceToTarget = DistanceBetweenPoints(enemyChampion.location, self.location);//calculate distance
+					break;
+				}
+			}	
+		}
+		if index == 99 //index not updating from initial intilialisation of 99, therefore need new target
+		{
+			println!("Debug : Looking for Target");
+			self.targetCountDown = 100;//reset target cooldown
+			self.target = 0;//reset target
+			let mut distance; //cache to store distance between enemy and location
+			needNewTargetCell = true; //tells us to recalculate pathfinding later
+			//discrepency what if target has moved regardless
+
+			for (i, enemyChampion) in enemyChampions.iter().enumerate() //for every champ
+			{
+				if !enemyChampion.targetable || enemyChampion.banish//discrepency zapped with ionic spark if untargetable?
+				{
+					continue;
+				}
+				distance = DistanceBetweenPoints(enemyChampion.location, self.location); //calculate distance
+				if distance < distanceToTarget //if distance to current enemy champion in loop is lower than distance to current target
+				{
+					self.target = enemyChampion.id; //change target
+					distanceToTarget = distance; //updating distance to new lower value
+					index = i; //setting index
+				}
+			}
+		}
+		
+		if distanceToTarget <= self.ra as i8//if target in range
+		{
+			println!("Debug : Target in Range");
+			println!("Debug : Auto Attack Delay Remaining {0}", self.autoAttackDelay);//discrepency, does auto attack "charge" while moving
+			if self.autoAttackDelay <= 0//if autoattack ready
+			{
+				println!("Debug : Delay Smaller than 0 - Attacking");
+				/* 
+				self.aS = attacks per 1 second
+				self.autoAttackDelay = time in 1/10 of second until next attack
+				self.attackSpeedIncrease = percentage increase in attack speed
+				
+				
+				autoAttackDelay (seconds) = 1 / (attackSpeed * attackSpeedMod)
+				autoAttackDelay (centiseconds) = 100 / (attackSpeed * attackSpeedMod)
+				
+				*/
+				println!("as: {}, mod: {}", self.aS, self.attackSpeedModifier);
+				self.autoAttackDelay = max((100.0 / (self.aS * self.attackSpeedModifier)) as i16, 20); //calculating auto attack delay
+				println!("Auto attack delay set");
+				if self.items.contains(&26)//discrepency if attack speed doesnt increase when attack misses/ is dodged
+				{
+					self.attackSpeedModifier *= 1.06
+				}
+				//attack speed unclear, capped at five yet some champions let you boost beyond it?
+				//optimisation definitely here
+				if self.gMD <= 0
+				{
+					self.cm += 10;
+					if self.items.contains(&18)
+					{
+						self.cm += 8;
+					}
+					println!("gain mana");
+				}
+				if self.items.contains(&68)//optimisation go through foreach in items and match statement
+				{
+					dealDamage(selfIndex, friendlyChampions, &mut enemyChampions[index], 50.0, DamageType::Magical(), false);
+					enemyChampions[index].se.push(StatusEffect { duration: Some(500), statusType: StatusType::ShredMagicResist(2.0), isNegative: true, ..Default::default()});
+					let mut count = 0;
+					for enemyChamp in enemyChampions.iter_mut()
+					{
+						if enemyChamp.id == self.target
+						{
+							continue;
+						}
+						count += 1;
+						dealDamage(selfIndex, friendlyChampions, enemyChamp, 50.0, DamageType::Magical(), false
+					);
+						enemyChamp.se.push(StatusEffect { duration: Some(500), statusType: StatusType::ShredMagicResist(2.0), isNegative: true, ..Default::default()});
+						if count >= 3
+						{
+							break;
+						}
+					}
+				}
+
+
+				if self.items.contains(&56)//discrepency maybe if dodge then second runaans doesnt go thru
+				{
+					let locationToCheck = self.location; //discrepency maybe bolt goes to nearest from location of person being attacked
+					let mut lowestDistance = 100;
+					let mut indexOfChamp = 0;//discrepency runaans will attack same person twice if its only person left alive
+					for (i, enemyChamp) in enemyChampions.iter().enumerate()
+					{
+						let distanceToLocation = DistanceBetweenPoints(enemyChamp.location, locationToCheck);//discrepency check that runaans isnt attacking same person
+						if distanceToLocation < lowestDistance && index != i
+						{
+							lowestDistance = distanceToLocation;
+							indexOfChamp = i;
+						}
+					}
+					dealDamage(selfIndex, friendlyChampions, &mut enemyChampions[indexOfChamp], self.ad * 0.7, DamageType::Physical(), false)//discrepency runaans can miss
+				}
+				println!("maybe dodge");
+				//discrepency maybe can  dodge actual ability
+				if enemyChampions[index].dc <= 0 || enemyChampions[index].dc < rand::thread_rng().gen_range(0..100) || self.items.contains(&66)//calculating whether to dodge
+				{//optimisation from not generating random gen
+					println!("No Dodge");
+					dealDamage(selfIndex, friendlyChampions, &mut enemyChampions[index], self.ad, DamageType::Physical(), false);
+					
+					println!("Debug : Enemy Champion Health is {0}", enemyChampions[index].health);
+					if enemyChampions[index].health <= 0.0 //if enemy champion dead
+					{
+						println!("Debug : Health Lower than 0 - Removing");
+
+						if enemyChampions[index].items.contains(&36)
+						{
+							enemyChampions[index].health = 1500.0;
+							enemyChampions[index].attackSpeedModifier = 0.8;
+							enemyChampions[index].se.clear();
+							enemyChampions[index].ra = 1;
+							enemyChampions[index].ar = 0.2;
+							enemyChampions[index].mr = 0.2;
+							enemyChampions[index].items = [0, 0, 0];
+							enemyChampions[index].aS = 0.8;
+							enemyChampions[index].attackSpeedModifier = 1.0;
+							enemyChampions[index].cr = 25;
+							//discrepency cant be asked to set everything to default
+							//discrepency stats change depending on stage
+						}
+						else
+						{
+							enemyChampions.swap_remove(index);//discrepency, only checks for champion death when it is auto attacked
+						//maybe discrepency if target gets removed from enemyChamps and then we try to abiity cast on it.
+						}
+						
+					}
+				}
+				else 
+				{
+					println!("Debug : Dodged Attack");
+				}
+				
+
+			}
+		}
+		else 
+		{
+			println!("Debug : Not in Range");
+			if needNewTargetCell || self.location == self.targetCells //if need to update pathfinding or at pathfinding target
+			//optimisation?, accuracy vs performance cost
+			{
+				println!("Debug : Need Target Cell");
+				self.targetCells = self.location; //setting target cells to location so if it does not find a target this frame will try to do it again
+				//optimisation does not need to check every frame
+
+				let mut lowestDistance : i8 = 100; //setting lowestDistance to high value
+				let mut newPosition;
+				for possibleMove in [[0, -1], [1, -1], [1, 0], [-1, 0], [-1, 1], [0, 1]] //for every possible move
+				//optimisation
+				{
+					newPosition = [self.location[0] + possibleMove[0], self.location[1] + possibleMove[1]];
+					distanceToTarget = DistanceBetweenPoints(newPosition, enemyChampions[index].location);
+					if distanceToTarget < lowestDistance
+					{
+						let mut failed = false;
+						if ! InGridHexagon(newPosition)
+						{
+							continue;
+						}
+						for friendlyChampionLocation in friendlyChampions.iter()
+						{
+							if friendlyChampionLocation.location[0] == newPosition[0] && friendlyChampionLocation.location[1] == newPosition[1]
+							{
+								failed = true;
+								break
+							}
+						}
+						if failed
+						{
+							continue;
+						}
+						println!("Debug : Found a Target Cell");
+						lowestDistance = distanceToTarget;
+						self.targetCells = newPosition;
+					}
+					
+				}
+			}
+			
+			println!("Debug : Moving to Target Cell");
+			self.movementProgress[0] += movementAmount * sign(self.targetCells[0] - self.location[0]);//optimisation here
+			println!("Debug : Position ({0},{1}) -- Movement Progress ({2},{3})", self.location[0], self.location[1], self.movementProgress[0], self.movementProgress[1]);
+			if self.movementProgress[0].abs() == 10
+			{
+				self.location[0] += sign(self.movementProgress[0]);
+				self.movementProgress[0] = 0;
+				
+			}
+			self.movementProgress[1] += movementAmount * sign(self.targetCells[1] - self.location[1]);
+			if self.movementProgress[1].abs() == 10
+			{
+				self.location[1] += sign(self.movementProgress[1]);
+				self.movementProgress[1] = 0;
+				
+			}
+		}
+		
+		//Ionic spark, optimisation, could be status effect but enemies not passed into function? also doesnt need to be check every turn
+		if self.items.contains(&25)
+		{
+			let thisLocation = self.location;
+			for enemyChamp in enemyChampions.iter_mut()
+			{
+				if DistanceBetweenPoints(thisLocation, enemyChamp.location) < 7//discrepency check distance between points returns value twice as large?
+				{
+					enemyChamp.se.push(StatusEffect { duration: Some((timeUnit + 1).into()), statusType: StatusType::IonicSparkEffect(), isNegative: true, ..Default::default()});
+				}
+			}
+		}
+
+		
+		
+		if self.cm >= self.mc
+		{
+			if self.zap
+			{
+				self.health -= (self.mc as f32) * 2.5;
+			}
+			self.cm = 0;
+			if self.items.contains(&88)
+			{
+				self.cm = 20;
+			}
+			self.gMD = 100;
+			CHAMPIONABILITIES[self.aID](friendlyChampions, enemyChampions, selfIndex, projectiles);	
+		}
+	}
+	fn dealDamage(&mut self, //selfIndex == usize::max if the champion who dealt the damage is dead but a projectile they fired still exists
+			friendlyChampions : &mut VecDeque<SummonedChampion>,//all friendlyChamps
+			target : &mut SummonedChampion,//target enemy champ
+			damageAmount : f32,//amount of damage
+			damageType : DamageType,//whether damage is physical, magical or true
+			_isSplash : bool){//is splash, currently unused
+	let mut damage : f32 = 0.0;
+	match damageType
+	{
+	DamageType::Physical() => {damage = (damageAmount * target.incomingDMGModifier) / ( 1.0 + target.ar);//reduction in dmg due to target armor
+		if selfIndex != usize::MAX//if damage dealer exists
+		{
+
+			if friendlyChampions[selfIndex].cr > rand::thread_rng().gen_range(0..100)// if crit   (!O)  
+			{
+			let mut critD = friendlyChampions[selfIndex].critD;
+			if friendlyChampions[selfIndex].cr > 100 && friendlyChampions[selfIndex].items.contains(&17)//if they have infinity edge
+			{
+				critD += (friendlyChampions[selfIndex].cr - 100) as f32//give extra crit damage
+			}
+			let mut extraDamage = damage * critD;
+			if target.items.contains(&44) //if target has bramble vest
+			{
+				extraDamage /= 4.0;//reduce damage
+			}
+			damage += extraDamage;//add extraDamage onto damage
+			}
+			if friendlyChampions[selfIndex].items.contains(&67)//if attacker has last whisper
+			{
+			let mut alreadyHasShred = false;
+			for statusEffect in &target.se//check if they already have armor shred
+			{
+				if StatusType::LastWhisperShred() == statusEffect.statusType
+				{
+					alreadyHasShred = true;
+					break;
+				}
+			}
+			if ! alreadyHasShred//if they don't, give it
+			{
+				target.se.push(StatusEffect{duration : Some(500), statusType : StatusType::LastWhisperShred(), isNegative : true, ..Default::default()})
+			}
+			}
+		}
+		
+	},
+	DamageType::Magical() => {damage = (damageAmount * friendlyChampions[selfIndex].ap * target.incomingDMGModifier) / (1.0 + target.mr);//damage reduction due to resistances
+			
+		if selfIndex != usize::MAX//if attacker alive
+		{
+			if friendlyChampions[selfIndex].items.contains(&27)//if they have jeweled gauntlet
+			{
+				if friendlyChampions[selfIndex].cr > rand::thread_rng().gen_range(0..100)//check for crit
+				{
+					let critD = friendlyChampions[selfIndex].critD;//calculate crit damage
+					let mut extraDamage = damage * critD;
+					if target.items.contains(&44)
+					{
+						extraDamage /= 4.0;
+					}
+					damage += extraDamage;
+				}
+			}
+			if friendlyChampions[selfIndex].items.contains(&12)//if they have gunblade
+			{
+				let healing = damage / 4.0;//calculate healing
+				friendlyChampions[selfIndex].heal(healing);//heal self
+				let mut lowestHP : f32 = f32::MAX;
+				let mut lowestHPID : usize = 0;
+				for (i, champ) in friendlyChampions.iter().enumerate()//find lowest health ally
+				{
+					if i != selfIndex && champ.health < lowestHP
+					{
+						lowestHP = champ.health;
+						lowestHPID = i;
+					}
+				}
+				if lowestHPID != selfIndex
+				{
+					friendlyChampions[lowestHPID].heal(healing);//heal them
+				}
+			}
+			if friendlyChampions[selfIndex].items.contains(&23)//if they have morellonomiocon
+			{
+				target.se.push(StatusEffect { duration: Some(1000), statusType: StatusType::GreviousWounds(), isNegative: true, ..Default::default()});//give morello effect
+				let dmgToDo = target.initialHP / 10.0;
+				target.se.push(StatusEffect { duration: Some(100), statusType: StatusType::MorellonomiconBurn(dmgToDo / 10.0, dmgToDo, 100), isNegative : true, ..Default::default()})//discrepency unsure whether burn just reapplies itself
+			}
+		}
+		},
+	DamageType::True() => {//(!D) does lulu ability etc affect true dmg
+		if selfIndex != usize::MAX
+		{
+			if friendlyChampions[selfIndex].items.contains(&27)//if they have jeweled gauntlet
+			{
+				if friendlyChampions[selfIndex].cr > rand::thread_rng().gen_range(0..100)//if crit
+				{
+					let mut extraDamage = damage * friendlyChampions[selfIndex].critD;//calculate extra dmg
+					if target.items.contains(&44)
+					{
+						extraDamage /= 4.0; //discrepency not sure if it applies to true dmg
+					}
+					damage += extraDamage;
+				}
+			}
+			
+			
+			if friendlyChampions[selfIndex].items.contains(&12)//if attacker has gunblade
+			{
+				let healing = damage / 4.0;//do gunblade effect
+				friendlyChampions[selfIndex].heal(healing);
+				let mut lowestHP : f32 = 999999.0;
+				let mut lowestHPID : usize = 0;
+
+
+
+				
+				for (i, champ) in friendlyChampions.iter().enumerate()
+				{
+					if i != selfIndex && champ.health < lowestHP
+					{
+						lowestHP = champ.health;
+						lowestHPID = i;
+					}
+				}
+				if lowestHPID != selfIndex
+				{
+					friendlyChampions[lowestHPID].heal(healing);
+				}}
+			if friendlyChampions[selfIndex].items.contains(&23)//if attacker has morellos
+			{//give morello effect
+				target.se.push(StatusEffect { duration: Some(1000), statusType: StatusType::GreviousWounds(), isNegative: true, ..Default::default()});
+				let dmgToDo = target.initialHP / 4.0;
+				target.se.push(StatusEffect { duration: Some(100), statusType: StatusType::MorellonomiconBurn(dmgToDo / 10.0, dmgToDo, 100), isNegative : true, ..Default::default()})//discrepency unsure whether burn just reapplies itself
+			}
+		}
+	},
+	}
+
+	if selfIndex != usize::MAX//if attacker exists
+	{
+	if friendlyChampions[selfIndex].items.contains(&16)//if attacker has giants slayer
+	{
+		if target.initialHP >= 2200.0//if target has enough hp
+		{
+			damage *= 1.45;//give extra dmg
+		}
+		else {
+			damage *= 1.2;
+		}
+	}
+
+
+
+	let omnivamp = friendlyChampions[selfIndex].omnivamp;//give omnivamp healing
+	friendlyChampions[selfIndex].heal(damage * omnivamp);
+	for shield in &mut target.shields//go through shields
+	{
+	if damageType == shield.blocksType.unwrap_or(damageType)//if shield is of correct dmg type (or doesn't specify)
+	{
+		if damage > shield.size//if damage greater than shield
+		{
+			damage -= shield.size;//reduce dmg but remove shield
+			shield.size = 0.0;
+			shield.duration = 0;
+		}
+		else {
+			shield.size -= damage;//reduce shield size
+			damage = 0.0;//set dmg to 0
+			if shield.pop//if shield has pop
+			{
+				shield.size = 0.0;//remove shield
+				shield.duration = 0;
+			}
+			break;
+		}
+	}
+	}
+	}
+	friendlyChampions[selfIndex].titansResolveStack = min(friendlyChampions[selfIndex].titansResolveStack + 1, 25);//add titan's resolve stacks
+	target.health -= damage;//deal damage
+	target.titansResolveStack = min(target.titansResolveStack + 1, 25);//give enemy titan's resolve stacks
+	if target.gMD <= 0//if can gain mana
+	{//give mana
+	target.cm += (0.7 * damage) as u16; //(!D) should be 1% of premitigation and 7% of post.
+	}
+
+	}
+	fn castAbility(&mut self, friendlyChampions : &mut VecDeque<SummonedChampion>, enemyChampions : &mut VecDeque<SummonedChampion>, projectiles : &mut Vec<Projectile>)
+	{
+		match self.aID{
+			0 => {
+				//let mut playerDistances : Vec<[i8 ; 2]> = Vec::new(); //instantiates empty vec to hold distance to friendly and enemy champions
+
+				let mut playerDistances : Vec<(i8, i8)> = friendlyChampions.iter().enumerate().map(|(x, s)| {(DistanceBetweenPoints(s.location, self.location), (x + 1) as i8)}).collect();
+				playerDistances.extend(enemyChampions.iter().enumerate().map(|(x, s)| {(DistanceBetweenPoints(s.location, self.location), -(x + 1) as i8)}));
+				let starLevel = self.starLevel; //gets current star level
+
+				playerDistances.sort_unstable_by_key(|a| a.0);//sorts the player distances
+				let champCount : usize = [3, 4, 5][starLevel]; //how many champions it can hit/ effect
+				let mut i = 0;//(!O) counts how many have been given effect
+				let ap = self.ap;//get ability power
+				for (_, champIndex) in playerDistances//(!O) just fetch the champion index, distance is irrelevant as already sorted
+				{
+					if i >= champCount
+					{
+						break;
+					}
+					if champIndex > 0//if friendly champ
+					{
+						//give allies attack speed for 5 seconds
+						friendlyChampions[(champIndex - 1) as usize].se.push(StatusEffect{
+																				duration : Some(500),
+																				statusType : StatusType::AttackSpeedBuff(1.7 * ap),
+																				..Default::default()	
+						});
+					}
+					else //enemy champ
+					{
+						//stun enemies for 1.5 seconds and increase damage for 20%
+						enemyChampions[-(champIndex + 1) as usize].se.push(StatusEffect { duration: Some(150), statusType: StatusType::Stun(), isNegative : true, ..Default::default() });
+						enemyChampions[-(champIndex + 1) as usize].se.push(StatusEffect { duration: Some(150), statusType: StatusType::IncreaseDamageTaken(1.2 * ap), isNegative : true, ..Default::default()});
+					}
+					i += 1;//add 1 to count of hit enemies
+				}
+				if i < champCount//give self effect if there aren't enough champs to hit
+				{
+					friendlyChampions[selfIndex].se.push(StatusEffect{duration : Some(500), statusType : StatusType::AttackSpeedBuff(1.7 * ap), ..Default::default()});
+				}}
+			1 => {
+				let starLevel = self.starLevel;
+				let targetIndex = findChampionIndexFromID(&enemyChampions, self.target).unwrap_or(0);//(!D) Can strike from out of range, should search for closest
+				let ap = self.ap;//gets ap
+				self.heal((300.0 + 50.0 * starLevel as f32) * ap); //heals
+
+				//deals damage
+				self.dealDamage(friendlyChampions, &mut enemyChampions[targetIndex], (25.0 * starLevel as f32) * 4.0 * self.ad, DamageType::Physical(), false)
+			}
+				_ => println!("Unimplemented"),
+		}
+	}
 }
 
 impl Default for SummonedChampion
@@ -646,10 +1102,10 @@ impl Default for SummonedChampion
 struct Board
 {
 	///Vec of player 1's champs
-	p1Champions : Vec<SummonedChampion>, 
+	p1Champions : VecDeque<SummonedChampion>, 
 	
 	///Vec of player 2's champs
-	p2Champions : Vec<SummonedChampion>, 
+	p2Champions : VecDeque<SummonedChampion>, 
 
 	///Time unit for board in centiseconds (1/100 of a second)
 	timeUnit : i8, 
@@ -692,7 +1148,7 @@ struct Projectile
 impl Projectile
 {
 	///Simulates a single tick of a projectile
-	fn SimulateTick(self : &mut Projectile, possibleTargets : &mut Vec<SummonedChampion>, friendlyChampions : &mut Vec<SummonedChampion>) -> bool
+	fn SimulateTick(self : &mut Projectile, possibleTargets : &mut VecDeque<SummonedChampion>, friendlyChampions : &mut VecDeque<SummonedChampion>) -> bool
 	{
 		let targetLocation = match self.targetLocation //discrepency only checks after move to theoretically could phase through someone
 		{
@@ -774,7 +1230,7 @@ impl Projectile
 ///Gives an item effect to a champion<br />
 ///**Item IDS:**<br />
 ///0 : Null<br />1  : B.F Sword (+10 Attack Damage)<br />2  : Needlessly Large Rod (+10 Ability Power)<br />3  : Giants Belt (+150 health)<br />4  : Chain Vest (+20 Armor)<br />5  : Negatron Cloak (+20 Magic Resist)<br />6  : Recurve Bow (+10% Attack Speed)<br />7  : *Sparring Gloves* (+5% Crit Chance, +10% Dodge Chance)<br />8  : Tear of the Goddess (+15 Mana)<br />9  : Spatula<br />11 : Deathblade (+40, +70, +100 Attack Damage - Star Level Dependent)<br /> 12 : *Hextech Gunblade* (Dealing Magic and True Damage heals the owner and lowest health ally for 25% of the damage)<br />13 : Zekes Herald (Grants 30% bonus attack speed to the holder and 2 adjacent allies in same row)<br />14 : Edge of Night (At 50% health - once per combat - the holder briefly becomes untargetable and sheds negative effects. Then they gain 30% attack speed)<br />15 : Bloodthirster (Damage dealt heals holder for 25%. Once per combat at 40% Health, gain a 25% maximum health shield for up to 5 seconds)<br />16 : Giant Slayer (Abilities and attacks deal 25% more damage, increased to 50% if the holder has over 2200 maximum health)<br />17 : Infinity Edge (+10 Attack Damage, +75% Crit Chance, +10% Crit Damage, Converts every 1% excess critical strike chance into 1% bonus critical strike damage)<br />18 : Spear of Shojin (✓) (Basic attacks restore an additional 8 mana on-attack)<br />19 : Shimmerscale Emblem (Wearer becomes a shimmerscale, cannot equip on a shimmersclae)<br />22 : Rabadons Deathcap (+75 Ability Power)<br />23 : Morellonomicon (+30 Ability Power, magic or true damage from an ability burns the holders target, dealing 25% of the targets maximum health as trude damage over 10 seconds and applying grevious wounds for the duration)<br />24 : Locket of the Iron Solari (At the start of combat, the wearer and all allies within 2 hexes in the same row gain a 300 / 350 / 400 health shield for 15 seconds - star level dependent)<br />25 : Ionic Spark (Enemies within 3 hexes have their magic resistance reduced by 50% (does not stack). When enemies within 3 hexes cast their ability, they are dealt 250% of their maximum mana as magic damage)<br />26 : Guinsoos Rageblade (Basic attacks grant 6% bonus attack speed for the rest of combat, stacks with no upper limit)<br />27 : *Jeweled Gauntlet* (+15% Crit Chance, +40% Crit Damage, +10 Ability Power, The holders magic adn true damage from abilities can critically strike)<br />28 : Archangels Staff (Grants the wearer 20 ability power every 5 seconds)<br />29 : Dragonmancer Emblem (Wearer becomes an dragonmancer, cannot equip on an dragonmancer)<br />33 : Warmogs Armor (+1000 Health)<br />34 : Sunfire Cape (+400 Health. At the start of combat and every 2 seconds thereafter, applies a 10% maximum health burn as true damage over 10 seconds and applying grevious wounds for the duration)<br />35 : Zephyr (At the start of combat, banishes for 5 seconds the unit that mirrors the wielders placement on the other side of the board. Pierces through CC immunity effects)<br />36 : ZZ Rot Portal (At the start of combat, the wearer taunts enemies within 4 hexes. When the wearer dies, a Voidspawn arises, taunting nearby enemies. Summoned units can spawn Voidspawns at 25% effectiveness)<br />37 : *Banshees Claw* (+15% Dodge Chance, +150 Health, At the beginning of each round, the holder and allies within 1 hex in the same row gain a shield that blocks the first enemy ability, up to 600 damage)<br />38 : Redemption (Every 5 seconds, the wearer radiates an aura to allies within 1 hex, healing them for 12% missing health. Affected allies take 25% reduced damage from AOE attacks for  seconds)<br />39 : Guardian Emblem (Wearer becomes a guardian, cannot equip on a guardian)<br />44 : Bramble Vest (+60 Armor. Negatves 75% bonus damage from critical hits. On being hit by an attack, deal 75 / 100 / 150 magic damage to all nearby enemies (once every 2.5 seconds))<br />45 : Gargoyle Stoneplate (+18 Armor and Magic Resist for each enemy targeting the holder)<br />46 : *Titans Resolve* (Gain 2 attack damage and ability power when attacking or taking damage. After stacking 25 times, gain 25 armor and magic resist and stop stacking)<br />47 : *Shroud of Stillness* (Shoot a beam that delays the first cast of affected enemies by 35%)<br />48 : Frozen Heart (Reduce the attack speed of enemies within 2 hexes by 25%)<br />49 : Cavalier Emblem (Wearer becomes a cavalier, cannot equip on a cavalier)<br />55 : Dragons Claw (+120 Magic Resist, every 2 seconds, regenerate 1.2% maximum health for each enemy targeting the holder. If holder is a dragon, increase all bonuses and effects by 20%)<br />56 : *Runaans Hurricane* (+10 Atttack Damage, attacks fire a bolt at a nearby enemy, dealing 70% of the holders attack damage as physical damage)<br />57 : *Quicksilver* (+20% attack speed. Immune to crowd control for 15 secnds)<br />58 : Chalice of Power (+30 Ability Power to holder and 2 adjacent allies on same row)<br />59 : Mirage Emblem (Wearer becomes a mirage, cannot equip on a mirage)<br />66 : Rapid Firecannon (+50% attack speed and +1 attack range, attacks cannot miss)<br />67 : *Last Whisper* (Dealing physical damage reduces the targets armor by 50% for 5 seconds, does not stack)<br />68 : Statikk Shiv (+15% attack speed, every 3rd attack shocks enemies for 70 magic damage and reduces their magic resist by 50% for 5 seconds)<br />69 : Ragewing Emblem (Wearer becomes a ragewing, cannot equip on a ragewing)<br />77 : *Thiefs Gloves* (Each round equip 2 random items, improve with player level, you cannot equip other items)<br />78 : *Hand of Justice* (+15 attack damage, +15% ability power. Attacks and abilities heal for 15% of damage dealt. Each round randomly increase 1 effect by 30%)<br />79 : *Assassin Emblem* (Wearer becomes an assassin, cannot equip on an assassin)<br />88 : Blue Buff (+20 Starting Mana. Gain 20 mana after casting an ability)<br />89 : Mage Emblem (Wearer becomes a mage, cannot equip on a mage)<br />99 : Tacticians Crown (Increase board unit size by 1)<br />
-fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize)
+fn GiveItemEffect(item : u8, friendlyChampions : &mut VecDeque<SummonedChampion>, enemyChampions : &mut VecDeque<SummonedChampion>, selfIndex : usize)
 {
 	match item
 	{
@@ -914,19 +1370,19 @@ fn GiveItemEffect(item : u8, friendlyChampions : &mut Vec<SummonedChampion>, ene
 }
 impl Board
 {
-	fn new(p1PlacedChamps : &Vec<PlacedChampion>, p2PlacedChamps : &Vec<PlacedChampion>, timeUnit : i8) -> Board
+	fn new(p1PlacedChamps : &VecDeque<PlacedChampion>, p2PlacedChamps : &VecDeque<PlacedChampion>, timeUnit : i8) -> Board
 	{
-		let mut p1Champions = Vec::new();
-		let mut p2Champions = Vec::new();
+		let mut p1Champions = VecDeque::new();
+		let mut p2Champions = VecDeque::new();
 		for (i, p1Champion) in p1PlacedChamps.iter().enumerate()//(!O) converts placed champions to summoned champions
 		{
-			p1Champions.push(SummonedChampion::new(&p1Champion, i));//converts into summoned champ
+			p1Champions.push_back(SummonedChampion::new(&p1Champion, i));//converts into summoned champ
 
 		}
 
 		for (i, p2Champion) in p2PlacedChamps.iter().enumerate()
 		{
-			p2Champions.push(SummonedChampion::new(&p2Champion, i));//converts into summoned champ
+			p2Champions.push_back(SummonedChampion::new(&p2Champion, i));//converts into summoned champ
 		}
 		
 		Board{p1Champions : p1Champions,
@@ -998,9 +1454,14 @@ impl Board
 		{
 			println!("Debug : Iteration {}", debugCount);
 			debugCount += 1;//count turns
-			for p1ChampionIndex in 0..self.p1Champions.len()//take turn for all p1Champs
+			for champCount in 0..self.p1Champions.len()//take turn for all p1Champs
 			{
-				takeTurn(p1ChampionIndex, &mut self.p1Champions, &mut self.p2Champions, self.timeUnit, self.movementAmount, &mut p1Projectiles)
+				let thisChamp = self.p1Champions.pop_front().unwrap();
+
+				let alive = thisChamp.takeTurn(&mut self.p1Champions, &mut self.p2Champions, self.timeUnit, self.movementAmount, &mut p1Projectiles);
+				if alive{
+					self.p1Champions.push_back(thisChamp)
+				}
 			}
 
 
@@ -1077,196 +1538,6 @@ fn sign(num : i8) -> i8
 	}
 }
 ///damageType : 0 = physical, 1 = magical, 2 = true
-fn dealDamage(selfIndex : usize, //selfIndex == usize::max if the champion who dealt the damage is dead but a projectile they fired still exists
-			  friendlyChampions : &mut Vec<SummonedChampion>,//all friendlyChamps
-			  target : &mut SummonedChampion,//target enemy champ
-			  damageAmount : f32,//amount of damage
-			  damageType : DamageType,//whether damage is physical, magical or true
-			  _isSplash : bool//is splash, currently unused
-			  )
-{
-	let mut damage : f32 = 0.0;
-	match damageType
-	{
-		DamageType::Physical() => {damage = (damageAmount * target.incomingDMGModifier) / ( 1.0 + target.ar);//reduction in dmg due to target armor
-			if selfIndex != usize::MAX//if damage dealer exists
-			{
-
-				if friendlyChampions[selfIndex].cr > rand::thread_rng().gen_range(0..100)// if crit   (!O)  
-			  {
-				let mut critD = friendlyChampions[selfIndex].critD;
-				if friendlyChampions[selfIndex].cr > 100 && friendlyChampions[selfIndex].items.contains(&17)//if they have infinity edge
-				{
-					critD += (friendlyChampions[selfIndex].cr - 100) as f32//give extra crit damage
-				}
-				let mut extraDamage = damage * critD;
-				if target.items.contains(&44) //if target has bramble vest
-				{
-					extraDamage /= 4.0;//reduce damage
-				}
-				damage += extraDamage;//add extraDamage onto damage
-			  }
-			  if friendlyChampions[selfIndex].items.contains(&67)//if attacker has last whisper
-			  {
-				let mut alreadyHasShred = false;
-				for statusEffect in &target.se//check if they already have armor shred
-				{
-					if StatusType::LastWhisperShred() == statusEffect.statusType
-					{
-						alreadyHasShred = true;
-						break;
-					}
-				}
-				if ! alreadyHasShred//if they don't, give it
-				{
-					target.se.push(StatusEffect{duration : Some(500), statusType : StatusType::LastWhisperShred(), isNegative : true, ..Default::default()})
-				}
-			  }
-			}
-			
-		},
-		DamageType::Magical() => {damage = (damageAmount * friendlyChampions[selfIndex].ap * target.incomingDMGModifier) / (1.0 + target.mr);//damage reduction due to resistances
-			  
-			if selfIndex != usize::MAX//if attacker alive
-			{
-				if friendlyChampions[selfIndex].items.contains(&27)//if they have jeweled gauntlet
-				{
-				  if friendlyChampions[selfIndex].cr > rand::thread_rng().gen_range(0..100)//check for crit
-				  {
-					  let critD = friendlyChampions[selfIndex].critD;//calculate crit damage
-					  let mut extraDamage = damage * critD;
-					  if target.items.contains(&44)
-					  {
-						  extraDamage /= 4.0;
-					  }
-					  damage += extraDamage;
-				  }
-				}
-				if friendlyChampions[selfIndex].items.contains(&12)//if they have gunblade
-				{
-				  let healing = damage / 4.0;//calculate healing
-				  friendlyChampions[selfIndex].heal(healing);//heal self
-				  let mut lowestHP : f32 = f32::MAX;
-				  let mut lowestHPID : usize = 0;
-				  for (i, champ) in friendlyChampions.iter().enumerate()//find lowest health ally
-				  {
-					  if i != selfIndex && champ.health < lowestHP
-					  {
-						  lowestHP = champ.health;
-						  lowestHPID = i;
-					  }
-				  }
-				  if lowestHPID != selfIndex
-				  {
-					  friendlyChampions[lowestHPID].heal(healing);//heal them
-				  }
-				}
-				if friendlyChampions[selfIndex].items.contains(&23)//if they have morellonomiocon
-				{
-				  target.se.push(StatusEffect { duration: Some(1000), statusType: StatusType::GreviousWounds(), isNegative: true, ..Default::default()});//give morello effect
-				  let dmgToDo = target.initialHP / 10.0;
-				  target.se.push(StatusEffect { duration: Some(100), statusType: StatusType::MorellonomiconBurn(dmgToDo / 10.0, dmgToDo, 100), isNegative : true, ..Default::default()})//discrepency unsure whether burn just reapplies itself
-			  }
-			}
-			},
-		DamageType::True() => {//(!D) does lulu ability etc affect true dmg
-			if selfIndex != usize::MAX
-			{
-				if friendlyChampions[selfIndex].items.contains(&27)//if they have jeweled gauntlet
-				{
-				  if friendlyChampions[selfIndex].cr > rand::thread_rng().gen_range(0..100)//if crit
-				  {
-					  let mut extraDamage = damage * friendlyChampions[selfIndex].critD;//calculate extra dmg
-					  if target.items.contains(&44)
-						{
-							extraDamage /= 4.0; //discrepency not sure if it applies to true dmg
-						}
-						damage += extraDamage;
-					}
-				}
-				
-				
-				if friendlyChampions[selfIndex].items.contains(&12)//if attacker has gunblade
-				{
-				  let healing = damage / 4.0;//do gunblade effect
-				  friendlyChampions[selfIndex].heal(healing);
-				  let mut lowestHP : f32 = 999999.0;
-				  let mut lowestHPID : usize = 0;
-	
-	
-	
-				  
-				  for (i, champ) in friendlyChampions.iter().enumerate()
-				  {
-					  if i != selfIndex && champ.health < lowestHP
-					  {
-						  lowestHP = champ.health;
-						  lowestHPID = i;
-					  }
-				  }
-				  if lowestHPID != selfIndex
-				  {
-					  friendlyChampions[lowestHPID].heal(healing);
-				  }}
-				if friendlyChampions[selfIndex].items.contains(&23)//if attacker has morellos
-				{//give morello effect
-					target.se.push(StatusEffect { duration: Some(1000), statusType: StatusType::GreviousWounds(), isNegative: true, ..Default::default()});
-					let dmgToDo = target.initialHP / 4.0;
-					target.se.push(StatusEffect { duration: Some(100), statusType: StatusType::MorellonomiconBurn(dmgToDo / 10.0, dmgToDo, 100), isNegative : true, ..Default::default()})//discrepency unsure whether burn just reapplies itself
-				}
-			}
-		},
-	}
-	
-	if selfIndex != usize::MAX//if attacker exists
-	{
-		if friendlyChampions[selfIndex].items.contains(&16)//if attacker has giants slayer
-		{
-			if target.initialHP >= 2200.0//if target has enough hp
-			{
-				damage *= 1.45;//give extra dmg
-			}
-			else {
-				damage *= 1.2;
-			}
-		}
-
-
-	
-	let omnivamp = friendlyChampions[selfIndex].omnivamp;//give omnivamp healing
-	friendlyChampions[selfIndex].heal(damage * omnivamp);
-	for shield in &mut target.shields//go through shields
-	{
-		if damageType == shield.blocksType.unwrap_or(damageType)//if shield is of correct dmg type (or doesn't specify)
-		{
-			if damage > shield.size//if damage greater than shield
-			{
-				damage -= shield.size;//reduce dmg but remove shield
-				shield.size = 0.0;
-				shield.duration = 0;
-			}
-			else {
-				shield.size -= damage;//reduce shield size
-				damage = 0.0;//set dmg to 0
-				if shield.pop//if shield has pop
-				{
-					shield.size = 0.0;//remove shield
-					shield.duration = 0;
-				}
-				break;
-			}
-		}
-	}
-	}
-	friendlyChampions[selfIndex].titansResolveStack = min(friendlyChampions[selfIndex].titansResolveStack + 1, 25);//add titan's resolve stacks
-	target.health -= damage;//deal damage
-	target.titansResolveStack = min(target.titansResolveStack + 1, 25);//give enemy titan's resolve stacks
-	if target.gMD <= 0//if can gain mana
-	{//give mana
-		target.cm += (0.7 * damage) as u16; //(!D) should be 1% of premitigation and 7% of post.
-	}
-	
-}
 ///returns if shield has duration > 0 after current tick, for use in retain_mut
 fn UpdateShield(shield : &mut Shield, timeUnit : i8) -> bool
 {
@@ -1555,300 +1826,3 @@ fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<
 	true
 }
 
-///simulates a tick/ turn for a champion<br />
-///friendlyChampions[selfIndex] : this champion<br />
-///friendlyChampionsLocations : location of all friend champs (array of positions), for pathfinding<br />
-///enemyChampions : all enemy champions, for targetting<br />
-///timeUnit : time unit of a frame, in centiseconds<br />
-///movementAmount : precalculated movement distance for 1 frame<br />
-fn takeTurn(selfIndex : usize, friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>,timeUnit : i8, movementAmount : i8, projectiles : &mut Vec<Projectile>)
-{
-	friendlyChampions[selfIndex].targetCountDown -= timeUnit;//Reduce cooldown to check target/ find new target
-	friendlyChampions[selfIndex].autoAttackDelay -= timeUnit as i16;//Risks going out of bounds as auto attack value may not be called for some time
-	friendlyChampions[selfIndex].gMD -= timeUnit as i16;
-	{
-		let mut statusEffects = friendlyChampions[selfIndex].se.clone();
-		let mut stun = ShouldStun { stun: 0 };
-		let mut seToAdd : Vec<StatusEffect> = Vec::new();
-		statusEffects.retain_mut(|x| performStatus(x, friendlyChampions, enemyChampions, timeUnit, selfIndex, &mut stun, &mut seToAdd));
-		friendlyChampions[selfIndex].se = statusEffects;
-		//deffo optimisation around statusEffects
-		friendlyChampions[selfIndex].se.extend(seToAdd);
-		if friendlyChampions[selfIndex].shed == 1
-		{
-			friendlyChampions[selfIndex].shed = 2;
-		}
-		else if friendlyChampions[selfIndex].shed == 2
-		{
-			friendlyChampions[selfIndex].shed = 0;
-		}
-		friendlyChampions[selfIndex].shields.retain_mut(|x| UpdateShield(x, timeUnit));
-		if stun.stun == 1
-		{
-			println!("stunned");
-			return
-		}
-	}
-	
-	//does auto attack delay need to reset on pathing? does attack instantly after reaching path/ in range
-
-	if friendlyChampions[selfIndex].banish
-	{
-		return
-	}
-	let mut index : usize = 99;//Cache index of target in enemyChampions
-	let mut distanceToTarget : i8 = 127;//Distance to target (is set either while finding target or when target found)
-	let mut needNewTargetCell : bool = false;//Bool to store whether new path is needed
-	if friendlyChampions[selfIndex].targetCountDown >= 0 //if already has target and doesnt want to change targets 
-	{
-		//maybe optimisation to first check for if enemyChampions[friendlyChampions.target]
-		for (i, enemyChampion) in enemyChampions.iter().enumerate() //every enemy champ
-		{
-			if enemyChampion.id == friendlyChampions[selfIndex].target && enemyChampion.targetable  && ! enemyChampion.banish//if they share id
-			{
-				println!("Debug : Found Target");
-				index = i;//set index
-				distanceToTarget = DistanceBetweenPoints(enemyChampion.location, friendlyChampions[selfIndex].location);//calculate distance
-				break;
-			}
-		}	
-	}
-	if index == 99 //index not updating from initial intilialisation of 99, therefore need new target
-	{
-		println!("Debug : Looking for Target");
-		friendlyChampions[selfIndex].targetCountDown = 100;//reset target cooldown
-		friendlyChampions[selfIndex].target = 0;//reset target
-		let mut distance; //cache to store distance between enemy and location
-		needNewTargetCell = true; //tells us to recalculate pathfinding later
-		//discrepency what if target has moved regardless
-
-		for (i, enemyChampion) in enemyChampions.iter().enumerate() //for every champ
-		{
-			if !enemyChampion.targetable || enemyChampion.banish//discrepency zapped with ionic spark if untargetable?
-			{
-				continue;
-			}
-			distance = DistanceBetweenPoints(enemyChampion.location, friendlyChampions[selfIndex].location); //calculate distance
-			if distance < distanceToTarget //if distance to current enemy champion in loop is lower than distance to current target
-			{
-				friendlyChampions[selfIndex].target = enemyChampion.id; //change target
-				distanceToTarget = distance; //updating distance to new lower value
-				index = i; //setting index
-			}
-		}
-	}
-	
-	if distanceToTarget <= friendlyChampions[selfIndex].ra as i8//if target in range
-	{
-		println!("Debug : Target in Range");
-		println!("Debug : Auto Attack Delay Remaining {0}", friendlyChampions[selfIndex].autoAttackDelay);//discrepency, does auto attack "charge" while moving
-		if friendlyChampions[selfIndex].autoAttackDelay <= 0//if autoattack ready
-		{
-			println!("Debug : Delay Smaller than 0 - Attacking");
-			/* 
-			friendlyChampions[selfIndex].aS = attacks per 1 second
-			friendlyChampions[selfIndex].autoAttackDelay = time in 1/10 of second until next attack
-			friendlyChampions[selfIndex].attackSpeedIncrease = percentage increase in attack speed
-			
-			
-			autoAttackDelay (seconds) = 1 / (attackSpeed * attackSpeedMod)
-			autoAttackDelay (centiseconds) = 100 / (attackSpeed * attackSpeedMod)
-			
-			*/
-			println!("as: {}, mod: {}", friendlyChampions[selfIndex].aS, friendlyChampions[selfIndex].attackSpeedModifier);
-			friendlyChampions[selfIndex].autoAttackDelay = max((100.0 / (friendlyChampions[selfIndex].aS * friendlyChampions[selfIndex].attackSpeedModifier)) as i16, 20); //calculating auto attack delay
-			println!("Auto attack delay set");
-			if friendlyChampions[selfIndex].items.contains(&26)//discrepency if attack speed doesnt increase when attack misses/ is dodged
-			{
-				friendlyChampions[selfIndex].attackSpeedModifier *= 1.06
-			}
-			//attack speed unclear, capped at five yet some champions let you boost beyond it?
-			//optimisation definitely here
-			if friendlyChampions[selfIndex].gMD <= 0
-			{
-				friendlyChampions[selfIndex].cm += 10;
-				if friendlyChampions[selfIndex].items.contains(&18)
-				{
-					friendlyChampions[selfIndex].cm += 8;
-				}
-				println!("gain mana");
-			}
-			if friendlyChampions[selfIndex].items.contains(&68)//optimisation go through foreach in items and match statement
-			{
-				dealDamage(selfIndex, friendlyChampions, &mut enemyChampions[index], 50.0, DamageType::Magical(), false);
-				enemyChampions[index].se.push(StatusEffect { duration: Some(500), statusType: StatusType::ShredMagicResist(2.0), isNegative: true, ..Default::default()});
-				let mut count = 0;
-				for enemyChamp in enemyChampions.iter_mut()
-				{
-					if enemyChamp.id == friendlyChampions[selfIndex].target
-					{
-						continue;
-					}
-					count += 1;
-					dealDamage(selfIndex, friendlyChampions, enemyChamp, 50.0, DamageType::Magical(), false
-				);
-					enemyChamp.se.push(StatusEffect { duration: Some(500), statusType: StatusType::ShredMagicResist(2.0), isNegative: true, ..Default::default()});
-					if count >= 3
-					{
-						break;
-					}
-				}
-			}
-
-
-			if friendlyChampions[selfIndex].items.contains(&56)//discrepency maybe if dodge then second runaans doesnt go thru
-			{
-				let locationToCheck = friendlyChampions[selfIndex].location; //discrepency maybe bolt goes to nearest from location of person being attacked
-				let mut lowestDistance = 100;
-				let mut indexOfChamp = 0;//discrepency runaans will attack same person twice if its only person left alive
-				for (i, enemyChamp) in enemyChampions.iter().enumerate()
-				{
-					let distanceToLocation = DistanceBetweenPoints(enemyChamp.location, locationToCheck);//discrepency check that runaans isnt attacking same person
-					if distanceToLocation < lowestDistance && index != i
-					{
-						lowestDistance = distanceToLocation;
-						indexOfChamp = i;
-					}
-				}
-				dealDamage(selfIndex, friendlyChampions, &mut enemyChampions[indexOfChamp], friendlyChampions[selfIndex].ad * 0.7, DamageType::Physical(), false)//discrepency runaans can miss
-			}
-			println!("maybe dodge");
-			//discrepency maybe can  dodge actual ability
-			if enemyChampions[index].dc <= 0 || enemyChampions[index].dc < rand::thread_rng().gen_range(0..100) || friendlyChampions[selfIndex].items.contains(&66)//calculating whether to dodge
-			{//optimisation from not generating random gen
-				println!("No Dodge");
-				dealDamage(selfIndex, friendlyChampions, &mut enemyChampions[index], friendlyChampions[selfIndex].ad, DamageType::Physical(), false);
-				
-				println!("Debug : Enemy Champion Health is {0}", enemyChampions[index].health);
-				if enemyChampions[index].health <= 0.0 //if enemy champion dead
-				{
-					println!("Debug : Health Lower than 0 - Removing");
-
-					if enemyChampions[index].items.contains(&36)
-					{
-						enemyChampions[index].health = 1500.0;
-						enemyChampions[index].attackSpeedModifier = 0.8;
-						enemyChampions[index].se.clear();
-						enemyChampions[index].ra = 1;
-						enemyChampions[index].ar = 0.2;
-						enemyChampions[index].mr = 0.2;
-						enemyChampions[index].items = [0, 0, 0];
-						enemyChampions[index].aS = 0.8;
-						enemyChampions[index].attackSpeedModifier = 1.0;
-						enemyChampions[index].cr = 25;
-						//discrepency cant be asked to set everything to default
-						//discrepency stats change depending on stage
-					}
-					else
-					{
-						enemyChampions.swap_remove(index);//discrepency, only checks for champion death when it is auto attacked
-					//maybe discrepency if target gets removed from enemyChamps and then we try to abiity cast on it.
-					}
-					
-				}
-			}
-			else 
-			{
-				println!("Debug : Dodged Attack");
-			}
-			
-
-		}
-	}
-	else 
-	{
-		println!("Debug : Not in Range");
-		if needNewTargetCell || friendlyChampions[selfIndex].location == friendlyChampions[selfIndex].targetCells //if need to update pathfinding or at pathfinding target
-		//optimisation?, accuracy vs performance cost
-		{
-			println!("Debug : Need Target Cell");
-			friendlyChampions[selfIndex].targetCells = friendlyChampions[selfIndex].location; //setting target cells to location so if it does not find a target this frame will try to do it again
-			//optimisation does not need to check every frame
-
-			let mut lowestDistance : i8 = 100; //setting lowestDistance to high value
-			let mut newPosition;
-			for possibleMove in [[0, -1], [1, -1], [1, 0], [-1, 0], [-1, 1], [0, 1]] //for every possible move
-			//optimisation
-			{
-				newPosition = [friendlyChampions[selfIndex].location[0] + possibleMove[0], friendlyChampions[selfIndex].location[1] + possibleMove[1]];
-				distanceToTarget = DistanceBetweenPoints(newPosition, enemyChampions[index].location);
-				if distanceToTarget < lowestDistance
-				{
-					let mut failed = false;
-					if ! InGridHexagon(newPosition)
-					{
-						continue;
-					}
-					for friendlyChampionLocation in friendlyChampions.iter()
-					{
-						if friendlyChampionLocation.location[0] == newPosition[0] && friendlyChampionLocation.location[1] == newPosition[1]
-						{
-							failed = true;
-							break
-						}
-					}
-					if failed
-					{
-						continue;
-					}
-					println!("Debug : Found a Target Cell");
-					lowestDistance = distanceToTarget;
-					friendlyChampions[selfIndex].targetCells = newPosition;
-				}
-				
-			}
-		}
-		
-		println!("Debug : Moving to Target Cell");
-		friendlyChampions[selfIndex].movementProgress[0] += movementAmount * sign(friendlyChampions[selfIndex].targetCells[0] - friendlyChampions[selfIndex].location[0]);//optimisation here
-		println!("Debug : Position ({0},{1}) -- Movement Progress ({2},{3})", friendlyChampions[selfIndex].location[0], friendlyChampions[selfIndex].location[1], friendlyChampions[selfIndex].movementProgress[0], friendlyChampions[selfIndex].movementProgress[1]);
-		if friendlyChampions[selfIndex].movementProgress[0].abs() == 10
-		{
-			friendlyChampions[selfIndex].location[0] += sign(friendlyChampions[selfIndex].movementProgress[0]);
-			friendlyChampions[selfIndex].movementProgress[0] = 0;
-			
-		}
-		friendlyChampions[selfIndex].movementProgress[1] += movementAmount * sign(friendlyChampions[selfIndex].targetCells[1] - friendlyChampions[selfIndex].location[1]);
-		if friendlyChampions[selfIndex].movementProgress[1].abs() == 10
-		{
-			friendlyChampions[selfIndex].location[1] += sign(friendlyChampions[selfIndex].movementProgress[1]);
-			friendlyChampions[selfIndex].movementProgress[1] = 0;
-			
-		}
-	}
-	
-	//Ionic spark, optimisation, could be status effect but enemies not passed into function? also doesnt need to be check every turn
-	if friendlyChampions[selfIndex].items.contains(&25)
-	{
-		let thisLocation = friendlyChampions[selfIndex].location;
-		for enemyChamp in enemyChampions.iter_mut()
-		{
-			if DistanceBetweenPoints(thisLocation, enemyChamp.location) < 7//discrepency check distance between points returns value twice as large?
-			{
-				enemyChamp.se.push(StatusEffect { duration: Some((timeUnit + 1).into()), statusType: StatusType::IonicSparkEffect(), isNegative: true, ..Default::default()});
-			}
-		}
-	}
-
-	
-	
-	if friendlyChampions[selfIndex].cm >= friendlyChampions[selfIndex].mc
-	{
-		if friendlyChampions[selfIndex].zap
-		{
-			friendlyChampions[selfIndex].health -= (friendlyChampions[selfIndex].mc as f32) * 2.5;
-		}
-		friendlyChampions[selfIndex].cm = 0;
-		if friendlyChampions[selfIndex].items.contains(&88)
-		{
-			friendlyChampions[selfIndex].cm = 20;
-		}
-		friendlyChampions[selfIndex].gMD = 100;
-		CHAMPIONABILITIES[friendlyChampions[selfIndex].aID](friendlyChampions, enemyChampions, selfIndex, projectiles);	
-	}
-}
-
-fn NOMNOMNOM(champs : &mut Vec<SummonedChampion>, champ : &mut SummonedChampion)
-{
-
-}
