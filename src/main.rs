@@ -210,14 +210,7 @@ fn findChampionIndexFromID(champions : &VecDeque<SummonedChampion>, id : usize) 
 ///projectiles : mut reference to all projectiles
 fn ADStrikerAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize, projectiles : &mut Vec<Projectile>)
 {
-	//fetches target index
-	let target = findChampionIndexFromID(&enemyChampions, friendlyChampions[selfIndex].target).unwrap_or(0);//(!D) Can strike from out of range
-	//gets their location
-	let targetLocation = enemyChampions[target].location;
-	//calculates damage
-	let damage : f32 = friendlyChampions[selfIndex].ad * 3.0 * (friendlyChampions[selfIndex].starLevel as f32);
-	//adds projectile to vec
-	projectiles.push(Projectile::new(friendlyChampions[selfIndex].location, Option::Some(targetLocation), friendlyChampions[selfIndex].target, damage, DamageType::Physical(), 0.0, 5, selfIndex))
+
 }
 ///Ability for Ability Power Champion:<br />
 ///friendlyChampions : mut reference to allied champions<br />
@@ -527,7 +520,7 @@ impl SummonedChampion
 	///enemyChampions : all enemy champions, for targetting<br />
 	///timeUnit : time unit of a frame, in centiseconds<br />
 	///movementAmount : precalculated movement distance for 1 frame<br />
-	fn takeTurn(&mut self, friendlyChampions : &mut VecDeque<SummonedChampion>, enemyChampions : &mut VecDeque<SummonedChampion>,timeUnit : i8, movementAmount : i8, projectiles : &mut Vec<Projectile>)
+	fn takeTurn(&mut self, friendlyChampions : &mut VecDeque<SummonedChampion>, enemyChampions : &mut VecDeque<SummonedChampion>,timeUnit : i8, movementAmount : i8, projectiles : &mut Vec<Projectile>) -> bool
 	{
 		self.targetCountDown -= timeUnit;//Reduce cooldown to check target/ find new target
 		self.autoAttackDelay -= timeUnit as i16;//Risks going out of bounds as auto attack value may not be called for some time
@@ -813,193 +806,107 @@ impl SummonedChampion
 			CHAMPIONABILITIES[self.aID](friendlyChampions, enemyChampions, selfIndex, projectiles);	
 		}
 	}
-	fn dealDamage(&mut self, //selfIndex == usize::max if the champion who dealt the damage is dead but a projectile they fired still exists
-			friendlyChampions : &mut VecDeque<SummonedChampion>,//all friendlyChamps
-			target : &mut SummonedChampion,//target enemy champ
-			damageAmount : f32,//amount of damage
-			damageType : DamageType,//whether damage is physical, magical or true
-			_isSplash : bool){//is splash, currently unused
-	let mut damage : f32 = 0.0;
-	match damageType
-	{
-	DamageType::Physical() => {damage = (damageAmount * target.incomingDMGModifier) / ( 1.0 + target.ar);//reduction in dmg due to target armor
-		if selfIndex != usize::MAX//if damage dealer exists
-		{
+	fn dealDamage(&mut self, friendlyChampions : &mut VecDeque<SummonedChampion>, target : &mut SummonedChampion, damageAmount : f32, damageType : DamageType, _isSplash : bool){
+		let mut damage : f32 = damageAmount * target.incomingDMGModifier;
+		let mut canCrit = false;
+		let mut critD = self.critD;
 
-			if friendlyChampions[selfIndex].cr > rand::thread_rng().gen_range(0..100)// if crit   (!O)  
-			{
-			let mut critD = friendlyChampions[selfIndex].critD;
-			if friendlyChampions[selfIndex].cr > 100 && friendlyChampions[selfIndex].items.contains(&17)//if they have infinity edge
-			{
-				critD += (friendlyChampions[selfIndex].cr - 100) as f32//give extra crit damage
+		match damageType{
+			DamageType::Physical() => {
+				canCrit = true;
+				damage /= 1.0 + target.ar;
+				if self.items.contains(&67){ //apply armor shred from last whisper
+
+					let mut alreadyHasShred = false;
+					for statusEffect in &target.se//check if they already have armor shred
+					{
+						if StatusType::LastWhisperShred() == statusEffect.statusType
+						{
+							alreadyHasShred = true;
+							break;
+						}
+					}
+					if ! alreadyHasShred//if they don't, give it
+					{
+						target.se.push(StatusEffect{duration : Some(500), statusType : StatusType::LastWhisperShred(), isNegative : true, ..Default::default()})
+					}
+				}
+				if self.cr > 100 && self.items.contains(&17){ //give extra crit damage from infinity edge
+						critD += (self.cr - 100) as f32
+				}
 			}
+			DamageType::Magical() => {
+				canCrit = self.items.contains(&27);
+				damage /= 1.0 + target.mr;
+			}
+			DamageType::True() => {
+				canCrit = self.items.contains(&27);
+			}
+		}
+
+		if canCrit && self.cr > rand::thread_rng().gen_range(0..100) {
 			let mut extraDamage = damage * critD;
-			if target.items.contains(&44) //if target has bramble vest
-			{
-				extraDamage /= 4.0;//reduce damage
+			if target.items.contains(&44) { //reduce dmg if target has bramble vest
+				extraDamage /= 4.0;
 			}
-			damage += extraDamage;//add extraDamage onto damage
-			}
-			if friendlyChampions[selfIndex].items.contains(&67)//if attacker has last whisper
-			{
-			let mut alreadyHasShred = false;
-			for statusEffect in &target.se//check if they already have armor shred
-			{
-				if StatusType::LastWhisperShred() == statusEffect.statusType
-				{
-					alreadyHasShred = true;
-					break;
-				}
-			}
-			if ! alreadyHasShred//if they don't, give it
-			{
-				target.se.push(StatusEffect{duration : Some(500), statusType : StatusType::LastWhisperShred(), isNegative : true, ..Default::default()})
-			}
-			}
+			damage += extraDamage
 		}
-		
-	},
-	DamageType::Magical() => {damage = (damageAmount * friendlyChampions[selfIndex].ap * target.incomingDMGModifier) / (1.0 + target.mr);//damage reduction due to resistances
-			
-		if selfIndex != usize::MAX//if attacker alive
-		{
-			if friendlyChampions[selfIndex].items.contains(&27)//if they have jeweled gauntlet
-			{
-				if friendlyChampions[selfIndex].cr > rand::thread_rng().gen_range(0..100)//check for crit
-				{
-					let critD = friendlyChampions[selfIndex].critD;//calculate crit damage
-					let mut extraDamage = damage * critD;
-					if target.items.contains(&44)
-					{
-						extraDamage /= 4.0;
-					}
-					damage += extraDamage;
-				}
-			}
-			if friendlyChampions[selfIndex].items.contains(&12)//if they have gunblade
-			{
-				let healing = damage / 4.0;//calculate healing
-				friendlyChampions[selfIndex].heal(healing);//heal self
-				let mut lowestHP : f32 = f32::MAX;
-				let mut lowestHPID : usize = 0;
-				for (i, champ) in friendlyChampions.iter().enumerate()//find lowest health ally
-				{
-					if i != selfIndex && champ.health < lowestHP
-					{
-						lowestHP = champ.health;
-						lowestHPID = i;
-					}
-				}
-				if lowestHPID != selfIndex
-				{
-					friendlyChampions[lowestHPID].heal(healing);//heal them
-				}
-			}
-			if friendlyChampions[selfIndex].items.contains(&23)//if they have morellonomiocon
-			{
-				target.se.push(StatusEffect { duration: Some(1000), statusType: StatusType::GreviousWounds(), isNegative: true, ..Default::default()});//give morello effect
-				let dmgToDo = target.initialHP / 10.0;
-				target.se.push(StatusEffect { duration: Some(100), statusType: StatusType::MorellonomiconBurn(dmgToDo / 10.0, dmgToDo, 100), isNegative : true, ..Default::default()})//discrepency unsure whether burn just reapplies itself
-			}
+
+		if self.items.contains(&16) {//give bonus giant's slayer attack dmg
+			if target.initialHP >= 2200.0 { damage *= 1.45 }
+			else { damage *= 1.2 }
 		}
-		},
-	DamageType::True() => {//(!D) does lulu ability etc affect true dmg
-		if selfIndex != usize::MAX
-		{
-			if friendlyChampions[selfIndex].items.contains(&27)//if they have jeweled gauntlet
-			{
-				if friendlyChampions[selfIndex].cr > rand::thread_rng().gen_range(0..100)//if crit
-				{
-					let mut extraDamage = damage * friendlyChampions[selfIndex].critD;//calculate extra dmg
-					if target.items.contains(&44)
-					{
-						extraDamage /= 4.0; //discrepency not sure if it applies to true dmg
-					}
-					damage += extraDamage;
-				}
-			}
-			
-			
-			if friendlyChampions[selfIndex].items.contains(&12)//if attacker has gunblade
-			{
-				let healing = damage / 4.0;//do gunblade effect
-				friendlyChampions[selfIndex].heal(healing);
-				let mut lowestHP : f32 = 999999.0;
-				let mut lowestHPID : usize = 0;
 
+		if damageType != DamageType::Physical() { //give gunblade and morellos
+			if self.items.contains(&12) { //give gunblade healing
+					let healing = damage / 4.0;//calculate healing
+					self.heal(healing);//heal self
+					
+					let lowestHPChamp = friendlyChampions.iter().reduce(|x, y| if x.health < y.health {x} else {y}); //get lowest HP ally
 
-
-				
-				for (i, champ) in friendlyChampions.iter().enumerate()
-				{
-					if i != selfIndex && champ.health < lowestHP
-					{
-						lowestHP = champ.health;
-						lowestHPID = i;
+					if lowestHPChamp.is_some(){ //if there are any allies
+						lowestHPChamp.unwrap().heal(healing)
 					}
 				}
-				if lowestHPID != selfIndex
-				{
-					friendlyChampions[lowestHPID].heal(healing);
-				}}
-			if friendlyChampions[selfIndex].items.contains(&23)//if attacker has morellos
-			{//give morello effect
+			if self.items.contains(&23) { //if self has morellos give morellos effect
 				target.se.push(StatusEffect { duration: Some(1000), statusType: StatusType::GreviousWounds(), isNegative: true, ..Default::default()});
 				let dmgToDo = target.initialHP / 4.0;
 				target.se.push(StatusEffect { duration: Some(100), statusType: StatusType::MorellonomiconBurn(dmgToDo / 10.0, dmgToDo, 100), isNegative : true, ..Default::default()})//discrepency unsure whether burn just reapplies itself
 			}
 		}
-	},
-	}
+		
+		self.heal(damage * self.omnivamp); //give omnivamp healing
 
-	if selfIndex != usize::MAX//if attacker exists
-	{
-	if friendlyChampions[selfIndex].items.contains(&16)//if attacker has giants slayer
-	{
-		if target.initialHP >= 2200.0//if target has enough hp
-		{
-			damage *= 1.45;//give extra dmg
-		}
-		else {
-			damage *= 1.2;
-		}
-	}
-
-
-
-	let omnivamp = friendlyChampions[selfIndex].omnivamp;//give omnivamp healing
-	friendlyChampions[selfIndex].heal(damage * omnivamp);
-	for shield in &mut target.shields//go through shields
-	{
-	if damageType == shield.blocksType.unwrap_or(damageType)//if shield is of correct dmg type (or doesn't specify)
-	{
-		if damage > shield.size//if damage greater than shield
-		{
-			damage -= shield.size;//reduce dmg but remove shield
-			shield.size = 0.0;
-			shield.duration = 0;
-		}
-		else {
-			shield.size -= damage;//reduce shield size
-			damage = 0.0;//set dmg to 0
-			if shield.pop//if shield has pop
-			{
-				shield.size = 0.0;//remove shield
-				shield.duration = 0;
+		for shield in &mut target.shields {//reduce damage due to shields
+			if damageType == shield.blocksType.unwrap_or(damageType) {//if shield is of correct dmg type (or doesn't specify)
+				if damage > shield.size//if damage greater than shield
+				{
+					damage -= shield.size;//reduce dmg but remove shield
+					shield.size = 0.0;
+					shield.duration = 0;
+				}
+				else {
+					shield.size -= damage;//reduce shield size
+					damage = 0.0;//set dmg to 0
+					if shield.pop//if shield has pop
+					{
+						shield.size = 0.0;//remove shield
+						shield.duration = 0;
+					}
+					break;
+				}
 			}
-			break;
 		}
-	}
-	}
-	}
-	friendlyChampions[selfIndex].titansResolveStack = min(friendlyChampions[selfIndex].titansResolveStack + 1, 25);//add titan's resolve stacks
-	target.health -= damage;//deal damage
-	target.titansResolveStack = min(target.titansResolveStack + 1, 25);//give enemy titan's resolve stacks
-	if target.gMD <= 0//if can gain mana
-	{//give mana
-	target.cm += (0.7 * damage) as u16; //(!D) should be 1% of premitigation and 7% of post.
-	}
 
+		self.titansResolveStack = min(self.titansResolveStack + 1, 25);//add titan's resolve stacks
+		target.titansResolveStack = min(target.titansResolveStack + 1, 25); //give enemy titan's resolve stacks
+		
+		target.health -= damage;
+
+		if target.gMD <= 0 {// give mana is delay off
+			target.cm += (0.7 * damage) as u16; //(!D) should be 1% of premitigation and 7% of post.
+		}
+	
 	}
 	fn castAbility(&mut self, friendlyChampions : &mut VecDeque<SummonedChampion>, enemyChampions : &mut VecDeque<SummonedChampion>, projectiles : &mut Vec<Projectile>)
 	{
@@ -1045,11 +952,19 @@ impl SummonedChampion
 			1 => {
 				let starLevel = self.starLevel;
 				let targetIndex = findChampionIndexFromID(&enemyChampions, self.target).unwrap_or(0);//(!D) Can strike from out of range, should search for closest
-				let ap = self.ap;//gets ap
-				self.heal((300.0 + 50.0 * starLevel as f32) * ap); //heals
+				self.heal((300.0 + 50.0 * starLevel as f32) * self.ap); //heals
 
 				//deals damage
 				self.dealDamage(friendlyChampions, &mut enemyChampions[targetIndex], (25.0 * starLevel as f32) * 4.0 * self.ad, DamageType::Physical(), false)
+			}
+			2 => {
+				let target = findChampionIndexFromID(&enemyChampions, friendlyChampions[selfIndex].target).unwrap_or(0);//(!D) Can strike from out of range
+				let targetLocation = enemyChampions[target].location;
+				let damage : f32 = friendlyChampions[selfIndex].ad * 3.0 * (friendlyChampions[selfIndex].starLevel as f32);
+				projectiles.push(Projectile::new(friendlyChampions[selfIndex].location, Option::Some(targetLocation), friendlyChampions[selfIndex].target, damage, DamageType::Physical(), 0.0, 5, selfIndex))
+			}
+			3 => {
+
 			}
 				_ => println!("Unimplemented"),
 		}
