@@ -1,7 +1,7 @@
 #![allow(non_snake_case)] //Allows snake case
 
 use std::cmp::{min, max};
-use rand::{Rng};
+use rand::{Rng, seq::index};
 use std::collections::VecDeque;
 
 ///ShouldStun<br />
@@ -42,7 +42,7 @@ struct Champion
     aS : f32,
 	
 	///Auto attack range
-    ra : u8,
+    ra : i8,
 
     ///Ability ID<br />
 	///same as index in CHAMPIONABILITIES
@@ -449,48 +449,42 @@ const CHAMPIONS : [Champion ; 4] = [Champion{id : 0, hp : [650.0, 1100.0, 2100.0
 ///champions : &Vec<SummonedChampion> - List of champions to iterate through<br />
 ///id : usize - ID wanted<br />
 ///returns : Option<usize> - Some(correct id) or None if not found
-fn findChampionIndexFromID(champions : &VecDeque<SummonedChampion>, id : usize) -> Option<usize>
+fn findChampionIndexFromID(champions : &VecDeque<SummonedChampion>, id : usize) -> Option<usize> //(!D) swap this out for check targetable as well
 {
-	if champions[id].id == id
-	{
+	if champions[id].id == id {
 		return Some(id)
 	}
-	for champ in champions
-	{
-		if champ.id == id
-		{
-			return Some(id)
+	for champ in champions { 
+		if champ.id == id { 
+			return Some(id); 
+		} 
+	}
+	None
+}
+///Same as find champ index from id but also checks it is targetable/ not banished
+fn findChampionIndexFromIDTargetable(champions : &VecDeque<SummonedChampion>, id : usize) -> Option<usize>
+{
+	let out : Option<usize> = None;
+	if champions[id].id == id {
+		out = Some(id)
+	}
+	else {
+		for champ in champions { 
+			if champ.id == id { 
+				out = Some(id); 
+				break; 
+			} 
+		}
+	}
+	if out.is_some(){
+		if champions[out.unwrap()].targetable && !champions[out.unwrap()].banish {
+			return out
 		}
 	}
 	None
 }
 
 
-///Ability for Attack Damage Champion:<br />
-///friendlyChampions : mut reference to allied champions<br />
-///enemyChampions : mut reference to enemy champions<br />
-///selfIndex : index of self in friendlyChampions<br />
-///projectiles : mut reference to all projectiles
-fn ADStrikerAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize, projectiles : &mut Vec<Projectile>)
-{
-
-}
-///Ability for Ability Power Champion:<br />
-///friendlyChampions : mut reference to allied champions<br />
-///enemyChampions : mut reference to enemy champions<br />
-///selfIndex : index of self in friendlyChampions<br />
-///projectiles : mut reference to all projectiles
-fn APStrikerAbility(friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, selfIndex : usize, projectiles : &mut Vec<Projectile>)
-{
-	//fetches target index
-	let target = findChampionIndexFromID(&enemyChampions, friendlyChampions[selfIndex].target).unwrap_or(0);//(!D) Can strike from out of range
-	//gets their location
-	let targetLocation = enemyChampions[target].location;
-	//calculates damage
-	let damage : f32 = 250.0 * friendlyChampions[selfIndex].ap * (friendlyChampions[selfIndex].starLevel as f32);
-	//adds projectile to vec
-	projectiles.push(Projectile::new(friendlyChampions[selfIndex].location, Option::Some(targetLocation), friendlyChampions[selfIndex].target, damage, DamageType::Magical(), damage / 3.0, 3, selfIndex))
-}
 
 
 ///Enum for the 3 damage types Physical, Magical and True
@@ -539,7 +533,7 @@ struct Shield {
 impl Shield {
 	fn updateShield(&mut self, timeUnit : i8) -> bool { //updates self
 		self.duration -= timeUnit as i16; //(!O)
-		return self.duration > 0
+		return self.duration > 0 && self.size > 0.0
 	}
 }
 ///Default for shield
@@ -591,7 +585,7 @@ struct SummonedChampion {
 	aS : f32,
 	
 	///auto attack range
-	ra : u8,
+	ra : i8,
 
 	///ability ID/ index
 	aID : usize,
@@ -791,51 +785,33 @@ impl SummonedChampion {
 			self.se = Vec::new();
 			let mut stun = ShouldStun { stun: 0 };
 			statusEffects.retain_mut(|x| x.performStatus(self, friendlyChampions, enemyChampions, timeUnit, &mut stun));
+			
+			if self.health <= 0.0 { return false }
+
 			self.se.extend(statusEffects);
 
-			if self.shed == 1
-			{
-				self.shed = 2;
-			}
-			else if self.shed == 2
-			{
-				self.shed = 0;
-			}
+			if self.shed == 1 { self.shed = 2; }
+			else { self.shed = 0; }
+			
 			self.shields.retain_mut(|x| x.updateShield(timeUnit));
-			if self.health <= 0.0 {
-				return false
-			}
-			if stun.stun == 1
-			{
-				println!("stunned");
-				return true
-			}
+			
+			if stun.stun == 1 { return true }
 		}
 		
 		//does auto attack delay need to reset on pathing? does attack instantly after reaching path/ in range
 
-		if self.banish
-		{
-			return true
-		}
-		let mut index : usize = 99;//Cache index of target in enemyChampions
-		let mut distanceToTarget : i8 = 127;//Distance to target (is set either while finding target or when target found)
+		if self.banish { return true }
+
+		let mut indexStore : Option<usize> = None;
+
 		let mut needNewTargetCell : bool = false;//Bool to store whether new path is needed
 		if self.targetCountDown >= 0 //if already has target and doesnt want to change targets 
 		{
-			//maybe optimisation to first check for if enemyChampions[friendlyChampions.target]
-			for (i, enemyChampion) in enemyChampions.iter().enumerate() //every enemy champ
-			{
-				if enemyChampion.id == self.target && enemyChampion.targetable  && ! enemyChampion.banish//if they share id
-				{
-					println!("Debug : Found Target");
-					index = i;//set index
-					distanceToTarget = DistanceBetweenPoints(enemyChampion.location, self.location);//calculate distance
-					break;
-				}
-			}	
+			indexStore = findChampionIndexFromIDTargetable(enemyChampions, self.target)
 		}
-		if index == 99 //index not updating from initial intilialisation of 99, therefore need new target
+
+		let mut distanceToTarget : i8 = i8::MAX;
+		if indexStore.is_none() //index not updating from initial intilialisation of 99, therefore need new target
 		{
 			println!("Debug : Looking for Target");
 			self.targetCountDown = 100;//reset target cooldown
@@ -846,19 +822,23 @@ impl SummonedChampion {
 
 			for (i, enemyChampion) in enemyChampions.iter().enumerate() //for every champ
 			{
-				if !enemyChampion.targetable || enemyChampion.banish//discrepency zapped with ionic spark if untargetable?
-				{
-					continue;
-				}
+				if !enemyChampion.targetable || enemyChampion.banish { continue; }
+
 				distance = DistanceBetweenPoints(enemyChampion.location, self.location); //calculate distance
-				if distance < distanceToTarget //if distance to current enemy champion in loop is lower than distance to current target
-				{
+				if distance < distanceToTarget {//if distance to current enemy champion in loop is lower than distance to current target
 					self.target = enemyChampion.id; //change target
 					distanceToTarget = distance; //updating distance to new lower value
-					index = i; //setting index
+					indexStore = Some(i);
 				}
 			}
+			if indexStore.is_none(){
+				return true;
+			}
 		}
+		else {
+			distanceToTarget = DistanceBetweenPoints(self.location, enemyChampions[indexStore.unwrap()].location);
+		}
+		let index = indexStore.unwrap();
 		
 		if distanceToTarget <= self.ra as i8//if target in range
 		{
@@ -880,51 +860,41 @@ impl SummonedChampion {
 				println!("as: {}, mod: {}", self.aS, self.attackSpeedModifier);
 				self.autoAttackDelay = max((100.0 / (self.aS * self.attackSpeedModifier)) as i16, 20); //calculating auto attack delay
 				println!("Auto attack delay set");
-				if self.items.contains(&26)//discrepency if attack speed doesnt increase when attack misses/ is dodged
-				{
-					self.attackSpeedModifier *= 1.06
-				}
+				if self.items.contains(&26) { self.attackSpeedModifier *= 1.06 }//(!D) if attack speed doesnt increase when attack misses/ is dodged					
+				
 				//attack speed unclear, capped at five yet some champions let you boost beyond it?
 				//optimisation definitely here
 				if self.gMD <= 0
 				{
 					self.cm += 10;
-					if self.items.contains(&18)
-					{
-						self.cm += 8;
-					}
+					if self.items.contains(&18) { self.cm += 8; }
 					println!("gain mana");
 				}
-				if self.items.contains(&68)//optimisation go through foreach in items and match statement
+				if self.items.contains(&68)//(!O) go through foreach in items and match statement
 				{
-					dealDamage(selfIndex, friendlyChampions, &mut enemyChampions[index], 50.0, DamageType::Magical(), false);
+					self.dealDamage(friendlyChampions, &mut enemyChampions[index], 50.0, DamageType::Magical(), false);
 					enemyChampions[index].se.push(StatusEffect { duration: Some(500), statusType: StatusType::ShredMagicResist(2.0), isNegative: true, ..Default::default()});
 					let mut count = 0;
+
 					for enemyChamp in enemyChampions.iter_mut()
 					{
-						if enemyChamp.id == self.target
-						{
-							continue;
-						}
+						if enemyChamp.id == self.target { continue; }
+						
 						count += 1;
-						dealDamage(selfIndex, friendlyChampions, enemyChamp, 50.0, DamageType::Magical(), false
-					);
+
+						self.dealDamage(friendlyChampions, enemyChamp, 50.0, DamageType::Magical(), false);
 						enemyChamp.se.push(StatusEffect { duration: Some(500), statusType: StatusType::ShredMagicResist(2.0), isNegative: true, ..Default::default()});
-						if count >= 3
-						{
-							break;
-						}
+						
+						if count >= 3 { break; }
 					}
 				}
 
 
-				if self.items.contains(&56)//discrepency maybe if dodge then second runaans doesnt go thru
-				{
-					let locationToCheck = self.location; //discrepency maybe bolt goes to nearest from location of person being attacked
+				if self.items.contains(&56) { //(!D) can be dodged
+					let locationToCheck = self.location; //(!D) maybe bolt goes to nearest from location of person being attacked
 					let mut lowestDistance = 100;
 					let mut indexOfChamp = 0;//discrepency runaans will attack same person twice if its only person left alive
-					for (i, enemyChamp) in enemyChampions.iter().enumerate()
-					{
+					for (i, enemyChamp) in enemyChampions.iter().enumerate() {
 						let distanceToLocation = DistanceBetweenPoints(enemyChamp.location, locationToCheck);//discrepency check that runaans isnt attacking same person
 						if distanceToLocation < lowestDistance && index != i
 						{
@@ -932,22 +902,20 @@ impl SummonedChampion {
 							indexOfChamp = i;
 						}
 					}
-					dealDamage(selfIndex, friendlyChampions, &mut enemyChampions[indexOfChamp], self.ad * 0.7, DamageType::Physical(), false)//discrepency runaans can miss
+					self.dealDamage(friendlyChampions, &mut enemyChampions[indexOfChamp], self.ad * 0.7, DamageType::Physical(), false)//discrepency runaans can miss
 				}
 				println!("maybe dodge");
-				//discrepency maybe can  dodge actual ability
 				if enemyChampions[index].dc <= 0 || enemyChampions[index].dc < rand::thread_rng().gen_range(0..100) || self.items.contains(&66)//calculating whether to dodge
-				{//optimisation from not generating random gen
+				{//(!O) from not generating random gen
 					println!("No Dodge");
-					dealDamage(selfIndex, friendlyChampions, &mut enemyChampions[index], self.ad, DamageType::Physical(), false);
+					self.dealDamage(friendlyChampions, &mut enemyChampions[index], self.ad, DamageType::Physical(), false);
 					
 					println!("Debug : Enemy Champion Health is {0}", enemyChampions[index].health);
 					if enemyChampions[index].health <= 0.0 //if enemy champion dead
 					{
 						println!("Debug : Health Lower than 0 - Removing");
 
-						if enemyChampions[index].items.contains(&36)
-						{
+						if enemyChampions[index].items.contains(&36) {
 							enemyChampions[index].health = 1500.0;
 							enemyChampions[index].attackSpeedModifier = 0.8;
 							enemyChampions[index].se.clear();
@@ -958,13 +926,12 @@ impl SummonedChampion {
 							enemyChampions[index].aS = 0.8;
 							enemyChampions[index].attackSpeedModifier = 1.0;
 							enemyChampions[index].cr = 25;
-							//discrepency cant be asked to set everything to default
-							//discrepency stats change depending on stage
+							//(!D) cant be asked to set everything to default)
+							//(!D) stats change depending on stage
 						}
-						else
-						{
-							enemyChampions.swap_remove(index);//discrepency, only checks for champion death when it is auto attacked
-						//maybe discrepency if target gets removed from enemyChamps and then we try to abiity cast on it.
+						else {
+							enemyChampions.swap_remove_back(index);//(!D), only checks for champion death when it is auto attacked
+						//(!D) if target gets removed from enemyChamps and then we try to abiity cast on it.
 						}
 						
 					}
@@ -1221,12 +1188,20 @@ impl SummonedChampion {
 				self.dealDamage(friendlyChampions, &mut enemyChampions[targetIndex], (25.0 * starLevel as f32) * 4.0 * self.ad, DamageType::Physical(), false)
 			}
 			2 => {
-				let target = findChampionIndexFromID(&enemyChampions, friendlyChampions[selfIndex].target).unwrap_or(0);//(!D) Can strike from out of range
+				let target = findChampionIndexFromID(&enemyChampions, self.target).unwrap_or(0);//(!D) Can strike from out of range
 				let targetLocation = enemyChampions[target].location;
-				let damage : f32 = friendlyChampions[selfIndex].ad * 3.0 * (friendlyChampions[selfIndex].starLevel as f32);
-				projectiles.push(Projectile::new(friendlyChampions[selfIndex].location, Option::Some(targetLocation), friendlyChampions[selfIndex].target, damage, DamageType::Physical(), 0.0, 5, selfIndex))
+				let damage : f32 = self.ad * 3.0 * (self.starLevel as f32);
+				projectiles.push(Projectile::new(self.location, Option::Some(targetLocation), self.target, damage, DamageType::Physical(), 0.0, 5, self.id))
 			}
 			3 => {
+				//fetches target index
+				let target = findChampionIndexFromID(&enemyChampions, self.target).unwrap_or(0);//(!D) Can strike from out of range
+				//gets their location
+				let targetLocation = enemyChampions[target].location;
+				//calculates damage
+				let damage : f32 = 250.0 * self.ap * (self.starLevel as f32);
+				//adds projectile to vec
+				projectiles.push(Projectile::new(self.location, Option::Some(targetLocation), self.target, damage, DamageType::Magical(), damage / 3.0, 3, self.id))
 
 			}
 				_ => println!("Unimplemented"),
