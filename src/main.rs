@@ -3,6 +3,7 @@
 use std::{cmp::{min, max}};
 use rand::{Rng};
 use std::collections::VecDeque;
+use std::iter::Filter;
 use num_traits::Num;
 
 ///ShouldStun<br />
@@ -150,6 +151,25 @@ enum StatusType
 	NoEffect()
 }
 
+enum FilterTypes<'a>{
+	///i8 : Distance to check
+	///&Location : Other Location
+	DistanceFilter(i8, &'a Location)
+
+}
+
+fn generate_filter(filter : FilterTypes) -> impl for<'a> Fn(&&mut SummonedChampion) -> bool {
+	match filter {
+		FilterTypes::DistanceFilter(dis, location) => {
+			move |n : &&mut SummonedChampion| {
+				n.location.distanceBetweenPoints(location) < dis
+			  }
+		}
+	}
+	
+}
+
+
 
 ///StatusEffect (struct)<br />:
 ///Stores a status type and a duration
@@ -223,10 +243,8 @@ impl StatusEffect {
 					StatusType::RedemptionGive() => {
 						nDuration = 100;//increase duration
 						let thisLocation = affectedChampion.location;
-						for friendlyChamp in friendlyChampions.iter_mut()
-						{
-							if DistanceBetweenPoints(thisLocation, friendlyChamp.location) < 3
-							{
+						for friendlyChamp in friendlyChampions.iter_mut() {
+							if affectedChampion.location.distanceBetweenPoints(&friendlyChamp.location) < 3 {
 								friendlyChamp.heal((friendlyChamp.initialHP - friendlyChamp.health) * 0.12)//discrepency check at multitarget damage time for redemption heal for reduction
 							}
 						}
@@ -249,30 +267,25 @@ impl StatusEffect {
 					}
 					StatusType::ShroudOfStillness() => {//give shroud effect
 						let pos = affectedChampion.location;
-						let halfY = pos[1] / 2;
-						for enemy in enemyChampions
-						{
-							let yDist = enemy.location[1] / 2 - halfY;
-							let xDiff = pos[0] - yDist - enemy.location[0];
-							if xDiff <= 1 && xDiff >= 0//calculate whether in line
-							{
+						let halfY = pos.y / 2;
+						for enemy in enemyChampions {
+							let yDist = enemy.location.x / 2 - halfY;
+							let xDiff = pos.x - yDist - enemy.location.x;
+							if xDiff <= 1 && xDiff >= 0 {//calculate whether in line
 								enemy.cm -= (7 * enemy.mc) / 20;
 							}
 						}
 					}
 					StatusType::DragonClawHeal() => {
 						nDuration = 200;//reset status effect
-						let mut numTargeting : f32 = 0.0;
 						let ourID = affectedChampion.id;
-						for enemyChamp in enemyChampions
-						{
-							if enemyChamp.target == ourID
-							{
-								numTargeting += 1.0;
+
+						let numTargeting = enemyChampions.iter().map(|f| {
+							if f.target == ourID{
+								return 1
 							}
-						}
-						let healingAmount = affectedChampion.initialHP * 0.012 * numTargeting;
-						affectedChampion.heal(healingAmount);
+							0 }).sum();
+						affectedChampion.heal(affectedChampion.initialHP * 0.012 * numTargeting);
 					}
 					StatusType::LastWhisperShred() => {
 						affectedChampion.ar *= 2.0 //discrepency if thingy was reduced during time then
@@ -281,8 +294,7 @@ impl StatusEffect {
 						nDuration = 300; 
 						for enemyChamp in enemyChampions
 						{
-							if DistanceBetweenPoints(enemyChamp.location, affectedChampion.location) < 3
-							{
+							if DistanceBetweenPoints(enemyChamp.location, affectedChampion.location) < 3 {
 								let dmg = enemyChamp.initialHP / 20.0;
 								enemyChamp.se.push(StatusEffect {duration : Some(100), statusType : StatusType::MorellonomiconBurn(dmg, dmg / 3.0, 100), ..Default::default()})
 							}
@@ -443,8 +455,7 @@ impl StatusEffect {
 const CHAMPIONS : [Champion ; 4] = [Champion{id : 0, hp : [650.0, 1100.0, 2100.0], sm : 70, mc : 140, ar : 0.25, mr : 0.25, ad : [40.0, 70.0, 130.0], aS : 0.6, ra : 2, aID : 0}, //Support
                  					Champion{id : 1, hp : [800.0, 1400.0, 2500.0], sm : 50, mc : 100, ar : 0.45, mr : 0.45, ad : [75.0, 100.0, 175.0], aS : 0.7, ra : 1, aID : 1}, //Bruiser
                  					Champion{id : 2, hp : [700.0, 1200.0, 2200.0], sm : 35, mc : 100, ar : 0.25, mr : 0.25, ad : [65.0, 120.0, 240.0], aS : 0.7, ra : 3, aID : 2}, //AD Ranged
-									 Champion{id : 2, hp : [700.0, 1200.0, 2200.0], sm : 35, mc : 150, ar : 0.25, mr : 0.25, ad : [50.0, 60.0, 70.0], aS : 0.6, ra : 3, aID : 3,} //AP Ranged
-									];
+									Champion{id : 2, hp : [700.0, 1200.0, 2200.0], sm : 35, mc : 150, ar : 0.25, mr : 0.25, ad : [50.0, 60.0, 70.0], aS : 0.6, ra : 3, aID : 3,}]; //AP Ranged
 
 ///findChampionIndexFromID:<br />
 ///champions : &Vec<SummonedChampion> - List of champions to iterate through<br />
@@ -484,26 +495,32 @@ fn findChampionIndexFromIDTargetable(champions : &VecDeque<SummonedChampion>, id
 	}
 	None
 }
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, PartialEq)]
 struct Location {
-	xPosition : i8,
-	yPosition : i8
+	x : i8,
+	y : i8
 }
 impl Location {
-	fn addPositions(posOne : Location, posTwo : Location) -> Location{
+	fn calculateZ(&self) -> i8{
+		-self.x - self.y
+	}
+	fn distanceBetweenPoints(&self, otherPos : &Location) -> i8 {
+		(self.x - otherPos.x).abs() + (self.y - otherPos.y).abs() + (self.calculateZ() - otherPos.calculateZ()).abs()
+	}
+	fn addPositions(posOne : Location, posTwo : &Location) -> Location{
 		Location {
-			posOne.xPosition + posTwo.xPosition,
-			posOne.yPosition + posTwo.yPosition,
+			x : posOne.x + posTwo.x,
+			y : posOne.y + posTwo.y,
 		}
 	}
-}
-
-fn CheckLocationsEqual<T : Num>(locationOne : [T ; 2], locationTwo : [T ; 2]) -> bool{
-	locationOne[0] == locationTwo[0] && locationOne[1] == locationTwo[1]
-}
-
-fn AddLocations<T : Num>(locationOne : [T ; 2], locationTwo : [T ; 2]) -> [T ; 2]{
-	[locationOne[0] + locationTwo[0], locationOne[1] + locationTwo[1]]
+	fn checkValid(&self) -> bool {
+		if self.x >= 0 && self.x < 10 && self.y >= 0 && self.y < 8 {
+			if 2 - (self.y / 2) < self.x && 10 - (self.y / 2) > self.x {
+				return true
+			}
+		}
+		false
+	}
 }
 
 ///Enum for the 3 damage types Physical, Magical and True
@@ -516,8 +533,6 @@ enum DamageType
 	#[allow(dead_code)]
 	True(),
 }
-
-
 
 ///PlacedChampion (struct):
 ///Stores information about a champion's location and status on a board (as well as ID of actual champion)
@@ -533,7 +548,7 @@ struct PlacedChampion {
     items : [u8 ; 3],
 	
 	///location on board
-    location : [i8; 2]
+    location : Location
 }
 
 ///Implementation for Shields
@@ -571,7 +586,7 @@ impl Default for Shield {
 ///Struct for champion placed on board in a battle
 struct SummonedChampion {
 	///array of p, q coordinates, r can be calculated with r = -p - q
-	location : [i8 ; 2],
+	location : Location,
 
 	///progress of movement before new square, goes up to 10 then moves
 	movementProgress : [i8 ; 2],
@@ -734,7 +749,7 @@ impl SummonedChampion {
 	fn new(placedChampion : &PlacedChampion, id : usize) -> SummonedChampion {
 		let starLevel = placedChampion.star; //get star level
 		let ofChampion = &CHAMPIONS[placedChampion.id];//get champ info
-		SummonedChampion { location: [placedChampion.location[0], placedChampion.location[1]], //create summoned champ with all details
+		SummonedChampion { location: placedChampion.location, //create summoned champ with all details
 						   movementProgress : [0, 0],
 						   health: ofChampion.hp[starLevel], 
 						   initialHP : 0.0,
@@ -774,17 +789,15 @@ impl SummonedChampion {
 	}
 	///fn to heal set amount
 	fn heal(&mut self, mut healingAmount : f32) {
-		for statusEffect in &self.se//checks for grevious wounds
-		{
-			if statusEffect.statusType == StatusType::GreviousWounds()
-			{
+		for statusEffect in &self.se {//checks for grevious wounds
+		
+			if statusEffect.statusType == StatusType::GreviousWounds() {
 				healingAmount /= 2.0;//halves healing
 				break;
 			}
 		}
 		self.health += healingAmount;
-		if self.health > self.initialHP
-		{
+		if self.health > self.initialHP {
 			self.health = self.initialHP//makes sure to limit it to initial HP, so no healing to infinity
 		}
 	}
