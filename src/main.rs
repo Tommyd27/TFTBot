@@ -1,8 +1,9 @@
 #![allow(non_snake_case)] //Allows snake case
 
-use std::cmp::{min, max};
-use rand::{Rng, seq::index};
+use std::{cmp::{min, max}};
+use rand::{Rng};
 use std::collections::VecDeque;
+use num_traits::Num;
 
 ///ShouldStun<br />
 ///Simple struct to pass by reference to record whether stunned.<br />
@@ -483,9 +484,27 @@ fn findChampionIndexFromIDTargetable(champions : &VecDeque<SummonedChampion>, id
 	}
 	None
 }
+#[derive(Debug, Default, Clone)]
+struct Location {
+	xPosition : i8,
+	yPosition : i8
+}
+impl Location {
+	fn addPositions(posOne : Location, posTwo : Location) -> Location{
+		Location {
+			posOne.xPosition + posTwo.xPosition,
+			posOne.yPosition + posTwo.yPosition,
+		}
+	}
+}
 
+fn CheckLocationsEqual<T : Num>(locationOne : [T ; 2], locationTwo : [T ; 2]) -> bool{
+	locationOne[0] == locationTwo[0] && locationOne[1] == locationTwo[1]
+}
 
-
+fn AddLocations<T : Num>(locationOne : [T ; 2], locationTwo : [T ; 2]) -> [T ; 2]{
+	[locationOne[0] + locationTwo[0], locationOne[1] + locationTwo[1]]
+}
 
 ///Enum for the 3 damage types Physical, Magical and True
 #[derive(PartialEq, Clone, Copy)]//derives clone copy and partial equal
@@ -954,7 +973,7 @@ impl SummonedChampion {
 				self.targetCells = self.location; //setting target cells to location so if it does not find a target this frame will try to do it again
 				//optimisation does not need to check every frame
 
-				let mut lowestDistance : i8 = 100; //setting lowestDistance to high value
+				let mut lowestDistance : i8 = i8::MAX; //setting lowestDistance to high value
 				let mut newPosition;
 				for possibleMove in [[0, -1], [1, -1], [1, 0], [-1, 0], [-1, 1], [0, 1]] //for every possible move
 				//optimisation
@@ -963,20 +982,8 @@ impl SummonedChampion {
 					distanceToTarget = DistanceBetweenPoints(newPosition, enemyChampions[index].location);
 					if distanceToTarget < lowestDistance
 					{
-						let mut failed = false;
-						if ! InGridHexagon(newPosition)
-						{
-							continue;
-						}
-						for friendlyChampionLocation in friendlyChampions.iter()
-						{
-							if friendlyChampionLocation.location[0] == newPosition[0] && friendlyChampionLocation.location[1] == newPosition[1]
-							{
-								failed = true;
-								break
-							}
-						}
-						if failed
+						
+						if (!InGridHexagon(newPosition)) || friendlyChampions.iter().any(|f| f.location[0] == newPosition[0] && f.location[1] == newPosition[1])
 						{
 							continue;
 						}
