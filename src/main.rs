@@ -332,61 +332,36 @@ impl StatusEffect {
 					}
 					_ => ()
 				}
-				if nDuration > 0
-				{
-					self.duration = Some(nDuration);
-				}
-				else
-				{
-					return false
-				}
-				
+				if nDuration > 0 { self.duration = Some(nDuration); }
+				else { return false }
 			}
 		}
 		
 		if ! self.applied
 		{
 			self.applied = true;
-			match self.statusType
-			{
+			match self.statusType {
 				StatusType::AttackSpeedBuff(modifier) => {
 					affectedChampion.attackSpeedModifier *= modifier;
 				}
 				StatusType::Stun() => {
 					self.applied = false;
-					if stun.stun == 0//has to check stun.stun == 0 as if stun.stun == 2 it is immune
-					{
-						stun.stun = 1;
-						
-					}
+					if stun.stun == 0 { stun.stun = 1; }//has to check stun.stun == 0 as if stun.stun == 2 it is immune
 				} 
-				StatusType::IncreaseDamageTaken(modifier) => {
-					affectedChampion.incomingDMGModifier *= modifier;
-				}
+				StatusType::IncreaseDamageTaken(modifier) => { affectedChampion.incomingDMGModifier *= modifier; }
 				StatusType::Assassin() => {
-					if affectedChampion.location[1] >= 4
-					{
-						affectedChampion.location[1] = 0;
-					}
-					else 
-					{
-						affectedChampion.location[1] = 0;//(!D) maybe leap not instantaneous/ first frame?
-					}
+					if affectedChampion.location.y >= 4 { affectedChampion.location.y = 0; }
+					else { affectedChampion.location.y = 0; }//(!D) maybe leap not instantaneous/ first frame?
+		
 					return false
 				}
-				StatusType::Untargetable() => {
-					affectedChampion.targetable = false
-				} 
+				StatusType::Untargetable() => { affectedChampion.targetable = false } 
 				StatusType::IonicSparkEffect() => {	
 					affectedChampion.mr /= 2.0; 
 					affectedChampion.zap = true
 				}
-				StatusType::Banished() => {
-					affectedChampion.banish = true
-				}																	
-				StatusType::LastWhisperShred() => {
-					affectedChampion.ar /= 2.0;
-				}
+				StatusType::Banished() => { affectedChampion.banish = true }																	
+				StatusType::LastWhisperShred() => { affectedChampion.ar /= 2.0; }
 				StatusType::CrowdControlImmune() => {
 					self.applied = false;
 					stun.stun = 2;
@@ -408,11 +383,10 @@ const CHAMPIONS : [Champion ; 4] = [Champion{id : 0, hp : [650.0, 1100.0, 2100.0
 ///champions : &Vec<SummonedChampion> - List of champions to iterate through<br />
 ///id : usize - ID wanted<br />
 ///returns : Option<usize> - Some(correct id) or None if not found
-fn findChampionIndexFromID(champions : &VecDeque<SummonedChampion>, id : usize) -> Option<usize> //(!D) swap this out for check targetable as well
-{
-	if champions[id].id == id {
-		return Some(id)
-	}
+fn findChampionIndexFromID(champions : &VecDeque<SummonedChampion>, id : usize) -> Option<usize> { //(!D) swap this out for check targetable as well
+
+	if champions[id].id == id { return Some(id) }
+
 	for champ in champions { 
 		if champ.id == id { 
 			return Some(id); 
@@ -421,12 +395,9 @@ fn findChampionIndexFromID(champions : &VecDeque<SummonedChampion>, id : usize) 
 	None
 }
 ///Same as find champ index from id but also checks it is targetable/ not banished
-fn findChampionIndexFromIDTargetable(champions : &VecDeque<SummonedChampion>, id : usize) -> Option<usize>
-{
+fn findChampionIndexFromIDTargetable(champions : &VecDeque<SummonedChampion>, id : usize) -> Option<usize> {
 	let out : Option<usize> = None;
-	if champions[id].id == id {
-		out = Some(id)
-	}
+	if champions[id].id == id { out = Some(id) }
 	else {
 		for champ in champions { 
 			if champ.id == id { 
@@ -435,13 +406,14 @@ fn findChampionIndexFromIDTargetable(champions : &VecDeque<SummonedChampion>, id
 			} 
 		}
 	}
-	if out.is_some(){
-		if champions[out.unwrap()].targetable && !champions[out.unwrap()].banish {
+	if out.is_some() {
+		if champions[out.unwrap()].getIsTargetable() {
 			return out
 		}
 	}
 	None
 }
+
 #[derive(Debug, Default, Clone, PartialEq)]
 struct Location {
 	x : i8,
@@ -468,10 +440,27 @@ impl Location {
 		}
 		false
 	}
-	fn getClosestToLocation(&self, enemyChampions : &mut VecDeque<SummonedChampion>) -> Option<&mut SummonedChampion> {
+	fn getClosestToLocation<'a>(&self, enemyChampions : &'a mut VecDeque<SummonedChampion>) -> Option<&'a mut SummonedChampion> {
 		enemyChampions.iter_mut().reduce(|x, y| {
 			if x.location.distanceBetweenPoints(self) < y.location.distanceBetweenPoints(self) {
 				x
+			}
+			else {
+				y
+			}
+		})
+	}
+	fn getClosestToLocationTargetable<'a>(&self, enemyChampions : &'a mut VecDeque<SummonedChampion>) -> Option<&'a mut SummonedChampion> {
+		enemyChampions.iter_mut().reduce(|x, y| {
+			if ! x.getIsTargetable() {
+				return y
+			}
+			else if ! y.getIsTargetable() {
+				return x
+			}
+
+			if x.location.distanceBetweenPoints(self) < y.location.distanceBetweenPoints(self) {
+				return x
 			}
 			y
 		})
@@ -483,8 +472,7 @@ impl Location {
 
 ///Enum for the 3 damage types Physical, Magical and True
 #[derive(PartialEq, Clone, Copy)]//derives clone copy and partial equal
-enum DamageType
-{
+enum DamageType {
 	Physical(),
 	Magical(),
 	
@@ -765,11 +753,13 @@ impl SummonedChampion {
 	///enemyChampions : all enemy champions, for targetting<br />
 	///timeUnit : time unit of a frame, in centiseconds<br />
 	///movementAmount : precalculated movement distance for 1 frame<br />
-	fn takeTurn(&mut self, friendlyChampions : &mut VecDeque<SummonedChampion>, enemyChampions : &mut VecDeque<SummonedChampion>,timeUnit : i8, movementAmount : i8, projectiles : &mut Vec<Projectile>) -> bool
-	{
+	fn takeTurn(&mut self, friendlyChampions : &mut VecDeque<SummonedChampion>, enemyChampions : &mut VecDeque<SummonedChampion>,timeUnit : i8, movementAmount : i8, projectiles : &mut Vec<Projectile>) -> bool {
 		self.targetCountDown -= timeUnit;//Reduce cooldown to check target/ find new target
 		self.autoAttackDelay -= timeUnit as i16;//Risks going out of bounds as auto attack value may not be called for some time
 		self.gMD -= timeUnit as i16;
+
+		if self.banish { return true }
+
 		{
 			let mut statusEffects = self.se;
 			self.se = Vec::new();
@@ -790,13 +780,11 @@ impl SummonedChampion {
 		
 		//does auto attack delay need to reset on pathing? does attack instantly after reaching path/ in range
 
-		if self.banish { return true }
-
 		let mut indexStore : Option<usize> = None;
+		let mut targetObject : SummonedChampion;
 
 		let mut needNewTargetCell : bool = false;//Bool to store whether new path is needed
-		if self.targetCountDown >= 0 //if already has target and doesnt want to change targets 
-		{
+		if self.targetCountDown >= 0 { //if already has target and doesnt want to change targets 
 			indexStore = findChampionIndexFromIDTargetable(enemyChampions, self.target)
 		}
 
@@ -809,10 +797,18 @@ impl SummonedChampion {
 			let mut distance; //cache to store distance between enemy and location
 			needNewTargetCell = true; //tells us to recalculate pathfinding later
 			//discrepency what if target has moved regardless
-
+			match self.location.getClosestToLocationTargetable(enemyChampions) {
+				Some(tObject) => {
+					if tObject.getIsTargetable() { 
+						targetObject = tObject;
+						indexStore = 	
+					}
+				}
+			}
+			targetObject = 
 			for (i, enemyChampion) in enemyChampions.iter().enumerate() //for every champ
 			{
-				if !enemyChampion.targetable || enemyChampion.banish { continue; }
+				if !enemyChampion.getIsTargetable(){ continue; }
 
 				distance = DistanceBetweenPoints(enemyChampion.location, self.location); //calculate distance
 				if distance < distanceToTarget {//if distance to current enemy champion in loop is lower than distance to current target
@@ -1187,6 +1183,9 @@ impl SummonedChampion {
 	}
 	fn getNumTargeting(&self, enemyChampions : &VecDeque<SummonedChampion>) -> usize {
 		enemyChampions.iter().filter(|p| p.target == self.id).count()
+	}
+	fn getIsTargetable(&self) -> bool {
+		self.targetable && !self.banish
 	}
 }
 
