@@ -116,8 +116,8 @@ enum StatusType
 	RedemptionGive(),
 
 	///Gargoyles Item Effect:<br />
-	///(u8: How many were targeting previous frame)
-	Gargoyles(u8),
+	///(f32: How many were targeting previous frame)
+	Gargoyles(f32),
 	///Titans Resolve Item Effect:<br />
 	///(u8: Number of stacks previous frame)
 	TitansResolve(u8),
@@ -151,18 +151,18 @@ enum StatusType
 	NoEffect()
 }
 
-enum FilterTypes<'a>{
+enum FilterType{
 	///i8 : Distance to check
-	///&Location : Other Location
-	DistanceFilter(i8, &'a Location)
+	///Location : Other Location
+	DistanceFilter(i8, Location)
 
 }
 
-fn generate_filter(filter : FilterTypes) -> impl for<'a> Fn(&&mut SummonedChampion) -> bool {
+fn generate_filter(filter : FilterType) -> impl for<'a> Fn(&&mut SummonedChampion) -> bool { //err here captured lifetime
 	match filter {
-		FilterTypes::DistanceFilter(dis, location) => {
-			move |n : &&mut SummonedChampion| {
-				n.location.distanceBetweenPoints(location) < dis
+		FilterType::DistanceFilter(dis, location) => {
+			return move |n : &&mut SummonedChampion| {
+				n.location.distanceBetweenPoints(&location) < dis
 			  }
 		}
 	}
@@ -214,16 +214,13 @@ impl StatusEffect {
 						affectedChampion.targetable = true//(!D) if have 2 untargetable effects this will untarget too early
 					}
 					StatusType::MorellonomiconBurn(dmgPerTick, dmgToDo, timeTillNextTick) => {
-						if affectedChampion.shed == 2
-						{
+						if affectedChampion.shed == 2 {
 							return false;
 						}
-						if dmgPerTick > dmgToDo
-						{
+						if dmgPerTick > dmgToDo {
 							affectedChampion.health -= dmgToDo;
 						}
-						else
-						{
+						else {
 							nDuration = timeTillNextTick;
 							self.statusType = StatusType::MorellonomiconBurn(dmgPerTick, dmgToDo - dmgPerTick, timeTillNextTick);
 						}
@@ -242,49 +239,29 @@ impl StatusEffect {
 					}
 					StatusType::RedemptionGive() => {
 						nDuration = 100;//increase duration
-						let thisLocation = affectedChampion.location;
-						for friendlyChamp in friendlyChampions.iter_mut() {
-							if affectedChampion.location.distanceBetweenPoints(&friendlyChamp.location) < 3 {
-								friendlyChamp.heal((friendlyChamp.initialHP - friendlyChamp.health) * 0.12)//discrepency check at multitarget damage time for redemption heal for reduction
-							}
-						}
+						friendlyChampions.iter_mut().filter(affectedChampion.location.getWithinDistance(3)).map(|x| {
+							x.heal((x.initialHP - x.health) * 0.12)//discrepency check at multitarget damage time for redemption heal for reduction
+						});
+						affectedChampion.heal((affectedChampion.initialHP - affectedChampion.health * 0.12));
 					}
 					StatusType::Gargoyles(oldNumTargeting) => {
 						nDuration = 100;//increase duration
-						let mut numTargeting : u8 = 0;
-						let ourID = affectedChampion.id;
-						for enemyChamp in enemyChampions//get number of people targeting
-						{
-							if enemyChamp.target == ourID
-							{
-								numTargeting += 1;
-							}
-						}
-						let difference : f32 = (numTargeting - oldNumTargeting) as f32;//get change
+						let numTargeting : f32 = affectedChampion.getNumTargeting(enemyChampions) as f32;
+						let difference= numTargeting - oldNumTargeting;//get change
 						affectedChampion.ar += 0.18 * difference;
 						affectedChampion.mr += 0.18 * difference;
 						self.statusType = StatusType::Gargoyles(numTargeting);
 					}
-					StatusType::ShroudOfStillness() => {//give shroud effect
-						let pos = affectedChampion.location;
-						let halfY = pos.y / 2;
-						for enemy in enemyChampions {
-							let yDist = enemy.location.x / 2 - halfY;
-							let xDiff = pos.x - yDist - enemy.location.x;
-							if xDiff <= 1 && xDiff >= 0 {//calculate whether in line
-								enemy.cm -= (7 * enemy.mc) / 20;
-							}
-						}
+					StatusType::ShroudOfStillness() => {//(!D) not actual shroud affect
+						enemyChampions.iter_mut().filter(|x| x.location.x == affectedChampion.location.x).map(|x|{
+							x.cm -= (7 * x.mc) / 20;
+						});
 					}
 					StatusType::DragonClawHeal() => {
 						nDuration = 200;//reset status effect
 						let ourID = affectedChampion.id;
 
-						let numTargeting = enemyChampions.iter().map(|f| {
-							if f.target == ourID{
-								return 1
-							}
-							0 }).sum();
+						let numTargeting : f32 = affectedChampion.getNumTargeting(enemyChampions) as f32;
 						affectedChampion.heal(affectedChampion.initialHP * 0.012 * numTargeting);
 					}
 					StatusType::LastWhisperShred() => {
@@ -292,73 +269,47 @@ impl StatusEffect {
 					}	
 					StatusType::GiveSunfire() => {//(!U)
 						nDuration = 300; 
-						for enemyChamp in enemyChampions
-						{
-							if DistanceBetweenPoints(enemyChamp.location, affectedChampion.location) < 3 {
-								let dmg = enemyChamp.initialHP / 20.0;
-								enemyChamp.se.push(StatusEffect {duration : Some(100), statusType : StatusType::MorellonomiconBurn(dmg, dmg / 3.0, 100), ..Default::default()})
-							}
-						}
+						enemyChampions.iter_mut().filter(affectedChampion.location.getWithinDistance(3)).map(|x| {
+							let dmg = x.initialHP / 20.0;
+							x.se.push(StatusEffect {duration : Some(100), statusType : StatusType::MorellonomiconBurn(dmg, dmg / 3.0, 100), ..Default::default()})
+						});
 					}
 					StatusType::EdgeOfNight() => {
-						if affectedChampion.health <= (affectedChampion.initialHP / 2.0)
-						{
+						if affectedChampion.health <= (affectedChampion.initialHP / 2.0) {
 							affectedChampion.se.push(StatusEffect {duration : Some(50), statusType : StatusType::Untargetable(), ..Default::default()});//optimisation at every ..Default::default() with instead isNegative : false
 							affectedChampion.se.push(StatusEffect { duration: None, statusType: StatusType::AttackSpeedBuff(1.3), ..Default::default()}); //discrepency technically attack speed buff comes into play after untargetable wears off
 							affectedChampion.shed = 1;
 						}
-						else
-						{
+						else {
 							return true
 						}
 					}
 					StatusType::Bloodthirster() => {
-						if affectedChampion.health <= (0.4 * affectedChampion.initialHP)
-						{
-							let quarterHP = affectedChampion.initialHP / 4.0;
-							affectedChampion.shields.push(Shield{duration : 500, size : quarterHP, ..Default::default()});
+						if affectedChampion.health <= (0.4 * affectedChampion.initialHP) {
+							affectedChampion.shields.push(Shield{duration : 500, size : affectedChampion.initialHP / 4.0, ..Default::default()});
 						}
-						else
-						{
+						else {
 							return true
 						}
 					}
 					StatusType::Zephyr(banishDuration) => {
-						let oppositeLocation = [affectedChampion.location[1], affectedChampion.location[0]];//(!D) probs not opposite
-						let mut smallestDistance : i8 = 99;
-						let mut smallestDistanceID : usize = 0;
-						for (i , enemyChampion) in enemyChampions.iter().enumerate()
-						{
-							let distance = DistanceBetweenPoints(oppositeLocation, enemyChampion.location);
-							if distance < smallestDistance
-							{
-								smallestDistance = distance;
-								smallestDistanceID = i;
-								if distance == 0
-								{
-									break;
-								}
-							}
-						}
-						enemyChampions[smallestDistanceID].se.push(StatusEffect{ duration: Some(banishDuration), statusType: StatusType::Banished(), ..Default::default() });
+						let oppositeLocation = Location { x : affectedChampion.location.y, y : affectedChampion.location.x };//(!D) probs not opposite
+						oppositeLocation.getClosestToLocation(enemyChampions).unwrap().se.push(StatusEffect{ duration: Some(banishDuration), statusType: StatusType::Banished(), ..Default::default() });
 					}
 					StatusType::Taunted(tauntID) => {
-						if findChampionIndexFromID(enemyChampions, tauntID).is_some()
-						{
+						if findChampionIndexFromID(enemyChampions, tauntID).is_some() {
 							affectedChampion.target = tauntID;
 							affectedChampion.targetCountDown = 100;
 							nDuration = 20;
 						}
 					}
 					StatusType::TitansResolve(mut oldStackNum) => {
-						if oldStackNum != 25
-						{
+						if oldStackNum != 25 {
 							let difference : f32 = (affectedChampion.titansResolveStack - oldStackNum).into();
 							affectedChampion.ad += 2.0 * difference;
 							affectedChampion.ap += 0.02 * difference;
 							oldStackNum = affectedChampion.titansResolveStack;
-							if oldStackNum == 25
-							{
+							if oldStackNum == 25 {
 								affectedChampion.ar += 0.25;
 								affectedChampion.mr += 0.25;
 							}
@@ -366,18 +317,14 @@ impl StatusEffect {
 						return true;
 					}
 					StatusType::ProtectorsVow() => {
-						if affectedChampion.health <= (affectedChampion.initialHP / 2.0)
-						{
-							let thisLocation = affectedChampion.location; //does also shield self?
-							for friendlyChamp in friendlyChampions.iter_mut()
-							{
-								if DistanceBetweenPoints(thisLocation, friendlyChamp.location) < 7
-								{
-									friendlyChamp.mr += 0.15;
-									friendlyChamp.ar += 0.15;
-									friendlyChamp.shields.push(Shield{duration : 200, size : friendlyChamp.initialHP / 5.0, ..Default::default()})
-								}
-							}
+						if affectedChampion.health <= (affectedChampion.initialHP / 2.0) {
+							affectedChampion.mr += 0.25;
+							affectedChampion.ar += 0.25;
+							affectedChampion.shields.push( Shield {
+								duration : 500,
+								size : affectedChampion.initialHP / 4.0,
+								..Default::default()
+							})
 						}
 						else {
 							return true
@@ -520,6 +467,17 @@ impl Location {
 			}
 		}
 		false
+	}
+	fn getClosestToLocation(&self, enemyChampions : &mut VecDeque<SummonedChampion>) -> Option<&mut SummonedChampion> {
+		enemyChampions.iter_mut().reduce(|x, y| {
+			if x.location.distanceBetweenPoints(self) < y.location.distanceBetweenPoints(self) {
+				x
+			}
+			y
+		})
+	}
+	fn getWithinDistance(&self, distance : i8) -> impl for<'a> Fn(&&mut SummonedChampion) -> bool {
+		generate_filter(FilterType::DistanceFilter(distance, self.clone()))
 	}
 }
 
@@ -1226,6 +1184,9 @@ impl SummonedChampion {
 			}
 				_ => println!("Unimplemented"),
 		}
+	}
+	fn getNumTargeting(&self, enemyChampions : &VecDeque<SummonedChampion>) -> usize {
+		enemyChampions.iter().filter(|p| p.target == self.id).count()
 	}
 }
 
