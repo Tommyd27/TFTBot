@@ -426,10 +426,16 @@ impl Location {
 	fn distanceBetweenPoints(&self, otherPos : &Location) -> i8 {
 		(self.x - otherPos.x).abs() + (self.y - otherPos.y).abs() + (self.calculateZ() - otherPos.calculateZ()).abs()
 	}
-	fn addPositions(posOne : Location, posTwo : &Location) -> Location{
+	fn addPositions(posOne : &Location, posTwo : &Location) -> Location{
 		Location {
 			x : posOne.x + posTwo.x,
 			y : posOne.y + posTwo.y,
+		}
+	}
+	fn addPositionVec(posOne : &Location, posTwo : [i8; 2]) -> Location {
+		Location {
+			x : posOne.x + posTwo[0],
+			y : posOne.y + posTwo[1]
 		}
 	}
 	fn checkValid(&self) -> bool {
@@ -463,6 +469,21 @@ impl Location {
 				return x
 			}
 			y
+		})
+	}
+	fn getClosestToLocationTargetableIndex<'a>(&self, enemyChampions : &'a mut VecDeque<SummonedChampion>) -> Option<(usize, &'a mut SummonedChampion)> {
+		enemyChampions.iter_mut().enumerate().reduce(|(i, x), (j, y)| {
+			if ! x.getIsTargetable() {
+				return (j, y)
+			}
+			else if ! y.getIsTargetable() {
+				return (i, x)
+			}
+
+			if x.location.distanceBetweenPoints(self) < y.location.distanceBetweenPoints(self) {
+				return (i, x)
+			}
+			(j, y)
 		})
 	}
 	fn getWithinDistance(&self, distance : i8) -> impl for<'a> Fn(&&mut SummonedChampion) -> bool {
@@ -586,7 +607,7 @@ struct SummonedChampion {
 	target : usize, 
 
 	///pathfinding target cell
-	targetCells : [i8 ; 2], 
+	targetCells : Location, 
 
 	///Stores all the item IDs the champion is holding.<br />
 	///**Item IDS:**<br />
@@ -714,7 +735,7 @@ impl SummonedChampion {
 						   autoAttackDelay : 0,
 						   attackSpeedModifier : 1.0,
 						   target : 255,
-						   targetCells : [-1, -1], //(!O)
+						   targetCells : Location { x: -1, y: -1 }, //(!O)
 						   aID: ofChampion.aID, 
 						   items: placedChampion.items,
 						   ap : 1.0,
@@ -753,6 +774,9 @@ impl SummonedChampion {
 	///enemyChampions : all enemy champions, for targetting<br />
 	///timeUnit : time unit of a frame, in centiseconds<br />
 	///movementAmount : precalculated movement distance for 1 frame<br />
+	fn turnToVoidSpawn(&mut self) {
+		println!("Unimplemented")
+	}
 	fn takeTurn(&mut self, friendlyChampions : &mut VecDeque<SummonedChampion>, enemyChampions : &mut VecDeque<SummonedChampion>,timeUnit : i8, movementAmount : i8, projectiles : &mut Vec<Projectile>) -> bool {
 		self.targetCountDown -= timeUnit;//Reduce cooldown to check target/ find new target
 		self.autoAttackDelay -= timeUnit as i16;//Risks going out of bounds as auto attack value may not be called for some time
@@ -780,235 +804,203 @@ impl SummonedChampion {
 		
 		//does auto attack delay need to reset on pathing? does attack instantly after reaching path/ in range
 
-		let mut indexStore : Option<usize> = None;
-		let mut targetObject : SummonedChampion;
-
-		let mut needNewTargetCell : bool = false;//Bool to store whether new path is needed
-		if self.targetCountDown >= 0 { //if already has target and doesnt want to change targets 
-			indexStore = findChampionIndexFromIDTargetable(enemyChampions, self.target)
-		}
-
-		let mut distanceToTarget : i8 = i8::MAX;
-		if indexStore.is_none() //index not updating from initial intilialisation of 99, therefore need new target
-		{
-			println!("Debug : Looking for Target");
-			self.targetCountDown = 100;//reset target cooldown
-			self.target = 0;//reset target
-			let mut distance; //cache to store distance between enemy and location
-			needNewTargetCell = true; //tells us to recalculate pathfinding later
-			//discrepency what if target has moved regardless
-			match self.location.getClosestToLocationTargetable(enemyChampions) {
-				Some(tObject) => {
-					if tObject.getIsTargetable() { 
-						targetObject = tObject;
-						indexStore = 	
-					}
-				}
-			}
-			targetObject = 
-			for (i, enemyChampion) in enemyChampions.iter().enumerate() //for every champ
-			{
-				if !enemyChampion.getIsTargetable(){ continue; }
-
-				distance = DistanceBetweenPoints(enemyChampion.location, self.location); //calculate distance
-				if distance < distanceToTarget {//if distance to current enemy champion in loop is lower than distance to current target
-					self.target = enemyChampion.id; //change target
-					distanceToTarget = distance; //updating distance to new lower value
-					indexStore = Some(i);
-				}
-			}
-			if indexStore.is_none(){
-				return true;
-			}
-		}
-		else {
-			distanceToTarget = DistanceBetweenPoints(self.location, enemyChampions[indexStore.unwrap()].location);
-		}
-		let index = indexStore.unwrap();
 		
-		if distanceToTarget <= self.ra as i8//if target in range
-		{
-			println!("Debug : Target in Range");
-			println!("Debug : Auto Attack Delay Remaining {0}", self.autoAttackDelay);//discrepency, does auto attack "charge" while moving
-			if self.autoAttackDelay <= 0//if autoattack ready
-			{
-				println!("Debug : Delay Smaller than 0 - Attacking");
-				/* 
-				self.aS = attacks per 1 second
-				self.autoAttackDelay = time in 1/10 of second until next attack
-				self.attackSpeedIncrease = percentage increase in attack speed
-				
-				
-				autoAttackDelay (seconds) = 1 / (attackSpeed * attackSpeedMod)
-				autoAttackDelay (centiseconds) = 100 / (attackSpeed * attackSpeedMod)
-				
-				*/
-				println!("as: {}, mod: {}", self.aS, self.attackSpeedModifier);
-				self.autoAttackDelay = max((100.0 / (self.aS * self.attackSpeedModifier)) as i16, 20); //calculating auto attack delay
-				println!("Auto attack delay set");
-				if self.items.contains(&26) { self.attackSpeedModifier *= 1.06 }//(!D) if attack speed doesnt increase when attack misses/ is dodged					
-				
-				//attack speed unclear, capped at five yet some champions let you boost beyond it?
-				//optimisation definitely here
-				if self.gMD <= 0
+		{ //targetObject/ pathfinding block
+			let mut needNewTargetCell : bool = false;//Bool to store whether new path is needed
+
+			let mut targetObject : Option<SummonedChampion> = None;
+
+			if self.targetCountDown >= 0 { //if already has target and doesnt want to change targets 
+				match findChampionIndexFromIDTargetable(enemyChampions, self.target)
 				{
-					self.cm += 10;
-					if self.items.contains(&18) { self.cm += 8; }
-					println!("gain mana");
-				}
-				if self.items.contains(&68)//(!O) go through foreach in items and match statement
-				{
-					self.dealDamage(friendlyChampions, &mut enemyChampions[index], 50.0, DamageType::Magical(), false);
-					enemyChampions[index].se.push(StatusEffect { duration: Some(500), statusType: StatusType::ShredMagicResist(2.0), isNegative: true, ..Default::default()});
-					let mut count = 0;
-
-					for enemyChamp in enemyChampions.iter_mut()
-					{
-						if enemyChamp.id == self.target { continue; }
-						
-						count += 1;
-
-						self.dealDamage(friendlyChampions, enemyChamp, 50.0, DamageType::Magical(), false);
-						enemyChamp.se.push(StatusEffect { duration: Some(500), statusType: StatusType::ShredMagicResist(2.0), isNegative: true, ..Default::default()});
-						
-						if count >= 3 { break; }
+					Some(index) => {
+						targetObject = enemyChampions.swap_remove_back(index);
 					}
+					None => ()
 				}
-
-
-				if self.items.contains(&56) { //(!D) can be dodged
-					let locationToCheck = self.location; //(!D) maybe bolt goes to nearest from location of person being attacked
-					let mut lowestDistance = 100;
-					let mut indexOfChamp = 0;//discrepency runaans will attack same person twice if its only person left alive
-					for (i, enemyChamp) in enemyChampions.iter().enumerate() {
-						let distanceToLocation = DistanceBetweenPoints(enemyChamp.location, locationToCheck);//discrepency check that runaans isnt attacking same person
-						if distanceToLocation < lowestDistance && index != i
-						{
-							lowestDistance = distanceToLocation;
-							indexOfChamp = i;
-						}
-					}
-					self.dealDamage(friendlyChampions, &mut enemyChampions[indexOfChamp], self.ad * 0.7, DamageType::Physical(), false)//discrepency runaans can miss
-				}
-				println!("maybe dodge");
-				if enemyChampions[index].dc <= 0 || enemyChampions[index].dc < rand::thread_rng().gen_range(0..100) || self.items.contains(&66)//calculating whether to dodge
-				{//(!O) from not generating random gen
-					println!("No Dodge");
-					self.dealDamage(friendlyChampions, &mut enemyChampions[index], self.ad, DamageType::Physical(), false);
-					
-					println!("Debug : Enemy Champion Health is {0}", enemyChampions[index].health);
-					if enemyChampions[index].health <= 0.0 //if enemy champion dead
-					{
-						println!("Debug : Health Lower than 0 - Removing");
-
-						if enemyChampions[index].items.contains(&36) {
-							enemyChampions[index].health = 1500.0;
-							enemyChampions[index].attackSpeedModifier = 0.8;
-							enemyChampions[index].se.clear();
-							enemyChampions[index].ra = 1;
-							enemyChampions[index].ar = 0.2;
-							enemyChampions[index].mr = 0.2;
-							enemyChampions[index].items = [0, 0, 0];
-							enemyChampions[index].aS = 0.8;
-							enemyChampions[index].attackSpeedModifier = 1.0;
-							enemyChampions[index].cr = 25;
-							//(!D) cant be asked to set everything to default)
-							//(!D) stats change depending on stage
-						}
-						else {
-							enemyChampions.swap_remove_back(index);//(!D), only checks for champion death when it is auto attacked
-						//(!D) if target gets removed from enemyChamps and then we try to abiity cast on it.
-						}
-						
-					}
-				}
-				else 
-				{
-					println!("Debug : Dodged Attack");
-				}
-				
-
 			}
-		}
-		else 
-		{
-			println!("Debug : Not in Range");
-			if needNewTargetCell || self.location == self.targetCells //if need to update pathfinding or at pathfinding target
-			//optimisation?, accuracy vs performance cost
-			{
-				println!("Debug : Need Target Cell");
-				self.targetCells = self.location; //setting target cells to location so if it does not find a target this frame will try to do it again
-				//optimisation does not need to check every frame
 
-				let mut lowestDistance : i8 = i8::MAX; //setting lowestDistance to high value
-				let mut newPosition;
-				for possibleMove in [[0, -1], [1, -1], [1, 0], [-1, 0], [-1, 1], [0, 1]] //for every possible move
-				//optimisation
-				{
-					newPosition = [self.location[0] + possibleMove[0], self.location[1] + possibleMove[1]];
-					distanceToTarget = DistanceBetweenPoints(newPosition, enemyChampions[index].location);
-					if distanceToTarget < lowestDistance
-					{
-						
-						if (!InGridHexagon(newPosition)) || friendlyChampions.iter().any(|f| f.location[0] == newPosition[0] && f.location[1] == newPosition[1])
-						{
-							continue;
+			if targetObject.is_none() { //index not updating from initial intilialisation of 99, therefore need new target
+				println!("Debug : Looking for Target");
+				self.targetCountDown = 100;//reset target cooldown
+				
+				needNewTargetCell = true; //tells us to recalculate pathfinding later
+				//discrepency what if target has moved regardless
+				let index : Option<usize> = None;
+				match self.location.getClosestToLocationTargetableIndex(enemyChampions) {
+					Some((i, champ)) => {
+						if champ.getIsTargetable() { 
+							index = Some(i)
 						}
-						println!("Debug : Found a Target Cell");
-						lowestDistance = distanceToTarget;
-						self.targetCells = newPosition;
 					}
-					
+					None => ()
 				}
+				if index.is_none() { return true; }
+
+				targetObject = enemyChampions.swap_remove_back(index.unwrap());
 			}
 			
-			println!("Debug : Moving to Target Cell");
-			self.movementProgress[0] += movementAmount * sign(self.targetCells[0] - self.location[0]);//optimisation here
-			println!("Debug : Position ({0},{1}) -- Movement Progress ({2},{3})", self.location[0], self.location[1], self.movementProgress[0], self.movementProgress[1]);
-			if self.movementProgress[0].abs() == 10
-			{
-				self.location[0] += sign(self.movementProgress[0]);
-				self.movementProgress[0] = 0;
-				
+			let targetObject : SummonedChampion = targetObject.unwrap();
+			self.target = targetObject.id;
+			let distanceToTarget = self.location.distanceBetweenPoints(&targetObject.location);
+			
+			if distanceToTarget <= self.ra {//if target in range
+				println!("Debug : Target in Range");
+				println!("Debug : Auto Attack Delay Remaining {0}", self.autoAttackDelay);//discrepency, does auto attack "charge" while moving
+				let dead = false;
+				if self.autoAttackDelay <= 0//if autoattack ready
+				{
+					println!("Debug : Delay Smaller than 0 - Attacking");
+					/* 
+					self.aS = attacks per 1 second
+					self.autoAttackDelay = time in 1/10 of second until next attack
+					self.attackSpeedIncrease = percentage increase in attack speed
+					
+					
+					autoAttackDelay (seconds) = 1 / (attackSpeed * attackSpeedMod)
+					autoAttackDelay (centiseconds) = 100 / (attackSpeed * attackSpeedMod)
+					
+					*/
+					println!("as: {}, mod: {}", self.aS, self.attackSpeedModifier);
+					self.autoAttackDelay = max((100.0 / (self.aS * self.attackSpeedModifier)) as i16, 20); //calculating auto attack delay
+					println!("Auto attack delay set");
+					if self.items.contains(&26) { self.attackSpeedModifier *= 1.06 }//(!D) if attack speed doesnt increase when attack misses/ is dodged					
+					
+					//attack speed unclear, capped at five yet some champions let you boost beyond it?
+					//optimisation definitely here
+					if self.gMD <= 0 {					
+						self.cm += 10;
+						if self.items.contains(&18) { self.cm += 8; }
+						println!("gain mana");
+					}
+					if self.items.contains(&68) {//(!O) go through foreach in items and match statement
+						self.dealDamage(friendlyChampions, &mut targetObject, 50.0, DamageType::Magical(), false);
+						targetObject.se.push(StatusEffect { duration: Some(500), statusType: StatusType::ShredMagicResist(2.0), isNegative: true, ..Default::default()});
+						let mut count = 0;
+
+						for enemyChamp in enemyChampions.iter_mut()
+						{						
+							count += 1;
+
+							self.dealDamage(friendlyChampions, enemyChamp, 50.0, DamageType::Magical(), false);
+							enemyChamp.se.push(StatusEffect { duration: Some(500), statusType: StatusType::ShredMagicResist(2.0), isNegative: true, ..Default::default()});
+							
+							if count >= 3 { break; }
+						}
+					}
+
+
+					if self.items.contains(&56) { //(!D) can be dodged
+						let closestOtherEnemy = self.location.getClosestToLocationTargetable(enemyChampions);
+						if closestOtherEnemy.is_some() {
+							self.dealDamage(friendlyChampions, closestOtherEnemy.unwrap(), self.ad * 0.7, DamageType::Physical(), false)//discrepency runaans can miss
+						}
+						
+					}
+					println!("maybe dodge");
+					if targetObject.dc <= 0 || targetObject.dc < rand::thread_rng().gen_range(0..100) || self.items.contains(&66)//calculating whether to dodge
+					{//(!O) from not generating random gen
+						println!("No Dodge");
+						self.dealDamage(friendlyChampions, &mut targetObject, self.ad, DamageType::Physical(), false);
+						
+						println!("Debug : Enemy Champion Health is {0}", targetObject.health);
+						if targetObject.health <= 0.0 //if enemy champion dead
+						{
+							println!("Debug : Health Lower than 0 - Removing");
+
+							if targetObject.items.contains(&36) {
+								targetObject.turnToVoidSpawn()
+								//(!D) cant be asked to set everything to default)
+								//(!D) stats change depending on stage
+							}
+							else {
+								dead = true;
+							}
+							//(!D), only checks for champion death when it is auto attacked
+						}
+					}
+					else 
+					{
+						println!("Debug : Dodged Attack");
+					}
+					
+
+				}
+				if !dead {
+					enemyChampions.push_back(targetObject);
+				}
 			}
-			self.movementProgress[1] += movementAmount * sign(self.targetCells[1] - self.location[1]);
-			if self.movementProgress[1].abs() == 10
-			{
-				self.location[1] += sign(self.movementProgress[1]);
-				self.movementProgress[1] = 0;
+			else {
+				println!("Debug : Not in Range");
+				if needNewTargetCell || self.location == self.targetCells {//if need to update pathfinding or at pathfinding target
+					//optimisation?, accuracy vs performance cost
+					println!("Debug : Need Target Cell");
+					self.targetCells = self.location; //setting target cells to location so if it does not find a target this frame will try to do it again
+					//optimisation does not need to check every frame
+
+					let mut lowestDistance : i8 = i8::MAX; //setting lowestDistance to high value
+					let mut newPosition;
+					for possibleMove in [[0, -1], [1, -1], [1, 0], [-1, 0], [-1, 1], [0, 1]] //for every possible move
+					//optimisation
+					{
+						newPosition = Location::addPositionVec(&self.location, possibleMove);
+						distanceToTarget = targetObject.location.distanceBetweenPoints(&newPosition);
+						if distanceToTarget < lowestDistance
+						{
+							
+							if (!newPosition.checkValid()) || friendlyChampions.iter().any(|f| f.location == newPosition)
+							{
+								continue;
+							}
+							println!("Debug : Found a Target Cell");
+							lowestDistance = distanceToTarget;
+							self.targetCells = newPosition;
+						}
+						
+					}
+				}
 				
+				println!("Debug : Moving to Target Cell");
+				self.movementProgress[0] += movementAmount * sign(self.targetCells.x - self.location.x);//optimisation here
+				println!("Debug : Position ({0:?}) -- Movement Progress ({1:?})", self.location, self.movementProgress);
+				if self.movementProgress[0].abs() == 10
+				{
+					self.location.x += sign(self.movementProgress[0]);
+					self.movementProgress[0] = 0;
+					
+				}
+				self.movementProgress[1] += movementAmount * sign(self.targetCells.y - self.location.y);
+				if self.movementProgress[1].abs() == 10
+				{
+					self.location.y += sign(self.movementProgress[1]);
+					self.movementProgress[1] = 0;
+					
+				}
+
+
+				enemyChampions.push_back(targetObject);
 			}
 		}
-		
 		//Ionic spark, optimisation, could be status effect but enemies not passed into function? also doesnt need to be check every turn
 		if self.items.contains(&25)
 		{
-			let thisLocation = self.location;
-			for enemyChamp in enemyChampions.iter_mut()
-			{
-				if DistanceBetweenPoints(thisLocation, enemyChamp.location) < 7//discrepency check distance between points returns value twice as large?
-				{
-					enemyChamp.se.push(StatusEffect { duration: Some((timeUnit + 1).into()), statusType: StatusType::IonicSparkEffect(), isNegative: true, ..Default::default()});
-				}
-			}
+			enemyChampions.iter_mut().filter(self.location.getWithinDistance(7)).map(|f| {
+				f.se.push(StatusEffect { duration: Some((timeUnit + 1).into()), statusType: StatusType::IonicSparkEffect(), isNegative: true, ..Default::default()})
+			});
 		}
 
 		
 		
-		if self.cm >= self.mc
-		{
-			if self.zap
-			{
+		if self.cm >= self.mc {
+			if self.zap {
 				self.health -= (self.mc as f32) * 2.5;
 			}
 			self.cm = 0;
-			if self.items.contains(&88)
-			{
-				self.cm = 20;
-			}
+			if self.items.contains(&88) { self.cm = 20; }
 			self.gMD = 100;
-			CHAMPIONABILITIES[self.aID](friendlyChampions, enemyChampions, selfIndex, projectiles);	
+			self.castAbility(friendlyChampions, enemyChampions, projectiles);	
 		}
+		true
 	}
 	fn dealDamage(&mut self, friendlyChampions : &mut VecDeque<SummonedChampion>, target : &mut SummonedChampion, damageAmount : f32, damageType : DamageType, _isSplash : bool){
 		let mut damage : f32 = damageAmount * target.incomingDMGModifier;
@@ -1118,40 +1110,39 @@ impl SummonedChampion {
 			0 => {
 				//let mut playerDistances : Vec<[i8 ; 2]> = Vec::new(); //instantiates empty vec to hold distance to friendly and enemy champions
 
-				let mut playerDistances : Vec<(i8, i8)> = friendlyChampions.iter().enumerate().map(|(x, s)| {(DistanceBetweenPoints(s.location, self.location), (x + 1) as i8)}).collect();
-				playerDistances.extend(enemyChampions.iter().enumerate().map(|(x, s)| {(DistanceBetweenPoints(s.location, self.location), -(x + 1) as i8)}));
+				let mut playerDistances : Vec<(i8, &mut SummonedChampion, bool)> = friendlyChampions.iter_mut().map(|x| {(self.location.distanceBetweenPoints(&x.location), x, true)}).collect();
+				playerDistances.extend(enemyChampions.iter_mut().map(|x| {(self.location.distanceBetweenPoints(&x.location), x, false)}));
 				let starLevel = self.starLevel; //gets current star level
 
 				playerDistances.sort_unstable_by_key(|a| a.0);//sorts the player distances
 				let champCount : usize = [3, 4, 5][starLevel]; //how many champions it can hit/ effect
 				let mut i = 0;//(!O) counts how many have been given effect
 				let ap = self.ap;//get ability power
-				for (_, champIndex) in playerDistances//(!O) just fetch the champion index, distance is irrelevant as already sorted
+				for (_, champ, onTeam) in playerDistances//(!O) just fetch the champion index, distance is irrelevant as already sorted
 				{
 					if i >= champCount
 					{
 						break;
 					}
-					if champIndex > 0//if friendly champ
+					if onTeam//if friendly champ
 					{
 						//give allies attack speed for 5 seconds
-						friendlyChampions[(champIndex - 1) as usize].se.push(StatusEffect{
+						champ.se.push(StatusEffect{
 																				duration : Some(500),
 																				statusType : StatusType::AttackSpeedBuff(1.7 * ap),
-																				..Default::default()	
-						});
+																				..Default::default()	});
 					}
 					else //enemy champ
 					{
 						//stun enemies for 1.5 seconds and increase damage for 20%
-						enemyChampions[-(champIndex + 1) as usize].se.push(StatusEffect { duration: Some(150), statusType: StatusType::Stun(), isNegative : true, ..Default::default() });
-						enemyChampions[-(champIndex + 1) as usize].se.push(StatusEffect { duration: Some(150), statusType: StatusType::IncreaseDamageTaken(1.2 * ap), isNegative : true, ..Default::default()});
+						champ.se.push(StatusEffect { duration: Some(150), statusType: StatusType::Stun(), isNegative : true, ..Default::default() });
+						champ.se.push(StatusEffect { duration: Some(150), statusType: StatusType::IncreaseDamageTaken(1.2 * ap), isNegative : true, ..Default::default()});
 					}
 					i += 1;//add 1 to count of hit enemies
 				}
 				if i < champCount//give self effect if there aren't enough champs to hit
 				{
-					friendlyChampions[selfIndex].se.push(StatusEffect{duration : Some(500), statusType : StatusType::AttackSpeedBuff(1.7 * ap), ..Default::default()});
+					self.se.push(StatusEffect{duration : Some(500), statusType : StatusType::AttackSpeedBuff(1.7 * ap), ..Default::default()});
 				}}
 			1 => {
 				let starLevel = self.starLevel;
@@ -1193,7 +1184,7 @@ impl Default for SummonedChampion
 {
 	fn default() -> Self {
 		SummonedChampion { 
-			location: [0, 0], 
+			location: Location { ..Default::default()}, 
 			movementProgress: [0, 0], 
 			health: 0.0, 
 			cm: 0, 
