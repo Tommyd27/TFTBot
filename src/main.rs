@@ -1203,7 +1203,7 @@ impl Default for SummonedChampion
 			autoAttackDelay: 0, 
 			attackSpeedModifier: 0.0, 
 			target: 0, 
-			targetCells: [0, 0], 
+			targetCells: Location { x: 0, y: 0 }, 
 			items: [0, 0, 0], 
 			ap: 0.0, 
 			se: Vec::new(), 
@@ -1242,13 +1242,13 @@ struct Board
 struct Projectile
 {
 	///location of projectile
-	location : [i8 ; 2],
+	location : Location,
 
 	///location progress
 	locationProgress : [i8 ; 2],
 
 	///target location
-	targetLocation : Option<[i8 ; 2]>,
+	targetLocation : Option<Location>,
 
 	///enemy Champion index
 	targetID : usize,
@@ -1328,7 +1328,7 @@ impl Projectile
 		true
 	}
 	///Makes new projectile
-	fn new(location : [i8 ; 2], targetLocation : Option<[i8 ; 2]>, targetID : usize, damage : f32,
+	fn new(location : Location, targetLocation : Option<Location>, targetID : usize, damage : f32,
 		damageType : DamageType,
 		splashDamage : f32,
 		speed : i8,
