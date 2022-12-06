@@ -432,6 +432,12 @@ impl Location {
 			y : posOne.y + posTwo.y,
 		}
 	}
+	fn subPositions(posOne : &Location, posTwo : &Location) -> Location{
+		Location {
+			x : posOne.x - posTwo.x,
+			y : posOne.y - posTwo.y,
+		}
+	}
 	fn addPositionVec(posOne : &Location, posTwo : [i8; 2]) -> Location {
 		Location {
 			x : posOne.x + posTwo[0],
@@ -1104,8 +1110,7 @@ impl SummonedChampion {
 		}
 	
 	}
-	fn castAbility(&mut self, friendlyChampions : &mut VecDeque<SummonedChampion>, enemyChampions : &mut VecDeque<SummonedChampion>, projectiles : &mut Vec<Projectile>)
-	{
+	fn castAbility(&mut self, friendlyChampions : &mut VecDeque<SummonedChampion>, enemyChampions : &mut VecDeque<SummonedChampion>, projectiles : &mut Vec<Projectile>) {
 		match self.aID{
 			0 => {
 				//let mut playerDistances : Vec<[i8 ; 2]> = Vec::new(); //instantiates empty vec to hold distance to friendly and enemy champions
@@ -1178,6 +1183,139 @@ impl SummonedChampion {
 	fn getIsTargetable(&self) -> bool {
 		self.targetable && !self.banish
 	}
+	///GiveItemEffect : (func)<br />
+///Gives an item effect to a champion<br />
+///**Item IDS:**<br />
+///0 : Null<br />1  : B.F Sword (+10 Attack Damage)<br />2  : Needlessly Large Rod (+10 Ability Power)<br />3  : Giants Belt (+150 health)<br />4  : Chain Vest (+20 Armor)<br />5  : Negatron Cloak (+20 Magic Resist)<br />6  : Recurve Bow (+10% Attack Speed)<br />7  : *Sparring Gloves* (+5% Crit Chance, +10% Dodge Chance)<br />8  : Tear of the Goddess (+15 Mana)<br />9  : Spatula<br />11 : Deathblade (+40, +70, +100 Attack Damage - Star Level Dependent)<br /> 12 : *Hextech Gunblade* (Dealing Magic and True Damage heals the owner and lowest health ally for 25% of the damage)<br />13 : Zekes Herald (Grants 30% bonus attack speed to the holder and 2 adjacent allies in same row)<br />14 : Edge of Night (At 50% health - once per combat - the holder briefly becomes untargetable and sheds negative effects. Then they gain 30% attack speed)<br />15 : Bloodthirster (Damage dealt heals holder for 25%. Once per combat at 40% Health, gain a 25% maximum health shield for up to 5 seconds)<br />16 : Giant Slayer (Abilities and attacks deal 25% more damage, increased to 50% if the holder has over 2200 maximum health)<br />17 : Infinity Edge (+10 Attack Damage, +75% Crit Chance, +10% Crit Damage, Converts every 1% excess critical strike chance into 1% bonus critical strike damage)<br />18 : Spear of Shojin (✓) (Basic attacks restore an additional 8 mana on-attack)<br />19 : Shimmerscale Emblem (Wearer becomes a shimmerscale, cannot equip on a shimmersclae)<br />22 : Rabadons Deathcap (+75 Ability Power)<br />23 : Morellonomicon (+30 Ability Power, magic or true damage from an ability burns the holders target, dealing 25% of the targets maximum health as trude damage over 10 seconds and applying grevious wounds for the duration)<br />24 : Locket of the Iron Solari (At the start of combat, the wearer and all allies within 2 hexes in the same row gain a 300 / 350 / 400 health shield for 15 seconds - star level dependent)<br />25 : Ionic Spark (Enemies within 3 hexes have their magic resistance reduced by 50% (does not stack). When enemies within 3 hexes cast their ability, they are dealt 250% of their maximum mana as magic damage)<br />26 : Guinsoos Rageblade (Basic attacks grant 6% bonus attack speed for the rest of combat, stacks with no upper limit)<br />27 : *Jeweled Gauntlet* (+15% Crit Chance, +40% Crit Damage, +10 Ability Power, The holders magic adn true damage from abilities can critically strike)<br />28 : Archangels Staff (Grants the wearer 20 ability power every 5 seconds)<br />29 : Dragonmancer Emblem (Wearer becomes an dragonmancer, cannot equip on an dragonmancer)<br />33 : Warmogs Armor (+1000 Health)<br />34 : Sunfire Cape (+400 Health. At the start of combat and every 2 seconds thereafter, applies a 10% maximum health burn as true damage over 10 seconds and applying grevious wounds for the duration)<br />35 : Zephyr (At the start of combat, banishes for 5 seconds the unit that mirrors the wielders placement on the other side of the board. Pierces through CC immunity effects)<br />36 : ZZ Rot Portal (At the start of combat, the wearer taunts enemies within 4 hexes. When the wearer dies, a Voidspawn arises, taunting nearby enemies. Summoned units can spawn Voidspawns at 25% effectiveness)<br />37 : *Banshees Claw* (+15% Dodge Chance, +150 Health, At the beginning of each round, the holder and allies within 1 hex in the same row gain a shield that blocks the first enemy ability, up to 600 damage)<br />38 : Redemption (Every 5 seconds, the wearer radiates an aura to allies within 1 hex, healing them for 12% missing health. Affected allies take 25% reduced damage from AOE attacks for  seconds)<br />39 : Guardian Emblem (Wearer becomes a guardian, cannot equip on a guardian)<br />44 : Bramble Vest (+60 Armor. Negatves 75% bonus damage from critical hits. On being hit by an attack, deal 75 / 100 / 150 magic damage to all nearby enemies (once every 2.5 seconds))<br />45 : Gargoyle Stoneplate (+18 Armor and Magic Resist for each enemy targeting the holder)<br />46 : *Titans Resolve* (Gain 2 attack damage and ability power when attacking or taking damage. After stacking 25 times, gain 25 armor and magic resist and stop stacking)<br />47 : *Shroud of Stillness* (Shoot a beam that delays the first cast of affected enemies by 35%)<br />48 : Frozen Heart (Reduce the attack speed of enemies within 2 hexes by 25%)<br />49 : Cavalier Emblem (Wearer becomes a cavalier, cannot equip on a cavalier)<br />55 : Dragons Claw (+120 Magic Resist, every 2 seconds, regenerate 1.2% maximum health for each enemy targeting the holder. If holder is a dragon, increase all bonuses and effects by 20%)<br />56 : *Runaans Hurricane* (+10 Atttack Damage, attacks fire a bolt at a nearby enemy, dealing 70% of the holders attack damage as physical damage)<br />57 : *Quicksilver* (+20% attack speed. Immune to crowd control for 15 secnds)<br />58 : Chalice of Power (+30 Ability Power to holder and 2 adjacent allies on same row)<br />59 : Mirage Emblem (Wearer becomes a mirage, cannot equip on a mirage)<br />66 : Rapid Firecannon (+50% attack speed and +1 attack range, attacks cannot miss)<br />67 : *Last Whisper* (Dealing physical damage reduces the targets armor by 50% for 5 seconds, does not stack)<br />68 : Statikk Shiv (+15% attack speed, every 3rd attack shocks enemies for 70 magic damage and reduces their magic resist by 50% for 5 seconds)<br />69 : Ragewing Emblem (Wearer becomes a ragewing, cannot equip on a ragewing)<br />77 : *Thiefs Gloves* (Each round equip 2 random items, improve with player level, you cannot equip other items)<br />78 : *Hand of Justice* (+15 attack damage, +15% ability power. Attacks and abilities heal for 15% of damage dealt. Each round randomly increase 1 effect by 30%)<br />79 : *Assassin Emblem* (Wearer becomes an assassin, cannot equip on an assassin)<br />88 : Blue Buff (+20 Starting Mana. Gain 20 mana after casting an ability)<br />89 : Mage Emblem (Wearer becomes a mage, cannot equip on a mage)<br />99 : Tacticians Crown (Increase board unit size by 1)<br />
+fn GiveItemEffect(&mut self, item : u8, friendlyChampions : &mut VecDeque<SummonedChampion>, enemyChampions : &mut VecDeque<SummonedChampion>)
+{
+	match item
+	{
+		0 => (),
+		1  => self.ad += 10.0, //BF Sword
+		2  => self.ap += 0.1, //Needlessly Large Rod
+		3 => self.health += 150.0, //Giants Belt
+		4 => self.ar += 0.2, //Chain Vest
+		5 => self.mr += 0.2,//Negatron Cloak
+		6 => self.attackSpeedModifier *= 1.1,//Recurve Bow
+		7 => {self.cr += 5; self.dc += 10},//Sparring Glove
+		8 => self.cm += 15,//Tear of the Goddess
+		11 => self.ad += [15.0, 30.0, 45.0][self.starLevel],
+		12 => {	self.ad += 10.0; self.ap += 0.1},
+		13 => {	self.ad += 10.0; self.health += 150.0;
+			  	for friendlyChamp in friendlyChampions.iter_mut().filter(self.location.getWithinDistance(3)) {
+					if friendlyChamp.location.y == self.location.y { friendlyChamp.attackSpeedModifier *= 1.3; }
+			  	}
+			  },
+		14 => {self.ad += 10.0; self.ar += 0.2; 
+			   self.se.push(StatusEffect { duration: Some(0), statusType: StatusType::EdgeOfNight(), ..Default::default()})},//gives edge of night buff
+		15 => {self.ad += 10.0; self.mr += 0.2;
+			   self.se.push(StatusEffect { duration: Some(0), statusType: StatusType::Bloodthirster(), ..Default::default()});//gives bloodthirster buff
+			   self.omnivamp += 0.25;
+			},
+		16 => {self.ad += 10.0; self.attackSpeedModifier *= 0.1},//
+		17 => {self.ad += 10.0; self.cr += 225; self.critD += 0.1},//(!D)?
+		18 => {self.ad += 10.0; self.cm += 15},//
+		19 => {self.ad += 10.0;},//(!U)
+		22 => {self.ap += 0.75},
+		23 => {self.ap += 0.40; self.health += 150.0}//
+		24 => {	self.ap += 0.1; self.ar += 0.2;//Gives locket shield
+			   	let shieldAmount = [300.0, 350.0, 400.0][self.starLevel];
+				for friendlyChamp in friendlyChampions.iter_mut().filter(self.location.getWithinDistance(3)) {
+					if friendlyChamp.location.y == self.location.y { friendlyChamp.shields.push(Shield{duration : 1500, size : shieldAmount, ..Default::default()}); } //gives shield
+			  	}
+				
+			   
+		},
+		25 => {self.ap += 0.1; self.mr += 0.2;},//
+		26 => {self.ap += 0.1; self.attackSpeedModifier *= 0.1},//
+		27 => {self.ap += 0.5; self.cr += 15; self.critD += 0.4}// //(!D) does bonus ability damage include from components? //
+		28 => {self.ap += 0.1; self.cm += 15; self.se.push(StatusEffect { duration: Some(500), statusType: StatusType::ArchangelStaff(0.2), ..Default::default() })}
+		29 => {self.ap += 0.1; },//add next trait
+		33 => {self.health += 1000.0},
+		34 => {self.health += 300.0; self.ar += 0.2; self.se.push(StatusEffect { duration: Some(0), statusType: StatusType::GiveSunfire(), ..Default::default() })}//(!U)
+		35 => {self.health += 150.0; self.mr += 0.2; self.se.push(StatusEffect { duration : Some(0), statusType: StatusType::Zephyr(500), ..Default::default()})}//gives zephyr effect
+		36 => {self.health += 150.0; self.attackSpeedModifier *= 0.1; //close enough, doesnt reset fully
+			   for enemyChamp in enemyChampions
+			   {
+					if DistanceBetweenPoints(enemyChamp.location, self.location) < 9 //if in range
+					{
+						enemyChamp.se.push(StatusEffect { duration: Some(0), statusType: StatusType::Taunted(self.id), isNegative: true, ..Default::default()})//(!D) does shed cleanse taunt? gives taunt effect
+					}
+			   }
+		}
+		37 => {self.health += 150.0; self.dc += 15;  	
+			let thisLocation = self.location;
+			for friendlyChamp in friendlyChampions
+			  	{
+					if friendlyChamp.location[1] == thisLocation[1] && DistanceBetweenPoints(friendlyChamp.location, thisLocation) < 3//gives banshee's shield
+					{
+						friendlyChamp.shields.push(Shield{duration : 1500, size : 600.0, blocksType : Some(DamageType::Magical()), pop : true}); //(!D) shouldn't stack whether from multiple items on 1 person or from multiple champs
+					}
+			  	}
+		}
+		38 => {self.health += 150.0; self.cm += 15; self.se.push(StatusEffect { duration: Some(100), statusType: StatusType::RedemptionGive(), ..Default::default() })}//Gives redemption effect
+		39 => {self.health += 150.0}//(!U)
+		44 => {self.ar += 0.8}//(!D) says grants 40 bonus armor, is that the 40 from the two chain vests?
+		45 => {self.ar += 0.2; self.mr += 0.2;//
+				self.se.push(StatusEffect{duration : Some(0), statusType: StatusType::Gargoyles(0), ..Default::default() })//(!D) only updates every second
+		}
+		46 => {self.ar += 0.2; self.attackSpeedModifier *= 1.1;
+			self.se.push(StatusEffect { duration: Some(0), statusType: StatusType::TitansResolve(0), ..Default::default() })
+		}
+		47 => {self.ar += 0.2; self.dc += 15;
+				self.se.push(StatusEffect { duration: Some(0), statusType: StatusType::ShroudOfStillness(), ..Default::default() })
+		}
+		48 => {self.ar += 0.2; self.cm += 15;
+			   self.se.push(StatusEffect { duration: Some(0), statusType: StatusType::ProtectorsVow(), ..Default::default() })
+		}
+		55 => {self.mr += 1.2;
+				self.se.push(StatusEffect{duration : Some(200), statusType : StatusType::DragonClawHeal(), ..Default::default()})
+
+		
+		}
+		56 => {self.mr += 0.2; self.attackSpeedModifier *= 1.1; self.ad += 10.0}//
+		57 => {self.mr += 0.2; self.dc += 15; self.attackSpeedModifier *= 1.2;
+				self.se.push(StatusEffect{duration : Some(15000), statusType: StatusType::CrowdControlImmune(), ..Default::default()});
+		}
+		58 => {self.cm += 15; self.mr += 0.2;
+			let thisLocation = self.location;
+			for friendlyChamp in friendlyChampions
+			  	{
+					if friendlyChamp.location[1] == thisLocation[1] && DistanceBetweenPoints(friendlyChamp.location, thisLocation) < 3 //discrepency distances
+					{
+						friendlyChamp.ap += 0.3; //(!D) shouldn't stack whether from multiple items on 1 person or from multiple champs
+					}
+			  	}
+		}
+		66 => {self.attackSpeedModifier *= 1.55;
+		self.ra += 1;}
+		67 => {self.attackSpeedModifier *= 1.21;
+			   self.cr += 15;
+		}//discrepency
+		68 => {self.attackSpeedModifier *= 1.21; self.cm += 15;}
+		77 => {self.cr += 15; self.dc += 15;}
+		78 => {self.cm += 10; self.cr += 15; 
+		
+			if rand::thread_rng().gen_range(0..100) > 50//(!D) does this even mf'ing work
+			{
+				self.ad += 30.0;
+				self.ap += 0.3;
+				self.omnivamp += 0.15;
+			}
+			else
+			{
+				self.ad += 15.0;
+				self.ap += 0.15;
+				self.omnivamp += 0.3;
+			}
+		}
+		88 => {
+			self.cm += 50;
+		}
+		_ => println!("Unimplemented Item"),
+	}
+}
 }
 
 impl Default for SummonedChampion
@@ -1277,49 +1415,49 @@ impl Projectile
 		let targetLocation = match self.targetLocation //discrepency only checks after move to theoretically could phase through someone
 		{
 			Some(location) => {location}, //gets target location
-			None => {let outLocation = findChampionIndexFromID(&possibleTargets, self.targetID);//gets location of target champion
+			None => {
+				let outLocation = findChampionIndexFromID(&possibleTargets, self.targetID);//gets location of target champion
 				match outLocation
 				{
 					Some(index) => possibleTargets[index].location,
-					None => [-1, -1],
+					None => Location { x: -1, y: -1 },
 				}
 
 
 		}};
-		if targetLocation[0] == -1//not found, remove projectile
-		{
-			return false
-		}
-
-		self.locationProgress[0] += self.speed * sign(targetLocation[0] - self.location[0]);
-		self.locationProgress[1] += self.speed * sign(targetLocation[1] - self.location[1]);//add location progress
+		if targetLocation.x == -1 { return false }//not found, remove projectile
+		
+		let subtractedDistance = Location::subPositions(&targetLocation, &self.location);
+	
+		self.locationProgress[0] += self.speed * sign(subtractedDistance.x);
+		self.locationProgress[1] += self.speed * sign(subtractedDistance.y);//add location progress
 		if self.locationProgress[0].abs() >= 10//if above 10, move
 		{
-			self.location[0] += sign(self.locationProgress[0]);
+			self.location.x += sign(self.locationProgress[0]);
 		}
 		if self.locationProgress[1].abs() >= 10
 		{
-			self.location[1] += sign(self.locationProgress[1]);
+			self.location.y += sign(self.locationProgress[1]);
 		}
-		if ! InGridHexagon(self.location)//if out of grid, remove
-		{
-			return false;
-		}
+		if ! self.location.checkValid() { return false; }//if out of grid, remove
+		
+		
+			
 		
 		for possibleTarget in possibleTargets.iter_mut()//iterate through all possible collisions
 		{
 			if self.location == possibleTarget.location//has a hit
 			{
-				let shooterIndex = findChampionIndexFromID(&friendlyChampions, self.shooterID).unwrap_or(usize::MAX);//finds shooter id
-				dealDamage(shooterIndex, friendlyChampions, possibleTarget, self.damage, self.damageType, false);//deals damage
+				let shooter =  match findChampionIndexFromID(&friendlyChampions, self.shooterID) {//finds shooter id
+					Some(shooterIndex) => friendlyChampions[shooterIndex],
+					None => SummonedChampion {..Default::default()}	
+				};
+				shooter.dealDamage(friendlyChampions, possibleTarget, self.damage, self.damageType, false);//deals damage
 				if self.splashDamage > 0.0//if there is splash damage
 				{
-					for possibleSecondaryTarget in possibleTargets.iter_mut()//iterate through possible splash hits
+					for possibleSecondaryTarget in possibleTargets.iter_mut().filter(self.location.getWithinDistance(3))//iterate through possible splash hits
 					{
-						if DistanceBetweenPoints(self.location, possibleSecondaryTarget.location) < 3
-						{
-							dealDamage(shooterIndex, friendlyChampions, possibleSecondaryTarget, self.splashDamage, self.damageType, true);//deal secondary dmg
-						}
+						shooter.dealDamage(friendlyChampions, possibleSecondaryTarget, self.splashDamage, self.damageType, true);//deal secondary dmg
 					}
 				}
 				return false//remove self
@@ -1350,148 +1488,7 @@ impl Projectile
 
 
 
-///GiveItemEffect : (func)<br />
-///Gives an item effect to a champion<br />
-///**Item IDS:**<br />
-///0 : Null<br />1  : B.F Sword (+10 Attack Damage)<br />2  : Needlessly Large Rod (+10 Ability Power)<br />3  : Giants Belt (+150 health)<br />4  : Chain Vest (+20 Armor)<br />5  : Negatron Cloak (+20 Magic Resist)<br />6  : Recurve Bow (+10% Attack Speed)<br />7  : *Sparring Gloves* (+5% Crit Chance, +10% Dodge Chance)<br />8  : Tear of the Goddess (+15 Mana)<br />9  : Spatula<br />11 : Deathblade (+40, +70, +100 Attack Damage - Star Level Dependent)<br /> 12 : *Hextech Gunblade* (Dealing Magic and True Damage heals the owner and lowest health ally for 25% of the damage)<br />13 : Zekes Herald (Grants 30% bonus attack speed to the holder and 2 adjacent allies in same row)<br />14 : Edge of Night (At 50% health - once per combat - the holder briefly becomes untargetable and sheds negative effects. Then they gain 30% attack speed)<br />15 : Bloodthirster (Damage dealt heals holder for 25%. Once per combat at 40% Health, gain a 25% maximum health shield for up to 5 seconds)<br />16 : Giant Slayer (Abilities and attacks deal 25% more damage, increased to 50% if the holder has over 2200 maximum health)<br />17 : Infinity Edge (+10 Attack Damage, +75% Crit Chance, +10% Crit Damage, Converts every 1% excess critical strike chance into 1% bonus critical strike damage)<br />18 : Spear of Shojin (✓) (Basic attacks restore an additional 8 mana on-attack)<br />19 : Shimmerscale Emblem (Wearer becomes a shimmerscale, cannot equip on a shimmersclae)<br />22 : Rabadons Deathcap (+75 Ability Power)<br />23 : Morellonomicon (+30 Ability Power, magic or true damage from an ability burns the holders target, dealing 25% of the targets maximum health as trude damage over 10 seconds and applying grevious wounds for the duration)<br />24 : Locket of the Iron Solari (At the start of combat, the wearer and all allies within 2 hexes in the same row gain a 300 / 350 / 400 health shield for 15 seconds - star level dependent)<br />25 : Ionic Spark (Enemies within 3 hexes have their magic resistance reduced by 50% (does not stack). When enemies within 3 hexes cast their ability, they are dealt 250% of their maximum mana as magic damage)<br />26 : Guinsoos Rageblade (Basic attacks grant 6% bonus attack speed for the rest of combat, stacks with no upper limit)<br />27 : *Jeweled Gauntlet* (+15% Crit Chance, +40% Crit Damage, +10 Ability Power, The holders magic adn true damage from abilities can critically strike)<br />28 : Archangels Staff (Grants the wearer 20 ability power every 5 seconds)<br />29 : Dragonmancer Emblem (Wearer becomes an dragonmancer, cannot equip on an dragonmancer)<br />33 : Warmogs Armor (+1000 Health)<br />34 : Sunfire Cape (+400 Health. At the start of combat and every 2 seconds thereafter, applies a 10% maximum health burn as true damage over 10 seconds and applying grevious wounds for the duration)<br />35 : Zephyr (At the start of combat, banishes for 5 seconds the unit that mirrors the wielders placement on the other side of the board. Pierces through CC immunity effects)<br />36 : ZZ Rot Portal (At the start of combat, the wearer taunts enemies within 4 hexes. When the wearer dies, a Voidspawn arises, taunting nearby enemies. Summoned units can spawn Voidspawns at 25% effectiveness)<br />37 : *Banshees Claw* (+15% Dodge Chance, +150 Health, At the beginning of each round, the holder and allies within 1 hex in the same row gain a shield that blocks the first enemy ability, up to 600 damage)<br />38 : Redemption (Every 5 seconds, the wearer radiates an aura to allies within 1 hex, healing them for 12% missing health. Affected allies take 25% reduced damage from AOE attacks for  seconds)<br />39 : Guardian Emblem (Wearer becomes a guardian, cannot equip on a guardian)<br />44 : Bramble Vest (+60 Armor. Negatves 75% bonus damage from critical hits. On being hit by an attack, deal 75 / 100 / 150 magic damage to all nearby enemies (once every 2.5 seconds))<br />45 : Gargoyle Stoneplate (+18 Armor and Magic Resist for each enemy targeting the holder)<br />46 : *Titans Resolve* (Gain 2 attack damage and ability power when attacking or taking damage. After stacking 25 times, gain 25 armor and magic resist and stop stacking)<br />47 : *Shroud of Stillness* (Shoot a beam that delays the first cast of affected enemies by 35%)<br />48 : Frozen Heart (Reduce the attack speed of enemies within 2 hexes by 25%)<br />49 : Cavalier Emblem (Wearer becomes a cavalier, cannot equip on a cavalier)<br />55 : Dragons Claw (+120 Magic Resist, every 2 seconds, regenerate 1.2% maximum health for each enemy targeting the holder. If holder is a dragon, increase all bonuses and effects by 20%)<br />56 : *Runaans Hurricane* (+10 Atttack Damage, attacks fire a bolt at a nearby enemy, dealing 70% of the holders attack damage as physical damage)<br />57 : *Quicksilver* (+20% attack speed. Immune to crowd control for 15 secnds)<br />58 : Chalice of Power (+30 Ability Power to holder and 2 adjacent allies on same row)<br />59 : Mirage Emblem (Wearer becomes a mirage, cannot equip on a mirage)<br />66 : Rapid Firecannon (+50% attack speed and +1 attack range, attacks cannot miss)<br />67 : *Last Whisper* (Dealing physical damage reduces the targets armor by 50% for 5 seconds, does not stack)<br />68 : Statikk Shiv (+15% attack speed, every 3rd attack shocks enemies for 70 magic damage and reduces their magic resist by 50% for 5 seconds)<br />69 : Ragewing Emblem (Wearer becomes a ragewing, cannot equip on a ragewing)<br />77 : *Thiefs Gloves* (Each round equip 2 random items, improve with player level, you cannot equip other items)<br />78 : *Hand of Justice* (+15 attack damage, +15% ability power. Attacks and abilities heal for 15% of damage dealt. Each round randomly increase 1 effect by 30%)<br />79 : *Assassin Emblem* (Wearer becomes an assassin, cannot equip on an assassin)<br />88 : Blue Buff (+20 Starting Mana. Gain 20 mana after casting an ability)<br />89 : Mage Emblem (Wearer becomes a mage, cannot equip on a mage)<br />99 : Tacticians Crown (Increase board unit size by 1)<br />
-fn GiveItemEffect(item : u8, friendlyChampions : &mut VecDeque<SummonedChampion>, enemyChampions : &mut VecDeque<SummonedChampion>, selfIndex : usize)
-{
-	match item
-	{
-		0 => (),
-		1  => friendlyChampions[selfIndex].ad += 10.0, //BF Sword
-		2  => friendlyChampions[selfIndex].ap += 0.1, //Needlessly Large Rod
-		3 => friendlyChampions[selfIndex].health += 150.0, //Giants Belt
-		4 => friendlyChampions[selfIndex].ar += 0.2, //Chain Vest
-		5 => friendlyChampions[selfIndex].mr += 0.2,//Negatron Cloak
-		6 => friendlyChampions[selfIndex].attackSpeedModifier *= 1.1,//Recurve Bow
-		7 => {friendlyChampions[selfIndex].cr += 5; friendlyChampions[selfIndex].dc += 10},//Sparring Glove
-		8 => friendlyChampions[selfIndex].cm += 15,//Tear of the Goddess
-		11 => friendlyChampions[selfIndex].ad += [15.0, 30.0, 45.0][friendlyChampions[selfIndex].starLevel],
-		12 => {friendlyChampions[selfIndex].ad += 10.0; friendlyChampions[selfIndex].ap += 0.1},
-		13 => {friendlyChampions[selfIndex].ad += 10.0; friendlyChampions[selfIndex].health += 150.0;
-			  let thisLocation = friendlyChampions[selfIndex].location;
-			  for friendlyChamp in friendlyChampions
-			  {
-				if friendlyChamp.location[1] == thisLocation[1] && DistanceBetweenPoints(friendlyChamp.location, thisLocation) < 3//checks units are adjacent and on same row
-				{
-					friendlyChamp.attackSpeedModifier *= 1.3;//increases attack speed
-				}
-			  }
-			  },
-		14 => {friendlyChampions[selfIndex].ad += 10.0; friendlyChampions[selfIndex].ar += 0.2; 
-			   friendlyChampions[selfIndex].se.push(StatusEffect { duration: Some(0), statusType: StatusType::EdgeOfNight(), ..Default::default()})},//gives edge of night buff
-		15 => {friendlyChampions[selfIndex].ad += 10.0; friendlyChampions[selfIndex].mr += 0.2;
-			   friendlyChampions[selfIndex].se.push(StatusEffect { duration: Some(0), statusType: StatusType::Bloodthirster(), ..Default::default()});//gives bloodthirster buff
-			   friendlyChampions[selfIndex].omnivamp += 0.25;
-			},
-		16 => {friendlyChampions[selfIndex].ad += 10.0; friendlyChampions[selfIndex].attackSpeedModifier *= 0.1},//
-		17 => {friendlyChampions[selfIndex].ad += 10.0; friendlyChampions[selfIndex].cr += 225; friendlyChampions[selfIndex].critD += 0.1},//(!D)?
-		18 => {friendlyChampions[selfIndex].ad += 10.0; friendlyChampions[selfIndex].cm += 15},//
-		19 => {friendlyChampions[selfIndex].ad += 10.0;},//(!U)
-		22 => {friendlyChampions[selfIndex].ap += 0.75},
-		23 => {friendlyChampions[selfIndex].ap += 0.40; friendlyChampions[selfIndex].health += 150.0}//
-		24 => {friendlyChampions[selfIndex].ap += 0.1; friendlyChampions[selfIndex].ar += 0.2;//Gives locket shield
-			   	let shieldAmount = [300.0, 350.0, 400.0][friendlyChampions[selfIndex].starLevel];
-			   	let thisLocation = friendlyChampions[selfIndex].location;
-				for friendlyChamp in friendlyChampions//iterates through friendly champs
-				{
-					if friendlyChamp.location[1] == thisLocation[1] && DistanceBetweenPoints(friendlyChamp.location, thisLocation) < 5 //(!D) gives shield to those within 2 cells and same row
-					{
-						friendlyChamp.shields.push(Shield{duration : 1500, size : shieldAmount, ..Default::default()});//gives shield
-					}
-				}
-			   
-		},
-		25 => {friendlyChampions[selfIndex].ap += 0.1; friendlyChampions[selfIndex].mr += 0.2;},//
-		26 => {friendlyChampions[selfIndex].ap += 0.1; friendlyChampions[selfIndex].attackSpeedModifier *= 0.1},//
-		27 => {friendlyChampions[selfIndex].ap += 0.5; friendlyChampions[selfIndex].cr += 15; friendlyChampions[selfIndex].critD += 0.4}// //(!D) does bonus ability damage include from components? //
-		28 => {friendlyChampions[selfIndex].ap += 0.1; friendlyChampions[selfIndex].cm += 15; friendlyChampions[selfIndex].se.push(StatusEffect { duration: Some(500), statusType: StatusType::ArchangelStaff(0.2), ..Default::default() })}
-		29 => {friendlyChampions[selfIndex].ap += 0.1; },//add next trait
-		33 => {friendlyChampions[selfIndex].health += 1000.0},
-		34 => {friendlyChampions[selfIndex].health += 300.0; friendlyChampions[selfIndex].ar += 0.2; friendlyChampions[selfIndex].se.push(StatusEffect { duration: Some(0), statusType: StatusType::GiveSunfire(), ..Default::default() })}//(!U)
-		35 => {friendlyChampions[selfIndex].health += 150.0; friendlyChampions[selfIndex].mr += 0.2; friendlyChampions[selfIndex].se.push(StatusEffect { duration : Some(0), statusType: StatusType::Zephyr(500), ..Default::default()})}//gives zephyr effect
-		36 => {friendlyChampions[selfIndex].health += 150.0; friendlyChampions[selfIndex].attackSpeedModifier *= 0.1; //close enough, doesnt reset fully
-			   for enemyChamp in enemyChampions
-			   {
-					if DistanceBetweenPoints(enemyChamp.location, friendlyChampions[selfIndex].location) < 9 //if in range
-					{
-						enemyChamp.se.push(StatusEffect { duration: Some(0), statusType: StatusType::Taunted(friendlyChampions[selfIndex].id), isNegative: true, ..Default::default()})//(!D) does shed cleanse taunt? gives taunt effect
-					}
-			   }
-		}
-		37 => {friendlyChampions[selfIndex].health += 150.0; friendlyChampions[selfIndex].dc += 15;  	
-			let thisLocation = friendlyChampions[selfIndex].location;
-			for friendlyChamp in friendlyChampions
-			  	{
-					if friendlyChamp.location[1] == thisLocation[1] && DistanceBetweenPoints(friendlyChamp.location, thisLocation) < 3//gives banshee's shield
-					{
-						friendlyChamp.shields.push(Shield{duration : 1500, size : 600.0, blocksType : Some(DamageType::Magical()), pop : true}); //(!D) shouldn't stack whether from multiple items on 1 person or from multiple champs
-					}
-			  	}
-		}
-		38 => {friendlyChampions[selfIndex].health += 150.0; friendlyChampions[selfIndex].cm += 15; friendlyChampions[selfIndex].se.push(StatusEffect { duration: Some(100), statusType: StatusType::RedemptionGive(), ..Default::default() })}//Gives redemption effect
-		39 => {friendlyChampions[selfIndex].health += 150.0}//(!U)
-		44 => {friendlyChampions[selfIndex].ar += 0.8}//(!D) says grants 40 bonus armor, is that the 40 from the two chain vests?
-		45 => {friendlyChampions[selfIndex].ar += 0.2; friendlyChampions[selfIndex].mr += 0.2;//
-				friendlyChampions[selfIndex].se.push(StatusEffect{duration : Some(0), statusType: StatusType::Gargoyles(0), ..Default::default() })//(!D) only updates every second
-		}
-		46 => {friendlyChampions[selfIndex].ar += 0.2; friendlyChampions[selfIndex].attackSpeedModifier *= 1.1;
-			friendlyChampions[selfIndex].se.push(StatusEffect { duration: Some(0), statusType: StatusType::TitansResolve(0), ..Default::default() })
-		}
-		47 => {friendlyChampions[selfIndex].ar += 0.2; friendlyChampions[selfIndex].dc += 15;
-				friendlyChampions[selfIndex].se.push(StatusEffect { duration: Some(0), statusType: StatusType::ShroudOfStillness(), ..Default::default() })
-		}
-		48 => {friendlyChampions[selfIndex].ar += 0.2; friendlyChampions[selfIndex].cm += 15;
-			   friendlyChampions[selfIndex].se.push(StatusEffect { duration: Some(0), statusType: StatusType::ProtectorsVow(), ..Default::default() })
-		}
-		55 => {friendlyChampions[selfIndex].mr += 1.2;
-				friendlyChampions[selfIndex].se.push(StatusEffect{duration : Some(200), statusType : StatusType::DragonClawHeal(), ..Default::default()})
 
-		
-		}
-		56 => {friendlyChampions[selfIndex].mr += 0.2; friendlyChampions[selfIndex].attackSpeedModifier *= 1.1; friendlyChampions[selfIndex].ad += 10.0}//
-		57 => {friendlyChampions[selfIndex].mr += 0.2; friendlyChampions[selfIndex].dc += 15; friendlyChampions[selfIndex].attackSpeedModifier *= 1.2;
-				friendlyChampions[selfIndex].se.push(StatusEffect{duration : Some(15000), statusType: StatusType::CrowdControlImmune(), ..Default::default()});
-		}
-		58 => {friendlyChampions[selfIndex].cm += 15; friendlyChampions[selfIndex].mr += 0.2;
-			let thisLocation = friendlyChampions[selfIndex].location;
-			for friendlyChamp in friendlyChampions
-			  	{
-					if friendlyChamp.location[1] == thisLocation[1] && DistanceBetweenPoints(friendlyChamp.location, thisLocation) < 3 //discrepency distances
-					{
-						friendlyChamp.ap += 0.3; //(!D) shouldn't stack whether from multiple items on 1 person or from multiple champs
-					}
-			  	}
-		}
-		66 => {friendlyChampions[selfIndex].attackSpeedModifier *= 1.55;
-		friendlyChampions[selfIndex].ra += 1;}
-		67 => {friendlyChampions[selfIndex].attackSpeedModifier *= 1.21;
-			   friendlyChampions[selfIndex].cr += 15;
-		}//discrepency
-		68 => {friendlyChampions[selfIndex].attackSpeedModifier *= 1.21; friendlyChampions[selfIndex].cm += 15;}
-		77 => {friendlyChampions[selfIndex].cr += 15; friendlyChampions[selfIndex].dc += 15;}
-		78 => {friendlyChampions[selfIndex].cm += 10; friendlyChampions[selfIndex].cr += 15; 
-		
-			if rand::thread_rng().gen_range(0..100) > 50//(!D) does this even mf'ing work
-			{
-				friendlyChampions[selfIndex].ad += 30.0;
-				friendlyChampions[selfIndex].ap += 0.3;
-				friendlyChampions[selfIndex].omnivamp += 0.15;
-			}
-			else
-			{
-				friendlyChampions[selfIndex].ad += 15.0;
-				friendlyChampions[selfIndex].ap += 0.15;
-				friendlyChampions[selfIndex].omnivamp += 0.3;
-			}
-		}
-		88 => {
-			friendlyChampions[selfIndex].cm += 50;
-		}
-		_ => println!("Unimplemented Item"),
-	}
-}
 impl Board
 {
 	fn new(p1PlacedChamps : &VecDeque<PlacedChampion>, p2PlacedChamps : &VecDeque<PlacedChampion>, timeUnit : i8) -> Board
