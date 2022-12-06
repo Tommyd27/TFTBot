@@ -3,8 +3,7 @@
 use std::{cmp::{min, max}};
 use rand::{Rng};
 use std::collections::VecDeque;
-use std::iter::Filter;
-use num_traits::Num;
+use std::mem::replace;
 
 ///ShouldStun<br />
 ///Simple struct to pass by reference to record whether stunned.<br />
@@ -239,10 +238,10 @@ impl StatusEffect {
 					}
 					StatusType::RedemptionGive() => {
 						nDuration = 100;//increase duration
-						friendlyChampions.iter_mut().filter(affectedChampion.location.getWithinDistance(3)).map(|x| {
-							x.heal((x.initialHP - x.health) * 0.12)//discrepency check at multitarget damage time for redemption heal for reduction
-						});
-						affectedChampion.heal((affectedChampion.initialHP - affectedChampion.health * 0.12));
+						for champ in friendlyChampions.iter_mut().filter(affectedChampion.location.getWithinDistance(3)) {
+							champ.heal((champ.initialHP - champ.health) * 0.12)//discrepency check at multitarget damage time for redemption heal for reduction
+						}
+						affectedChampion.heal((affectedChampion.initialHP - affectedChampion.health) * 0.12);
 					}
 					StatusType::Gargoyles(oldNumTargeting) => {
 						nDuration = 100;//increase duration
@@ -253,13 +252,12 @@ impl StatusEffect {
 						self.statusType = StatusType::Gargoyles(numTargeting);
 					}
 					StatusType::ShroudOfStillness() => {//(!D) not actual shroud affect
-						enemyChampions.iter_mut().filter(|x| x.location.x == affectedChampion.location.x).map(|x|{
-							x.cm -= (7 * x.mc) / 20;
-						});
+						for champ in enemyChampions.iter_mut().filter(|x| x.location.x == affectedChampion.location.x) {
+							champ.cm -= (7 * champ.mc) / 20;
+						}
 					}
 					StatusType::DragonClawHeal() => {
 						nDuration = 200;//reset status effect
-						let ourID = affectedChampion.id;
 
 						let numTargeting : f32 = affectedChampion.getNumTargeting(enemyChampions) as f32;
 						affectedChampion.heal(affectedChampion.initialHP * 0.012 * numTargeting);
@@ -269,10 +267,10 @@ impl StatusEffect {
 					}	
 					StatusType::GiveSunfire() => {//(!U)
 						nDuration = 300; 
-						enemyChampions.iter_mut().filter(affectedChampion.location.getWithinDistance(3)).map(|x| {
-							let dmg = x.initialHP / 20.0;
-							x.se.push(StatusEffect {duration : Some(100), statusType : StatusType::MorellonomiconBurn(dmg, dmg / 3.0, 100), ..Default::default()})
-						});
+						for champ in enemyChampions.iter_mut().filter(affectedChampion.location.getWithinDistance(3)){
+							let dmg = champ.initialHP / 20.0;
+							champ.se.push(StatusEffect {duration : Some(100), statusType : StatusType::MorellonomiconBurn(dmg, dmg / 3.0, 100), ..Default::default()})
+						}
 					}
 					StatusType::EdgeOfNight() => {
 						if affectedChampion.health <= (affectedChampion.initialHP / 2.0) {
@@ -396,7 +394,7 @@ fn findChampionIndexFromID(champions : &VecDeque<SummonedChampion>, id : usize) 
 }
 ///Same as find champ index from id but also checks it is targetable/ not banished
 fn findChampionIndexFromIDTargetable(champions : &VecDeque<SummonedChampion>, id : usize) -> Option<usize> {
-	let out : Option<usize> = None;
+	let mut out : Option<usize> = None;
 	if champions[id].id == id { out = Some(id) }
 	else {
 		for champ in champions { 
@@ -414,7 +412,7 @@ fn findChampionIndexFromIDTargetable(champions : &VecDeque<SummonedChampion>, id
 	None
 }
 
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
 struct Location {
 	x : i8,
 	y : i8
@@ -715,6 +713,8 @@ struct SummonedChampion {
 
 	///omnivamp (% of healing from damage done)
 	omnivamp : f32,
+
+	hasSetup : bool,
 }
 
 impl SummonedChampion {
@@ -758,7 +758,29 @@ impl SummonedChampion {
 						   banish : false,//discrepency with this and many others if one status effect banishing ends and another is still going on etc.
 						   titansResolveStack : 0,
 						   omnivamp : 0.0,
+						   hasSetup : false,
 						}
+	}
+
+	fn setup(&mut self, friendlyChampions : &mut VecDeque<SummonedChampion>, enemyChampions : &mut VecDeque<SummonedChampion>) {
+		if self.hasSetup { return }
+
+		if self.items[0] == 77 {
+			//(!D) doesnt give accurate item pairs
+			let level = true; //implement getting level
+			if level {
+				self.items[1] = rand::thread_rng().gen_range(0..9) * 10 + rand::thread_rng().gen_range(0..9);
+				self.items[2] = rand::thread_rng().gen_range(0..9);//discrepency do this properly later
+			}
+			else {
+				self.items[1] = rand::thread_rng().gen_range(0..9) * 10 + rand::thread_rng().gen_range(0..9);
+				self.items[2] = rand::thread_rng().gen_range(0..9) * 10 + rand::thread_rng().gen_range(0..9);
+			}
+		}
+		for item in self.items {
+			self.GiveItemEffect(item, friendlyChampions, enemyChampions)
+		}
+		self.initialHP = self.health
 	}
 	///fn to heal set amount
 	fn heal(&mut self, mut healingAmount : f32) {
@@ -791,8 +813,7 @@ impl SummonedChampion {
 		if self.banish { return true }
 
 		{
-			let mut statusEffects = self.se;
-			self.se = Vec::new();
+			let mut statusEffects = replace(&mut self.se, Vec::new());
 			let mut stun = ShouldStun { stun: 0 };
 			statusEffects.retain_mut(|x| x.performStatus(self, friendlyChampions, enemyChampions, timeUnit, &mut stun));
 			
@@ -832,7 +853,7 @@ impl SummonedChampion {
 				
 				needNewTargetCell = true; //tells us to recalculate pathfinding later
 				//discrepency what if target has moved regardless
-				let index : Option<usize> = None;
+				let mut index : Option<usize> = None;
 				match self.location.getClosestToLocationTargetableIndex(enemyChampions) {
 					Some((i, champ)) => {
 						if champ.getIsTargetable() { 
@@ -846,14 +867,14 @@ impl SummonedChampion {
 				targetObject = enemyChampions.swap_remove_back(index.unwrap());
 			}
 			
-			let targetObject : SummonedChampion = targetObject.unwrap();
+			let mut targetObject : SummonedChampion = targetObject.unwrap();
 			self.target = targetObject.id;
 			let distanceToTarget = self.location.distanceBetweenPoints(&targetObject.location);
 			
 			if distanceToTarget <= self.ra {//if target in range
 				println!("Debug : Target in Range");
 				println!("Debug : Auto Attack Delay Remaining {0}", self.autoAttackDelay);//discrepency, does auto attack "charge" while moving
-				let dead = false;
+				let mut dead = false;
 				if self.autoAttackDelay <= 0//if autoattack ready
 				{
 					println!("Debug : Delay Smaller than 0 - Attacking");
@@ -950,7 +971,7 @@ impl SummonedChampion {
 					//optimisation
 					{
 						newPosition = Location::addPositionVec(&self.location, possibleMove);
-						distanceToTarget = targetObject.location.distanceBetweenPoints(&newPosition);
+						let distanceToTarget = targetObject.location.distanceBetweenPoints(&newPosition);
 						if distanceToTarget < lowestDistance
 						{
 							
@@ -990,9 +1011,9 @@ impl SummonedChampion {
 		//Ionic spark, optimisation, could be status effect but enemies not passed into function? also doesnt need to be check every turn
 		if self.items.contains(&25)
 		{
-			enemyChampions.iter_mut().filter(self.location.getWithinDistance(7)).map(|f| {
-				f.se.push(StatusEffect { duration: Some((timeUnit + 1).into()), statusType: StatusType::IonicSparkEffect(), isNegative: true, ..Default::default()})
-			});
+			for champ in enemyChampions.iter_mut().filter(self.location.getWithinDistance(7)) {
+				champ.se.push(StatusEffect { duration: Some((timeUnit + 1).into()), statusType: StatusType::IonicSparkEffect(), isNegative: true, ..Default::default()})
+			}
 		}
 
 		
@@ -1010,7 +1031,7 @@ impl SummonedChampion {
 	}
 	fn dealDamage(&mut self, friendlyChampions : &mut VecDeque<SummonedChampion>, target : &mut SummonedChampion, damageAmount : f32, damageType : DamageType, _isSplash : bool){
 		let mut damage : f32 = damageAmount * target.incomingDMGModifier;
-		let mut canCrit = false;
+		let mut canCrit;
 		let mut critD = self.critD;
 
 		match damageType{
@@ -1064,7 +1085,7 @@ impl SummonedChampion {
 					let healing = damage / 4.0;//calculate healing
 					self.heal(healing);//heal self
 					
-					let lowestHPChamp = friendlyChampions.iter().reduce(|x, y| if x.health < y.health {x} else {y}); //get lowest HP ally
+					let lowestHPChamp = friendlyChampions.iter_mut().reduce(|x, y| if x.health < y.health {x} else {y}); //get lowest HP ally
 
 					if lowestHPChamp.is_some(){ //if there are any allies
 						lowestHPChamp.unwrap().heal(healing)
@@ -1203,6 +1224,7 @@ fn GiveItemEffect(&mut self, item : u8, friendlyChampions : &mut VecDeque<Summon
 		11 => self.ad += [15.0, 30.0, 45.0][self.starLevel],
 		12 => {	self.ad += 10.0; self.ap += 0.1},
 		13 => {	self.ad += 10.0; self.health += 150.0;
+				self.attackSpeedModifier *= 1.3;
 			  	for friendlyChamp in friendlyChampions.iter_mut().filter(self.location.getWithinDistance(3)) {
 					if friendlyChamp.location.y == self.location.y { friendlyChamp.attackSpeedModifier *= 1.3; }
 			  	}
@@ -1221,6 +1243,7 @@ fn GiveItemEffect(&mut self, item : u8, friendlyChampions : &mut VecDeque<Summon
 		23 => {self.ap += 0.40; self.health += 150.0}//
 		24 => {	self.ap += 0.1; self.ar += 0.2;//Gives locket shield
 			   	let shieldAmount = [300.0, 350.0, 400.0][self.starLevel];
+				self.shields.push(Shield{duration : 1500, size : shieldAmount, ..Default::default()});
 				for friendlyChamp in friendlyChampions.iter_mut().filter(self.location.getWithinDistance(3)) {
 					if friendlyChamp.location.y == self.location.y { friendlyChamp.shields.push(Shield{duration : 1500, size : shieldAmount, ..Default::default()}); } //gives shield
 			  	}
@@ -1236,19 +1259,16 @@ fn GiveItemEffect(&mut self, item : u8, friendlyChampions : &mut VecDeque<Summon
 		34 => {self.health += 300.0; self.ar += 0.2; self.se.push(StatusEffect { duration: Some(0), statusType: StatusType::GiveSunfire(), ..Default::default() })}//(!U)
 		35 => {self.health += 150.0; self.mr += 0.2; self.se.push(StatusEffect { duration : Some(0), statusType: StatusType::Zephyr(500), ..Default::default()})}//gives zephyr effect
 		36 => {self.health += 150.0; self.attackSpeedModifier *= 0.1; //close enough, doesnt reset fully
-			   for enemyChamp in enemyChampions
+			   for enemyChamp in enemyChampions.iter_mut().filter(self.location.getWithinDistance(9))
 			   {
-					if DistanceBetweenPoints(enemyChamp.location, self.location) < 9 //if in range
-					{
-						enemyChamp.se.push(StatusEffect { duration: Some(0), statusType: StatusType::Taunted(self.id), isNegative: true, ..Default::default()})//(!D) does shed cleanse taunt? gives taunt effect
-					}
+					enemyChamp.se.push(StatusEffect { duration: Some(0), statusType: StatusType::Taunted(self.id), isNegative: true, ..Default::default()})//(!D) does shed cleanse taunt? gives taunt effect
 			   }
 		}
 		37 => {self.health += 150.0; self.dc += 15;  	
-			let thisLocation = self.location;
-			for friendlyChamp in friendlyChampions
+			self.shields.push(Shield{duration : 1500, size : 600.0, blocksType : Some(DamageType::Magical()), pop : true});
+			for friendlyChamp in friendlyChampions.iter_mut().filter(self.location.getWithinDistance(3))
 			  	{
-					if friendlyChamp.location[1] == thisLocation[1] && DistanceBetweenPoints(friendlyChamp.location, thisLocation) < 3//gives banshee's shield
+					if friendlyChamp.location.y == self.location.y//gives banshee's shield
 					{
 						friendlyChamp.shields.push(Shield{duration : 1500, size : 600.0, blocksType : Some(DamageType::Magical()), pop : true}); //(!D) shouldn't stack whether from multiple items on 1 person or from multiple champs
 					}
@@ -1258,7 +1278,7 @@ fn GiveItemEffect(&mut self, item : u8, friendlyChampions : &mut VecDeque<Summon
 		39 => {self.health += 150.0}//(!U)
 		44 => {self.ar += 0.8}//(!D) says grants 40 bonus armor, is that the 40 from the two chain vests?
 		45 => {self.ar += 0.2; self.mr += 0.2;//
-				self.se.push(StatusEffect{duration : Some(0), statusType: StatusType::Gargoyles(0), ..Default::default() })//(!D) only updates every second
+				self.se.push(StatusEffect{duration : Some(0), statusType: StatusType::Gargoyles(0.0), ..Default::default() })//(!D) only updates every second
 		}
 		46 => {self.ar += 0.2; self.attackSpeedModifier *= 1.1;
 			self.se.push(StatusEffect { duration: Some(0), statusType: StatusType::TitansResolve(0), ..Default::default() })
@@ -1278,11 +1298,10 @@ fn GiveItemEffect(&mut self, item : u8, friendlyChampions : &mut VecDeque<Summon
 		57 => {self.mr += 0.2; self.dc += 15; self.attackSpeedModifier *= 1.2;
 				self.se.push(StatusEffect{duration : Some(15000), statusType: StatusType::CrowdControlImmune(), ..Default::default()});
 		}
-		58 => {self.cm += 15; self.mr += 0.2;
-			let thisLocation = self.location;
-			for friendlyChamp in friendlyChampions
+		58 => {self.cm += 15; self.mr += 0.2; self.ap += 0.3;
+			for friendlyChamp in friendlyChampions.iter_mut().filter(self.location.getWithinDistance(3))
 			  	{
-					if friendlyChamp.location[1] == thisLocation[1] && DistanceBetweenPoints(friendlyChamp.location, thisLocation) < 3 //discrepency distances
+					if friendlyChamp.location.y == self.location.y//discrepency distances
 					{
 						friendlyChamp.ap += 0.3; //(!D) shouldn't stack whether from multiple items on 1 person or from multiple champs
 					}
@@ -1355,7 +1374,8 @@ impl Default for SummonedChampion
 			zap: false, 
 			banish: false, 
 			titansResolveStack: 0, 
-			omnivamp: 0.0
+			omnivamp: 0.0,
+			hasSetup : false
 		}
 	}
 }
@@ -1448,9 +1468,11 @@ impl Projectile
 		{
 			if self.location == possibleTarget.location//has a hit
 			{
-				let shooter =  match findChampionIndexFromID(&friendlyChampions, self.shooterID) {//finds shooter id
-					Some(shooterIndex) => friendlyChampions[shooterIndex],
-					None => SummonedChampion {..Default::default()}	
+				let mut shooter = SummonedChampion {..Default::default()}; //(!O) has to be better way
+				let mut addBack = false;
+				if let Some(shooterIndex) = findChampionIndexFromID(&friendlyChampions, self.shooterID) {//finds shooter id
+					shooter = friendlyChampions.swap_remove_back(shooterIndex).unwrap();
+					addBack = true;
 				};
 				shooter.dealDamage(friendlyChampions, possibleTarget, self.damage, self.damageType, false);//deals damage
 				if self.splashDamage > 0.0//if there is splash damage
@@ -1459,6 +1481,9 @@ impl Projectile
 					{
 						shooter.dealDamage(friendlyChampions, possibleSecondaryTarget, self.splashDamage, self.damageType, true);//deal secondary dmg
 					}
+				}
+				if addBack {
+					friendlyChampions.push_back(shooter)
 				}
 				return false//remove self
 			}
@@ -1518,67 +1543,16 @@ impl Board
 	fn StartBattle(mut self : Board) -> i8
 	{
 		let mut debugCount : u32 = 0;
-		for i in 0..self.p1Champions.len()//(!O), (!D) slam item mid round?
-		{
-			if self.p1Champions[i].items[0] == 77//if they have thieves gloves, give them random other items
-			{
-				//(!D) doesnt give accurate item pairs
-				let level = true; //implement getting level
-				if level
-				{
-					self.p1Champions[i].items[1] = rand::thread_rng().gen_range(0..9) * 10 + rand::thread_rng().gen_range(0..9);
-					self.p1Champions[i].items[2] = rand::thread_rng().gen_range(0..9);//discrepency do this properly later
-				}
-				else 
-				{
-					self.p1Champions[i].items[1] = rand::thread_rng().gen_range(0..9) * 10 + rand::thread_rng().gen_range(0..9);
-					self.p1Champions[i].items[2] = rand::thread_rng().gen_range(0..9) * 10 + rand::thread_rng().gen_range(0..9);
-				}
-			}
-			for item in self.p1Champions[i].items//gives item effects
-			{
-				GiveItemEffect(item, &mut self.p1Champions, &mut self.p2Champions, i);
-			}
-		}
-		for i in 0..self.p2Champions.len()//repeat but for p2 Champions
-		{
-			if self.p2Champions[i].items[0] == 77
-			{
-				let level = true;
-				if level
-				{
-					self.p2Champions[i].items[1] = rand::thread_rng().gen_range(0..9) * 10 + rand::thread_rng().gen_range(0..9);
-					self.p2Champions[i].items[2] = rand::thread_rng().gen_range(0..9);
-				}
-				else 
-				{
-					self.p2Champions[i].items[1] = rand::thread_rng().gen_range(0..9) * 10 + rand::thread_rng().gen_range(0..9);
-					self.p2Champions[i].items[2] = rand::thread_rng().gen_range(0..9) * 10 + rand::thread_rng().gen_range(0..9);
-				}
-			}
-			for item in self.p2Champions[i].items
-			{
-				GiveItemEffect(item, &mut self.p2Champions, &mut self.p1Champions, i);
-			}
-		}	
-		for p1Champ in &mut self.p1Champions//set all initial health to correct value
-		{
-			p1Champ.initialHP = p1Champ.health;
-		}
-		for p2Champ in &mut self.p2Champions
-		{
-			p2Champ.initialHP = p2Champ.health;
-		}
 		let mut p1Projectiles : Vec<Projectile> = Vec::new();//instantiate projectiles vecs
 		let mut p2Projectiles : Vec<Projectile> = Vec::new();
 		while self.p1Champions.len() > 0 && self.p2Champions.len() > 0//take turns while there are champions alive
 		{
 			println!("Debug : Iteration {}", debugCount);
 			debugCount += 1;//count turns
-			for champCount in 0..self.p1Champions.len()//take turn for all p1Champs
+			for _champCount in 0..self.p1Champions.len()//take turn for all p1Champs
 			{
-				let thisChamp = self.p1Champions.pop_front().unwrap();
-
+				let mut thisChamp = self.p1Champions.pop_front().unwrap();
+				thisChamp.setup(&mut self.p1Champions, &mut self.p2Champions);
 				let alive = thisChamp.takeTurn(&mut self.p1Champions, &mut self.p2Champions, self.timeUnit, self.movementAmount, &mut p1Projectiles);
 				if alive{
 					self.p1Champions.push_back(thisChamp)
@@ -1589,9 +1563,14 @@ impl Board
 
 			
 
-			for p2ChampionIndex in 0..self.p2Champions.len()//take turn for all p2Champs
+			for _champCount in 0..self.p2Champions.len()//take turn for all p1Champs
 			{
-				takeTurn(p2ChampionIndex, &mut self.p2Champions, &mut self.p1Champions, self.timeUnit, self.movementAmount, &mut p2Projectiles)
+				let mut thisChamp = self.p2Champions.pop_front().unwrap();
+				thisChamp.setup(&mut self.p2Champions, &mut self.p1Champions);
+				let alive = thisChamp.takeTurn(&mut self.p2Champions, &mut self.p1Champions, self.timeUnit, self.movementAmount, &mut p2Projectiles);
+				if alive{
+					self.p2Champions.push_back(thisChamp)
+				}
 			}
 			p1Projectiles.retain_mut(|f| f.SimulateTick(&mut self.p2Champions, &mut self.p1Champions));
 			p2Projectiles.retain_mut(|f| f.SimulateTick(&mut self.p1Champions, &mut self.p2Champions));//simulate projectile ticks
@@ -1620,8 +1599,8 @@ impl Board
 }
 
 fn main() {
-	let playerOneChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 0, star : 0, items : [0, 0, 0], location : [3, 0]}];
-	let playerTwoChamps : Vec<PlacedChampion> = vec![PlacedChampion{id : 1, star : 0, items : [0, 0, 0], location : [6, 7]}];
+	let playerOneChamps : VecDeque<PlacedChampion> = VecDeque::from([PlacedChampion{id : 0, star : 0, items : [0, 0, 0], location : Location { x: 3, y: 0 }}]);
+	let playerTwoChamps : VecDeque<PlacedChampion> = VecDeque::from([PlacedChampion{id : 1, star : 0, items : [0, 0, 0], location : Location { x: 6, y: 7 }}]);
 	let mut boardOutcome = 1;
 	let mut iterationCount = 0;
 	while boardOutcome != 2
@@ -1635,47 +1614,12 @@ fn main() {
 	println!("Debug : Iteration Count {}", iterationCount);
 
 }
-///Returns a distance twice as large (a distance of 1 hex returns 2)
-fn DistanceBetweenPoints(point1 : [i8 ; 2], point2 : [i8 ; 2]) -> i8//(!O)
-{
-	let zPoints : [i8 ; 2] = [-point1[0] - point1[1], -point2[0] - point2[1]];
-	(point1[0] - point2[0]).abs() + (point1[1] - point2[1]).abs() + (zPoints[0] - zPoints[1]).abs()
-}
 
 ///0 if num is 0, 1 if num > 0, -1 if num < 0
-fn sign(num : i8) -> i8
-{
-	if num == 0
-	{
-		0
-	}
-	else if num > 0
-	{
-		1
-	}
-	else
-	{
-		-1
-	}
+fn sign(num : i8) -> i8 {
+	if num == 0 { return 0 }
+	else if num > 0 { return 1 }
+	-1
 }
 
-///calcalates whether position is in grid
-fn InGridHexagon(pos : [i8 ; 2]) -> bool
-{
-	if pos[0] >= 0 && pos[0] < 10 &&
-	   pos[1] >= 0 && pos[1] < 8
-	{
-		if 2 - (pos[1] / 2) < pos[0] && 
-		   10 - (pos[1] / 2) > pos[0]
-		{
-			return true
-		}
-	}
-	false
-}
-///returns if status effect should be kept in .se used in retain_mut
-fn performStatus(statusEffect : &mut StatusEffect, friendlyChampions : &mut Vec<SummonedChampion>, enemyChampions : &mut Vec<SummonedChampion>, timeUnit : i8, selfIndex : usize, stun : &mut ShouldStun, seToAdd : &mut Vec<StatusEffect>) -> bool
-{//(!D) on whether the last tick of a status applies or not etc
-	
-}
 
