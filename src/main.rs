@@ -5,58 +5,52 @@ use rand::{Rng};
 use std::collections::VecDeque;
 use std::mem::replace;
 
-///ShouldStun<br />
-///Simple struct to pass by reference to record whether stunned.<br />
-struct ShouldStun
-{
-	///Records whether champ is stunned. 0 = not stunned, 1 = stunned, 2 = locked (cannot be stunned)
+///Records champion's stun state.<br />
+struct ShouldStun {
+	///Records whether champion is stunned:<br />
+	///0 = not stunned<br />
+	///1 = stunned<br />
+	///2 = stun immune
 	stun : u8,
 }
-///Champion (struct):<br />.
-///Stores the basic information surrounding a champion<br />
-struct Champion
-{
-	///Champion ID<br />
-	///same as index in CHAMPIONS
-	#[allow(dead_code)]
-    id : u8,
+
+///Stores basic information surrounding a champion
+struct Champion {
+
+	///index in champions array
+    _id : u8,
     
-	///Healthpoints for each Star Level
+	///healthpoints (star level dependent)
     hp : [f32; 3], 
 
-	///Starting mana
+	///starting mana
     sm : u16,
 
-	///Ability Mana Cost
+	///ability mana cost
     mc : u16,
 
-	///Base Armor Value
+	///base armor value
     ar : f32,
 
 	///Base Magic Resist Value
     mr : f32,
 
-	///Auto Attack Damage for each Star Level
+	///attack damage (star level dependent)
     ad : [f32; 3],
 
-	///Attack Speed in Attacks per Second
+	///attack speed (attacks per second)
     aS : f32,
 	
-	///Auto attack range
+	///attack range
     ra : i8,
 
-    ///Ability ID<br />
-	///same as index in CHAMPIONABILITIES
-    aID : usize, 
-
-	/*///Trait IDs
-    traits : [u8 ; 3],*/
+	///ability id: index in abilities array
+    a_ID : usize, 
 }
 ///Status Type (enum):<br />
 ///Holds information about what the status does
 #[derive(PartialEq)]
-enum StatusType
-{
+enum StatusType {
 	///Attack Speed Buff:<br />
 	///(bool : whether the buff has been applied, f32 : actual modifier)
 	AttackSpeedBuff(f32),
@@ -150,177 +144,166 @@ enum StatusType
 	NoEffect()
 }
 
-enum FilterType{
+enum FilterType {
 	///i8 : Distance to check
 	///Location : Other Location
 	DistanceFilter(i8, Location)
-
 }
 
-fn generate_filter(filter : FilterType) -> impl for<'a> Fn(&&mut SummonedChampion) -> bool { //err here captured lifetime
+fn generate_filter(filter : FilterType) -> impl for<'a> Fn(&&mut SummonedChampion) -> bool { 
 	match filter {
 		FilterType::DistanceFilter(dis, location) => {
 			return move |n : &&mut SummonedChampion| {
 				n.location.distanceBetweenPoints(&location) < dis
 			  }
 		}
-	}
-	
+	}	
 }
 
 
 
 ///StatusEffect (struct)<br />:
 ///Stores a status type and a duration
-struct StatusEffect
-{
+struct StatusEffect {
 	///Duration of status effect in centiseconds
 	duration : Option<i16>,//optimisation so uses Option<i16> rather than i16
 
 	///Whether the status effect has been applied
 	applied : bool,
 	///Stores status type
-	statusType : StatusType,
+	status_type : StatusType,
 	///Whether is negative for shred
-	isNegative : bool,
+	is_negative : bool,
 }
 ///Default Status Effect Values
-impl Default for StatusEffect{
-	fn default() -> StatusEffect
-	{
-		StatusEffect { duration: None, applied : false, statusType: StatusType::NoEffect(), isNegative: false }
+impl Default for StatusEffect {
+	fn default() -> StatusEffect {
+		StatusEffect { duration: None, applied : false, status_type: StatusType::NoEffect(), is_negative: false }
 	}
 }
 
 impl StatusEffect {
-	fn performStatus(&mut self, affectedChampion : &mut SummonedChampion, friendlyChampions : &mut VecDeque<SummonedChampion>, enemyChampions : &mut VecDeque<SummonedChampion>, timeUnit : i8, stun : &mut ShouldStun) -> bool {
-		if self.duration.is_some()
-		{
-			let mut nDuration = self.duration.unwrap().checked_sub(timeUnit.into()).unwrap_or(0); //unwrap duration and do checked subtraction
-			if affectedChampion.shed == 2 && self.isNegative {//if shed and self is negative
-				nDuration = 0;//set duration to 0
-			}
-			if nDuration <= 0 {
-				match self.statusType//undo status effect/ remove effect. some effects aren't actually removed but just reinitialise
-				{
+	fn perform_status(&mut self, affected_champion : &mut SummonedChampion, friendly_champions : &mut VecDeque<SummonedChampion>, enemy_champions : &mut VecDeque<SummonedChampion>, time_unit : i8, stun : &mut ShouldStun) -> bool {
+		if self.duration.is_some() {
+			let mut n_duration = self.duration.unwrap().checked_sub(time_unit.into()).unwrap_or(0); //unwrap duration and do checked subtraction
+			
+			if affected_champion.shed == 2 && self.is_negative { n_duration = 0; }//if shed and negative set duration to 0
+			
+			if n_duration <= 0 {
+				match self.status_type {//undo status effect/ remove effect. some effects aren't actually removed but just reinitialise	
 					StatusType::AttackSpeedBuff(modifier) => {
-						affectedChampion.attackSpeedModifier /= modifier
+						affected_champion.attackSpeedModifier /= modifier
 					}
 					StatusType::IncreaseDamageTaken(modifier) => {
-						affectedChampion.incomingDMGModifier /= modifier
+						affected_champion.incomingDMGModifier /= modifier
 					}
 					StatusType::Untargetable() => {
-						affectedChampion.targetable = true//(!D) if have 2 untargetable effects this will untarget too early
+						affected_champion.targetable = true//(!D) if have 2 untargetable effects this will untarget too early
 					}
-					StatusType::MorellonomiconBurn(dmgPerTick, dmgToDo, timeTillNextTick) => {
-						if affectedChampion.shed == 2 {
-							return false;
-						}
-						if dmgPerTick > dmgToDo {
-							affectedChampion.health -= dmgToDo;
+					StatusType::MorellonomiconBurn(dmg_per_tick, dmg_to_do, time_next_tick) => {
+						if affected_champion.shed == 2 { return false; }
+						
+						if dmg_per_tick > dmg_to_do { 
+							affected_champion.health -= dmg_to_do; 
 						}
 						else {
-							nDuration = timeTillNextTick;
-							self.statusType = StatusType::MorellonomiconBurn(dmgPerTick, dmgToDo - dmgPerTick, timeTillNextTick);
+							n_duration = time_next_tick;
+							self.status_type = StatusType::MorellonomiconBurn(dmg_per_tick, dmg_to_do - dmg_per_tick, time_next_tick);
 						}
 						
 					}
 					StatusType::IonicSparkEffect() => {
-						affectedChampion.mr *= 2.0; //(!D) Possible discrepency
-						affectedChampion.zap = false
+						affected_champion.mr *= 2.0; //(!D) Possible discrepency
+						affected_champion.zap = false
 					}  
-					StatusType::ArchangelStaff(apAmount) => {
-						nDuration = 500; 
-						affectedChampion.ap += apAmount;
+					StatusType::ArchangelStaff(ap_amount) => {
+						n_duration = 500; 
+						affected_champion.ap += ap_amount;
 					}
 					StatusType::Banished() => {
-						affectedChampion.banish = false
+						affected_champion.banish = false
 					}
 					StatusType::RedemptionGive() => {
-						nDuration = 100;//increase duration
-						for champ in friendlyChampions.iter_mut().filter(affectedChampion.location.getWithinDistance(3)) {
-							champ.heal((champ.initialHP - champ.health) * 0.12)//discrepency check at multitarget damage time for redemption heal for reduction
+						n_duration = 100;//increase duration
+						for champ in friendly_champions.iter_mut().filter(affected_champion.location.getWithinDistance(3)) {
+							champ.heal((champ.initial_hp - champ.health) * 0.12)//discrepency check at multitarget damage time for redemption heal for reduction
 						}
-						affectedChampion.heal((affectedChampion.initialHP - affectedChampion.health) * 0.12);
+						affected_champion.heal((affected_champion.initial_hp - affected_champion.health) * 0.12);
 					}
 					StatusType::Gargoyles(oldNumTargeting) => {
-						nDuration = 100;//increase duration
-						let numTargeting : f32 = affectedChampion.getNumTargeting(enemyChampions) as f32;
+						n_duration = 100;//increase duration
+						let numTargeting : f32 = affected_champion.getNumTargeting(enemy_champions) as f32;
 						let difference= numTargeting - oldNumTargeting;//get change
-						affectedChampion.ar += 0.18 * difference;
-						affectedChampion.mr += 0.18 * difference;
-						self.statusType = StatusType::Gargoyles(numTargeting);
+						affected_champion.ar += 0.18 * difference;
+						affected_champion.mr += 0.18 * difference;
+						self.status_type = StatusType::Gargoyles(numTargeting);
 					}
 					StatusType::ShroudOfStillness() => {//(!D) not actual shroud affect
-						for champ in enemyChampions.iter_mut().filter(|x| x.location.x == affectedChampion.location.x) {
+						for champ in enemy_champions.iter_mut().filter(|x| x.location.x == affected_champion.location.x) {
 							champ.cm -= (7 * champ.mc) / 20;
 						}
 					}
 					StatusType::DragonClawHeal() => {
-						nDuration = 200;//reset status effect
+						n_duration = 200;//reset status effect
 
-						let numTargeting : f32 = affectedChampion.getNumTargeting(enemyChampions) as f32;
-						affectedChampion.heal(affectedChampion.initialHP * 0.012 * numTargeting);
+						let numTargeting : f32 = affected_champion.getNumTargeting(enemy_champions) as f32;
+						affected_champion.heal(affected_champion.initial_hp * 0.012 * numTargeting);
 					}
 					StatusType::LastWhisperShred() => {
-						affectedChampion.ar *= 2.0 //discrepency if thingy was reduced during time then
+						affected_champion.ar *= 2.0 //discrepency if thingy was reduced during time then
 					}	
 					StatusType::GiveSunfire() => {//(!U)
-						nDuration = 300; 
-						for champ in enemyChampions.iter_mut().filter(affectedChampion.location.getWithinDistance(3)){
-							let dmg = champ.initialHP / 20.0;
-							champ.se.push(StatusEffect {duration : Some(100), statusType : StatusType::MorellonomiconBurn(dmg, dmg / 3.0, 100), ..Default::default()})
+						n_duration = 300; 
+						for champ in enemy_champions.iter_mut().filter(affected_champion.location.getWithinDistance(3)){
+							let dmg = champ.initial_hp / 20.0;
+							champ.se.push(StatusEffect {duration : Some(100), status_type : StatusType::MorellonomiconBurn(dmg, dmg / 3.0, 100), ..Default::default()})
 						}
 					}
 					StatusType::EdgeOfNight() => {
-						if affectedChampion.health <= (affectedChampion.initialHP / 2.0) {
-							affectedChampion.se.push(StatusEffect {duration : Some(50), statusType : StatusType::Untargetable(), ..Default::default()});//optimisation at every ..Default::default() with instead isNegative : false
-							affectedChampion.se.push(StatusEffect { duration: None, statusType: StatusType::AttackSpeedBuff(1.3), ..Default::default()}); //discrepency technically attack speed buff comes into play after untargetable wears off
-							affectedChampion.shed = 1;
+						if affected_champion.health <= (affected_champion.initial_hp / 2.0) {
+							affected_champion.se.push(StatusEffect { duration : Some(50), status_type : StatusType::Untargetable(), ..Default::default()});//optimisation at every ..Default::default() with instead isNegative : false
+							affected_champion.se.push(StatusEffect { duration: None, status_type: StatusType::AttackSpeedBuff(1.3), ..Default::default()}); //(!D) technically attack speed buff comes into play after untargetable wears off
+							affected_champion.shed = 1;
 						}
-						else {
-							return true
-						}
+						else { return true }
 					}
 					StatusType::Bloodthirster() => {
-						if affectedChampion.health <= (0.4 * affectedChampion.initialHP) {
-							affectedChampion.shields.push(Shield{duration : 500, size : affectedChampion.initialHP / 4.0, ..Default::default()});
+						if affected_champion.health <= (0.4 * affected_champion.initial_hp) {
+							affected_champion.shields.push(Shield{duration : 500, size : affected_champion.initial_hp / 4.0, ..Default::default()});
 						}
-						else {
-							return true
-						}
+						else { return true }
 					}
-					StatusType::Zephyr(banishDuration) => {
-						let oppositeLocation = Location { x : affectedChampion.location.y, y : affectedChampion.location.x };//(!D) probs not opposite
-						oppositeLocation.getClosestToLocation(enemyChampions).unwrap().se.push(StatusEffect{ duration: Some(banishDuration), statusType: StatusType::Banished(), ..Default::default() });
+					StatusType::Zephyr(banish_duration) => {
+						let opposite_location = Location { x : affected_champion.location.y, y : affected_champion.location.x };//(!D) probs not opposite
+						opposite_location.getClosestToLocation(enemy_champions).unwrap().se.push(StatusEffect{ duration: Some(banish_duration), status_type: StatusType::Banished(), ..Default::default() });
 					}
 					StatusType::Taunted(tauntID) => {
-						if findChampionIndexFromID(enemyChampions, tauntID).is_some() {
-							affectedChampion.target = tauntID;
-							affectedChampion.targetCountDown = 100;
-							nDuration = 20;
+						if findChampionIndexFromID(enemy_champions, tauntID).is_some() {
+							affected_champion.target = tauntID;
+							affected_champion.targetCountDown = 100;
+							n_duration = 20;
 						}
 					}
 					StatusType::TitansResolve(mut oldStackNum) => {
 						if oldStackNum != 25 {
-							let difference : f32 = (affectedChampion.titansResolveStack - oldStackNum).into();
-							affectedChampion.ad += 2.0 * difference;
-							affectedChampion.ap += 0.02 * difference;
-							oldStackNum = affectedChampion.titansResolveStack;
+							let difference : f32 = (affected_champion.titansResolveStack - oldStackNum).into();
+							affected_champion.ad += 2.0 * difference;
+							affected_champion.ap += 0.02 * difference;
+							oldStackNum = affected_champion.titansResolveStack;
 							if oldStackNum == 25 {
-								affectedChampion.ar += 0.25;
-								affectedChampion.mr += 0.25;
+								affected_champion.ar += 0.25;
+								affected_champion.mr += 0.25;
 							}
 						}
 						return true;
 					}
 					StatusType::ProtectorsVow() => {
-						if affectedChampion.health <= (affectedChampion.initialHP / 2.0) {
-							affectedChampion.mr += 0.25;
-							affectedChampion.ar += 0.25;
-							affectedChampion.shields.push( Shield {
+						if affected_champion.health <= (affected_champion.initial_hp / 2.0) {
+							affected_champion.mr += 0.25;
+							affected_champion.ar += 0.25;
+							affected_champion.shields.push( Shield {
 								duration : 500,
-								size : affectedChampion.initialHP / 4.0,
+								size : affected_champion.initial_hp / 4.0,
 								..Default::default()
 							})
 						}
@@ -330,7 +313,7 @@ impl StatusEffect {
 					}
 					_ => ()
 				}
-				if nDuration > 0 { self.duration = Some(nDuration); }
+				if n_duration > 0 { self.duration = Some(n_duration); }
 				else { return false }
 			}
 		}
@@ -338,28 +321,28 @@ impl StatusEffect {
 		if ! self.applied
 		{
 			self.applied = true;
-			match self.statusType {
+			match self.status_type {
 				StatusType::AttackSpeedBuff(modifier) => {
-					affectedChampion.attackSpeedModifier *= modifier;
+					affected_champion.attackSpeedModifier *= modifier;
 				}
 				StatusType::Stun() => {
 					self.applied = false;
 					if stun.stun == 0 { stun.stun = 1; }//has to check stun.stun == 0 as if stun.stun == 2 it is immune
 				} 
-				StatusType::IncreaseDamageTaken(modifier) => { affectedChampion.incomingDMGModifier *= modifier; }
+				StatusType::IncreaseDamageTaken(modifier) => { affected_champion.incomingDMGModifier *= modifier; }
 				StatusType::Assassin() => {
-					if affectedChampion.location.y >= 4 { affectedChampion.location.y = 0; }
-					else { affectedChampion.location.y = 0; }//(!D) maybe leap not instantaneous/ first frame?
+					if affected_champion.location.y >= 4 { affected_champion.location.y = 0; }
+					else { affected_champion.location.y = 0; }//(!D) maybe leap not instantaneous/ first frame?
 		
 					return false
 				}
-				StatusType::Untargetable() => { affectedChampion.targetable = false } 
+				StatusType::Untargetable() => { affected_champion.targetable = false } 
 				StatusType::IonicSparkEffect() => {	
-					affectedChampion.mr /= 2.0; 
-					affectedChampion.zap = true
+					affected_champion.mr /= 2.0; 
+					affected_champion.zap = true
 				}
-				StatusType::Banished() => { affectedChampion.banish = true }																	
-				StatusType::LastWhisperShred() => { affectedChampion.ar /= 2.0; }
+				StatusType::Banished() => { affected_champion.banish = true }																	
+				StatusType::LastWhisperShred() => { affected_champion.ar /= 2.0; }
 				StatusType::CrowdControlImmune() => {
 					self.applied = false;
 					stun.stun = 2;
@@ -372,10 +355,10 @@ impl StatusEffect {
 }
 ///CHAMPIONS (const):<br />
 ///Stores all the champion information
-const CHAMPIONS : [Champion ; 4] = [Champion{id : 0, hp : [650.0, 1100.0, 2100.0], sm : 70, mc : 140, ar : 0.25, mr : 0.25, ad : [40.0, 70.0, 130.0], aS : 0.6, ra : 2, aID : 0}, //Support
-                 					Champion{id : 1, hp : [800.0, 1400.0, 2500.0], sm : 50, mc : 100, ar : 0.45, mr : 0.45, ad : [75.0, 100.0, 175.0], aS : 0.7, ra : 1, aID : 1}, //Bruiser
-                 					Champion{id : 2, hp : [700.0, 1200.0, 2200.0], sm : 35, mc : 100, ar : 0.25, mr : 0.25, ad : [65.0, 120.0, 240.0], aS : 0.7, ra : 3, aID : 2}, //AD Ranged
-									Champion{id : 2, hp : [700.0, 1200.0, 2200.0], sm : 35, mc : 150, ar : 0.25, mr : 0.25, ad : [50.0, 60.0, 70.0], aS : 0.6, ra : 3, aID : 3,}]; //AP Ranged
+const CHAMPIONS : [Champion ; 4] = [Champion{_id : 0, hp : [650.0, 1100.0, 2100.0], sm : 70, mc : 140, ar : 0.25, mr : 0.25, ad : [40.0, 70.0, 130.0], aS : 0.6, ra : 2, a_ID : 0}, //Support
+                 					Champion{_id : 1, hp : [800.0, 1400.0, 2500.0], sm : 50, mc : 100, ar : 0.45, mr : 0.45, ad : [75.0, 100.0, 175.0], aS : 0.7, ra : 1, a_ID : 1}, //Bruiser
+                 					Champion{_id : 2, hp : [700.0, 1200.0, 2200.0], sm : 35, mc : 100, ar : 0.25, mr : 0.25, ad : [65.0, 120.0, 240.0], aS : 0.7, ra : 3, a_ID : 2}, //AD Ranged
+									Champion{_id : 2, hp : [700.0, 1200.0, 2200.0], sm : 35, mc : 150, ar : 0.25, mr : 0.25, ad : [50.0, 60.0, 70.0], aS : 0.6, ra : 3, a_ID : 3,}]; //AP Ranged
 
 ///findChampionIndexFromID:<br />
 ///champions : &Vec<SummonedChampion> - List of champions to iterate through<br />
@@ -688,7 +671,7 @@ struct SummonedChampion {
 	incomingDMGModifier : f32,
 
 	///starting HP
-	initialHP : f32,
+	initial_hp : f32,
 
 	///can be targeted or not
 	targetable : bool,
@@ -725,7 +708,7 @@ impl SummonedChampion {
 		SummonedChampion { location: placedChampion.location, //create summoned champ with all details
 						   movementProgress : [0, 0],
 						   health: ofChampion.hp[starLevel], 
-						   initialHP : 0.0,
+						   initial_hp : 0.0,
 						   cm: ofChampion.sm, //update current mana to starting mana
 						   dc: 0, 
 						   cr : 25,
@@ -742,7 +725,7 @@ impl SummonedChampion {
 						   attackSpeedModifier : 1.0,
 						   target : 255,
 						   targetCells : Location { x: -1, y: -1 }, //(!O)
-						   aID: ofChampion.aID, 
+						   aID: ofChampion.a_ID, 
 						   items: placedChampion.items,
 						   ap : 1.0,
 						   se : Vec::new(),
@@ -780,20 +763,20 @@ impl SummonedChampion {
 		for item in self.items {
 			self.GiveItemEffect(item, friendlyChampions, enemyChampions)
 		}
-		self.initialHP = self.health
+		self.initial_hp = self.health
 	}
 	///fn to heal set amount
 	fn heal(&mut self, mut healingAmount : f32) {
 		for statusEffect in &self.se {//checks for grevious wounds
 		
-			if statusEffect.statusType == StatusType::GreviousWounds() {
+			if statusEffect.status_type == StatusType::GreviousWounds() {
 				healingAmount /= 2.0;//halves healing
 				break;
 			}
 		}
 		self.health += healingAmount;
-		if self.health > self.initialHP {
-			self.health = self.initialHP//makes sure to limit it to initial HP, so no healing to infinity
+		if self.health > self.initial_hp {
+			self.health = self.initial_hp//makes sure to limit it to initial HP, so no healing to infinity
 		}
 	}
 	///simulates a tick/ turn for a champion<br />
@@ -815,7 +798,7 @@ impl SummonedChampion {
 		{
 			let mut statusEffects = replace(&mut self.se, Vec::new());
 			let mut stun = ShouldStun { stun: 0 };
-			statusEffects.retain_mut(|x| x.performStatus(self, friendlyChampions, enemyChampions, timeUnit, &mut stun));
+			statusEffects.retain_mut(|x| x.perform_status(self, friendlyChampions, enemyChampions, timeUnit, &mut stun));
 			
 			if self.health <= 0.0 { return false }
 
@@ -902,7 +885,7 @@ impl SummonedChampion {
 					}
 					if self.items.contains(&68) {//(!O) go through foreach in items and match statement
 						self.dealDamage(friendlyChampions, &mut targetObject, 50.0, DamageType::Magical(), false);
-						targetObject.se.push(StatusEffect { duration: Some(500), statusType: StatusType::ShredMagicResist(2.0), isNegative: true, ..Default::default()});
+						targetObject.se.push(StatusEffect { duration: Some(500), status_type: StatusType::ShredMagicResist(2.0), is_negative: true, ..Default::default()});
 						let mut count = 0;
 
 						for enemyChamp in enemyChampions.iter_mut()
@@ -910,7 +893,7 @@ impl SummonedChampion {
 							count += 1;
 
 							self.dealDamage(friendlyChampions, enemyChamp, 50.0, DamageType::Magical(), false);
-							enemyChamp.se.push(StatusEffect { duration: Some(500), statusType: StatusType::ShredMagicResist(2.0), isNegative: true, ..Default::default()});
+							enemyChamp.se.push(StatusEffect { duration: Some(500), status_type: StatusType::ShredMagicResist(2.0), is_negative: true, ..Default::default()});
 							
 							if count >= 3 { break; }
 						}
@@ -1012,7 +995,7 @@ impl SummonedChampion {
 		if self.items.contains(&25)
 		{
 			for champ in enemyChampions.iter_mut().filter(self.location.getWithinDistance(7)) {
-				champ.se.push(StatusEffect { duration: Some((timeUnit + 1).into()), statusType: StatusType::IonicSparkEffect(), isNegative: true, ..Default::default()})
+				champ.se.push(StatusEffect { duration: Some((timeUnit + 1).into()), status_type: StatusType::IonicSparkEffect(), is_negative: true, ..Default::default()})
 			}
 		}
 
@@ -1043,7 +1026,7 @@ impl SummonedChampion {
 					let mut alreadyHasShred = false;
 					for statusEffect in &target.se//check if they already have armor shred
 					{
-						if StatusType::LastWhisperShred() == statusEffect.statusType
+						if StatusType::LastWhisperShred() == statusEffect.status_type
 						{
 							alreadyHasShred = true;
 							break;
@@ -1051,7 +1034,7 @@ impl SummonedChampion {
 					}
 					if ! alreadyHasShred//if they don't, give it
 					{
-						target.se.push(StatusEffect{duration : Some(500), statusType : StatusType::LastWhisperShred(), isNegative : true, ..Default::default()})
+						target.se.push(StatusEffect{duration : Some(500), status_type : StatusType::LastWhisperShred(), is_negative : true, ..Default::default()})
 					}
 				}
 				if self.cr > 100 && self.items.contains(&17){ //give extra crit damage from infinity edge
@@ -1076,7 +1059,7 @@ impl SummonedChampion {
 		}
 
 		if self.items.contains(&16) {//give bonus giant's slayer attack dmg
-			if target.initialHP >= 2200.0 { damage *= 1.45 }
+			if target.initial_hp >= 2200.0 { damage *= 1.45 }
 			else { damage *= 1.2 }
 		}
 
@@ -1092,9 +1075,9 @@ impl SummonedChampion {
 					}
 				}
 			if self.items.contains(&23) { //if self has morellos give morellos effect
-				target.se.push(StatusEffect { duration: Some(1000), statusType: StatusType::GreviousWounds(), isNegative: true, ..Default::default()});
-				let dmgToDo = target.initialHP / 4.0;
-				target.se.push(StatusEffect { duration: Some(100), statusType: StatusType::MorellonomiconBurn(dmgToDo / 10.0, dmgToDo, 100), isNegative : true, ..Default::default()})//discrepency unsure whether burn just reapplies itself
+				target.se.push(StatusEffect { duration: Some(1000), status_type: StatusType::GreviousWounds(), is_negative: true, ..Default::default()});
+				let dmgToDo = target.initial_hp / 4.0;
+				target.se.push(StatusEffect { duration: Some(100), status_type: StatusType::MorellonomiconBurn(dmgToDo / 10.0, dmgToDo, 100), is_negative : true, ..Default::default()})//discrepency unsure whether burn just reapplies itself
 			}
 		}
 		
@@ -1155,20 +1138,20 @@ impl SummonedChampion {
 						//give allies attack speed for 5 seconds
 						champ.se.push(StatusEffect{
 																				duration : Some(500),
-																				statusType : StatusType::AttackSpeedBuff(1.7 * ap),
+																				status_type : StatusType::AttackSpeedBuff(1.7 * ap),
 																				..Default::default()	});
 					}
 					else //enemy champ
 					{
 						//stun enemies for 1.5 seconds and increase damage for 20%
-						champ.se.push(StatusEffect { duration: Some(150), statusType: StatusType::Stun(), isNegative : true, ..Default::default() });
-						champ.se.push(StatusEffect { duration: Some(150), statusType: StatusType::IncreaseDamageTaken(1.2 * ap), isNegative : true, ..Default::default()});
+						champ.se.push(StatusEffect { duration: Some(150), status_type: StatusType::Stun(), is_negative : true, ..Default::default() });
+						champ.se.push(StatusEffect { duration: Some(150), status_type: StatusType::IncreaseDamageTaken(1.2 * ap), is_negative : true, ..Default::default()});
 					}
 					i += 1;//add 1 to count of hit enemies
 				}
 				if i < champCount//give self effect if there aren't enough champs to hit
 				{
-					self.se.push(StatusEffect{duration : Some(500), statusType : StatusType::AttackSpeedBuff(1.7 * ap), ..Default::default()});
+					self.se.push(StatusEffect{duration : Some(500), status_type : StatusType::AttackSpeedBuff(1.7 * ap), ..Default::default()});
 				}}
 			1 => {
 				let starLevel = self.starLevel;
@@ -1230,9 +1213,9 @@ fn GiveItemEffect(&mut self, item : u8, friendlyChampions : &mut VecDeque<Summon
 			  	}
 			  },
 		14 => {self.ad += 10.0; self.ar += 0.2; 
-			   self.se.push(StatusEffect { duration: Some(0), statusType: StatusType::EdgeOfNight(), ..Default::default()})},//gives edge of night buff
+			   self.se.push(StatusEffect { duration: Some(0), status_type: StatusType::EdgeOfNight(), ..Default::default()})},//gives edge of night buff
 		15 => {self.ad += 10.0; self.mr += 0.2;
-			   self.se.push(StatusEffect { duration: Some(0), statusType: StatusType::Bloodthirster(), ..Default::default()});//gives bloodthirster buff
+			   self.se.push(StatusEffect { duration: Some(0), status_type: StatusType::Bloodthirster(), ..Default::default()});//gives bloodthirster buff
 			   self.omnivamp += 0.25;
 			},
 		16 => {self.ad += 10.0; self.attackSpeedModifier *= 0.1},//
@@ -1253,15 +1236,15 @@ fn GiveItemEffect(&mut self, item : u8, friendlyChampions : &mut VecDeque<Summon
 		25 => {self.ap += 0.1; self.mr += 0.2;},//
 		26 => {self.ap += 0.1; self.attackSpeedModifier *= 0.1},//
 		27 => {self.ap += 0.5; self.cr += 15; self.critD += 0.4}// //(!D) does bonus ability damage include from components? //
-		28 => {self.ap += 0.1; self.cm += 15; self.se.push(StatusEffect { duration: Some(500), statusType: StatusType::ArchangelStaff(0.2), ..Default::default() })}
+		28 => {self.ap += 0.1; self.cm += 15; self.se.push(StatusEffect { duration: Some(500), status_type: StatusType::ArchangelStaff(0.2), ..Default::default() })}
 		29 => {self.ap += 0.1; },//add next trait
 		33 => {self.health += 1000.0},
-		34 => {self.health += 300.0; self.ar += 0.2; self.se.push(StatusEffect { duration: Some(0), statusType: StatusType::GiveSunfire(), ..Default::default() })}//(!U)
-		35 => {self.health += 150.0; self.mr += 0.2; self.se.push(StatusEffect { duration : Some(0), statusType: StatusType::Zephyr(500), ..Default::default()})}//gives zephyr effect
+		34 => {self.health += 300.0; self.ar += 0.2; self.se.push(StatusEffect { duration: Some(0), status_type: StatusType::GiveSunfire(), ..Default::default() })}//(!U)
+		35 => {self.health += 150.0; self.mr += 0.2; self.se.push(StatusEffect { duration : Some(0), status_type: StatusType::Zephyr(500), ..Default::default()})}//gives zephyr effect
 		36 => {self.health += 150.0; self.attackSpeedModifier *= 0.1; //close enough, doesnt reset fully
 			   for enemyChamp in enemyChampions.iter_mut().filter(self.location.getWithinDistance(9))
 			   {
-					enemyChamp.se.push(StatusEffect { duration: Some(0), statusType: StatusType::Taunted(self.id), isNegative: true, ..Default::default()})//(!D) does shed cleanse taunt? gives taunt effect
+					enemyChamp.se.push(StatusEffect { duration: Some(0), status_type: StatusType::Taunted(self.id), is_negative: true, ..Default::default()})//(!D) does shed cleanse taunt? gives taunt effect
 			   }
 		}
 		37 => {self.health += 150.0; self.dc += 15;  	
@@ -1274,29 +1257,29 @@ fn GiveItemEffect(&mut self, item : u8, friendlyChampions : &mut VecDeque<Summon
 					}
 			  	}
 		}
-		38 => {self.health += 150.0; self.cm += 15; self.se.push(StatusEffect { duration: Some(100), statusType: StatusType::RedemptionGive(), ..Default::default() })}//Gives redemption effect
+		38 => {self.health += 150.0; self.cm += 15; self.se.push(StatusEffect { duration: Some(100), status_type: StatusType::RedemptionGive(), ..Default::default() })}//Gives redemption effect
 		39 => {self.health += 150.0}//(!U)
 		44 => {self.ar += 0.8}//(!D) says grants 40 bonus armor, is that the 40 from the two chain vests?
 		45 => {self.ar += 0.2; self.mr += 0.2;//
-				self.se.push(StatusEffect{duration : Some(0), statusType: StatusType::Gargoyles(0.0), ..Default::default() })//(!D) only updates every second
+				self.se.push(StatusEffect{duration : Some(0), status_type: StatusType::Gargoyles(0.0), ..Default::default() })//(!D) only updates every second
 		}
 		46 => {self.ar += 0.2; self.attackSpeedModifier *= 1.1;
-			self.se.push(StatusEffect { duration: Some(0), statusType: StatusType::TitansResolve(0), ..Default::default() })
+			self.se.push(StatusEffect { duration: Some(0), status_type: StatusType::TitansResolve(0), ..Default::default() })
 		}
 		47 => {self.ar += 0.2; self.dc += 15;
-				self.se.push(StatusEffect { duration: Some(0), statusType: StatusType::ShroudOfStillness(), ..Default::default() })
+				self.se.push(StatusEffect { duration: Some(0), status_type: StatusType::ShroudOfStillness(), ..Default::default() })
 		}
 		48 => {self.ar += 0.2; self.cm += 15;
-			   self.se.push(StatusEffect { duration: Some(0), statusType: StatusType::ProtectorsVow(), ..Default::default() })
+			   self.se.push(StatusEffect { duration: Some(0), status_type: StatusType::ProtectorsVow(), ..Default::default() })
 		}
 		55 => {self.mr += 1.2;
-				self.se.push(StatusEffect{duration : Some(200), statusType : StatusType::DragonClawHeal(), ..Default::default()})
+				self.se.push(StatusEffect{duration : Some(200), status_type : StatusType::DragonClawHeal(), ..Default::default()})
 
 		
 		}
 		56 => {self.mr += 0.2; self.attackSpeedModifier *= 1.1; self.ad += 10.0}//
 		57 => {self.mr += 0.2; self.dc += 15; self.attackSpeedModifier *= 1.2;
-				self.se.push(StatusEffect{duration : Some(15000), statusType: StatusType::CrowdControlImmune(), ..Default::default()});
+				self.se.push(StatusEffect{duration : Some(15000), status_type: StatusType::CrowdControlImmune(), ..Default::default()});
 		}
 		58 => {self.cm += 15; self.mr += 0.2; self.ap += 0.3;
 			for friendlyChamp in friendlyChampions.iter_mut().filter(self.location.getWithinDistance(3))
@@ -1367,7 +1350,7 @@ impl Default for SummonedChampion
 			gMD: 0, 
 			starLevel: 0, 
 			incomingDMGModifier: 0.0, 
-			initialHP: 0.0, 
+			initial_hp: 0.0, 
 			targetable: false, 
 			shed: 0, 
 			shields: Vec::new(), 
