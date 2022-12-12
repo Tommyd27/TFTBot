@@ -1,9 +1,10 @@
 #![allow(non_snake_case)] //Allows snake case
 
 use std::{cmp::{min, max}};
-use rand::{Rng};
 use std::collections::VecDeque;
-use std::mem::replace;
+
+use crate::{champions::PlacedChampion, board::Board, location::Location};
+
 
 mod utils;
 mod status_effects;
@@ -11,7 +12,7 @@ mod champions;
 mod location;
 mod board;
 mod projectiles;
-
+mod shields;
 
 
 

@@ -1,3 +1,5 @@
+use crate::champions::SummonedChampion;
+use std::collections::VecDeque;
 enum FilterType {
 	///i8 : Distance to check
 	///Location : Other Location
@@ -15,36 +17,36 @@ fn generate_filter(filter : FilterType) -> impl for<'a> Fn(&&mut SummonedChampio
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
-struct Location {
-	x : i8,
-	y : i8
+pub struct Location {
+	pub x : i8,
+	pub y : i8
 }
 impl Location {
 	fn calculateZ(&self) -> i8{
 		-self.x - self.y
 	}
-	fn distanceBetweenPoints(&self, otherPos : &Location) -> i8 {
+	pub fn distanceBetweenPoints(&self, otherPos : &Location) -> i8 {
 		(self.x - otherPos.x).abs() + (self.y - otherPos.y).abs() + (self.calculateZ() - otherPos.calculateZ()).abs()
 	}
-	fn addPositions(posOne : &Location, posTwo : &Location) -> Location{
+	pub fn addPositions(posOne : &Location, posTwo : &Location) -> Location{
 		Location {
 			x : posOne.x + posTwo.x,
 			y : posOne.y + posTwo.y,
 		}
 	}
-	fn subPositions(posOne : &Location, posTwo : &Location) -> Location{
+	pub fn subPositions(posOne : &Location, posTwo : &Location) -> Location{
 		Location {
 			x : posOne.x - posTwo.x,
 			y : posOne.y - posTwo.y,
 		}
 	}
-	fn addPositionVec(posOne : &Location, posTwo : [i8; 2]) -> Location {
+	pub fn addPositionVec(posOne : &Location, posTwo : [i8; 2]) -> Location {
 		Location {
 			x : posOne.x + posTwo[0],
 			y : posOne.y + posTwo[1]
 		}
 	}
-	fn checkValid(&self) -> bool {
+	pub fn checkValid(&self) -> bool {
 		if self.x >= 0 && self.x < 10 && self.y >= 0 && self.y < 8 {
 			if 2 - (self.y / 2) < self.x && 10 - (self.y / 2) > self.x {
 				return true
@@ -52,7 +54,7 @@ impl Location {
 		}
 		false
 	}
-	fn getClosestToLocation<'a>(&self, enemyChampions : &'a mut VecDeque<SummonedChampion>) -> Option<&'a mut SummonedChampion> {
+	pub fn getClosestToLocation<'a>(&self, enemyChampions : &'a mut VecDeque<SummonedChampion>) -> Option<&'a mut SummonedChampion> {
 		enemyChampions.iter_mut().reduce(|x, y| {
 			if x.location.distanceBetweenPoints(self) < y.location.distanceBetweenPoints(self) {
 				x
@@ -62,7 +64,7 @@ impl Location {
 			}
 		})
 	}
-	fn getClosestToLocationTargetable<'a>(&self, enemyChampions : &'a mut VecDeque<SummonedChampion>) -> Option<&'a mut SummonedChampion> {
+	pub fn getClosestToLocationTargetable<'a>(&self, enemyChampions : &'a mut VecDeque<SummonedChampion>) -> Option<&'a mut SummonedChampion> {
 		enemyChampions.iter_mut().reduce(|x, y| {
 			if ! x.getIsTargetable() {
 				return y
@@ -77,7 +79,7 @@ impl Location {
 			y
 		})
 	}
-	fn getClosestToLocationTargetableIndex<'a>(&self, enemyChampions : &'a mut VecDeque<SummonedChampion>) -> Option<(usize, &'a mut SummonedChampion)> {
+	pub fn getClosestToLocationTargetableIndex<'a>(&self, enemyChampions : &'a mut VecDeque<SummonedChampion>) -> Option<(usize, &'a mut SummonedChampion)> {
 		enemyChampions.iter_mut().enumerate().reduce(|(i, x), (j, y)| {
 			if ! x.getIsTargetable() {
 				return (j, y)
@@ -92,7 +94,7 @@ impl Location {
 			(j, y)
 		})
 	}
-	fn getWithinDistance(&self, distance : i8) -> impl for<'a> Fn(&&mut SummonedChampion) -> bool {
+	pub fn getWithinDistance(&self, distance : i8) -> impl for<'a> Fn(&&mut SummonedChampion) -> bool {
 		generate_filter(FilterType::DistanceFilter(distance, self.clone()))
 	}
 }

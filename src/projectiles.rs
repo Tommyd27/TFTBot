@@ -1,5 +1,7 @@
+use std::collections::VecDeque;
+use crate::{champions::{SummonedChampion, DamageType}, location::Location, utils::{findChampionIndexFromID, sign}};
 ///Projectile struct
-struct Projectile
+pub struct Projectile
 {
 	///location of projectile
 	location : Location,
@@ -32,7 +34,7 @@ struct Projectile
 impl Projectile
 {
 	///Simulates a single tick of a projectile
-	fn SimulateTick(self : &mut Projectile, possibleTargets : &mut VecDeque<SummonedChampion>, friendlyChampions : &mut VecDeque<SummonedChampion>) -> bool
+	pub fn SimulateTick(self : &mut Projectile, possibleTargets : &mut VecDeque<SummonedChampion>, friendlyChampions : &mut VecDeque<SummonedChampion>) -> bool
 	{
 		let targetLocation = match self.targetLocation //discrepency only checks after move to theoretically could phase through someone
 		{
@@ -93,7 +95,7 @@ impl Projectile
 		true
 	}
 	///Makes new projectile
-	fn new(location : Location, targetLocation : Option<Location>, targetID : usize, damage : f32,
+	pub fn new(location : Location, targetLocation : Option<Location>, targetID : usize, damage : f32,
 		damageType : DamageType,
 		splashDamage : f32,
 		speed : i8,

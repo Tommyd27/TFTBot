@@ -1,5 +1,12 @@
-
-
+use core::fmt;
+use std::collections::VecDeque;
+use crate::projectiles::{Projectile};
+use crate::location::{Location};
+use crate::status_effects::{StatusEffect, StatusType, Stun};
+use crate::shields::{Shield};
+use rand::{Rng};
+use std::mem::replace;
+use crate::utils::{findChampionIndexFromIDTargetable, sign, findChampionIndexFromID};
 ///Stores basic information surrounding a champion
 struct Champion {
 
@@ -37,14 +44,14 @@ struct Champion {
 
 ///CHAMPIONS (const):<br />
 ///Stores all the champion information
-const CHAMPIONS : [Champion ; 4] = [Champion{_id : 0, hp : [650.0, 1100.0, 2100.0], sm : 70, mc : 140, ar : 0.25, mr : 0.25, ad : [40.0, 70.0, 130.0], aS : 0.6, ra : 2, a_ID : 0}, //Support
+pub const CHAMPIONS : [Champion ; 4] = [Champion{_id : 0, hp : [650.0, 1100.0, 2100.0], sm : 70, mc : 140, ar : 0.25, mr : 0.25, ad : [40.0, 70.0, 130.0], aS : 0.6, ra : 2, a_ID : 0}, //Support
                  					Champion{_id : 1, hp : [800.0, 1400.0, 2500.0], sm : 50, mc : 100, ar : 0.45, mr : 0.45, ad : [75.0, 100.0, 175.0], aS : 0.7, ra : 1, a_ID : 1}, //Bruiser
                  					Champion{_id : 2, hp : [700.0, 1200.0, 2200.0], sm : 35, mc : 100, ar : 0.25, mr : 0.25, ad : [65.0, 120.0, 240.0], aS : 0.7, ra : 3, a_ID : 2}, //AD Ranged
 									Champion{_id : 2, hp : [700.0, 1200.0, 2200.0], sm : 35, mc : 150, ar : 0.25, mr : 0.25, ad : [50.0, 60.0, 70.0], aS : 0.6, ra : 3, a_ID : 3,}]; //AP Ranged
 
 ///Enum for the 3 damage types Physical, Magical and True
 #[derive(PartialEq, Clone, Copy)]//derives clone copy and partial equal
-enum DamageType {
+pub enum DamageType {
 	Physical(),
 	Magical(),
 	
@@ -56,7 +63,7 @@ enum DamageType {
 ///PlacedChampion (struct):
 ///Stores information about a champion's location and status on a board (as well as ID of actual champion)
 ///Not used in battles, only for planning phase
-struct PlacedChampion {
+pub struct PlacedChampion {
 	///id given at instantiation
     id : usize, 
 
@@ -71,9 +78,9 @@ struct PlacedChampion {
 }
 
 ///Struct for champion placed on board in a battle
-struct SummonedChampion {
+pub struct SummonedChampion {
 	///array of p, q coordinates, r can be calculated with r = -p - q
-	location : Location,
+	pub location : Location,
 
 	///progress of movement before new square, goes up to 10 then moves
 	movementProgress : [i8 ; 2],
@@ -121,7 +128,7 @@ struct SummonedChampion {
 	autoAttackDelay : i16,
 
 	///attack speed modifier from items and effects
-	attackSpeedModifier : f32, 
+	pub attackSpeedModifier : f32, 
 
 	///id of target
 	target : usize, 
@@ -201,13 +208,13 @@ struct SummonedChampion {
 	starLevel : usize,
 
 	///incoming DMG modifier
-	incomingDMGModifier : f32,
+	pub incomingDMGModifier : f32,
 
 	///starting HP
 	initial_hp : f32,
 
 	///can be targeted or not
-	targetable : bool,
+	pub targetable : bool,
 
 	///needs to shed negative status effects
 	shed : u8,
@@ -235,7 +242,7 @@ struct SummonedChampion {
 
 impl SummonedChampion {
 	///converts PlacedChampion into SummonChampion
-	fn new(placedChampion : &PlacedChampion, id : usize) -> SummonedChampion {
+	pub fn new(placedChampion : &PlacedChampion, id : usize) -> SummonedChampion {
 		let starLevel = placedChampion.star; //get star level
 		let ofChampion = &CHAMPIONS[placedChampion.id];//get champ info
 		SummonedChampion { location: placedChampion.location, //create summoned champ with all details
@@ -278,7 +285,7 @@ impl SummonedChampion {
 						}
 	}
 
-	fn setup(&mut self, friendlyChampions : &mut VecDeque<SummonedChampion>, enemyChampions : &mut VecDeque<SummonedChampion>) {
+	pub fn setup(&mut self, friendlyChampions : &mut VecDeque<SummonedChampion>, enemyChampions : &mut VecDeque<SummonedChampion>) {
 		if self.hasSetup { return }
 
 		if self.items[0] == 77 {
@@ -300,17 +307,11 @@ impl SummonedChampion {
 	}
 	///fn to heal set amount
 	fn heal(&mut self, mut healingAmount : f32) {
-		for statusEffect in &self.se {//checks for grevious wounds
-		
-			if statusEffect.status_type == StatusType::GreviousWounds() {
-				healingAmount /= 2.0;//halves healing
-				break;
-			}
+		if self.se.contains(&StatusEffect {status_type : StatusType::GreviousWounds(), ..Default::default() }) {
+			healingAmount /= 2.0;
 		}
-		self.health += healingAmount;
-		if self.health > self.initial_hp {
-			self.health = self.initial_hp//makes sure to limit it to initial HP, so no healing to infinity
-		}
+
+		self.health = self.initial_hp.min(self.health + healingAmount);
 	}
 	///simulates a tick/ turn for a champion<br />
 	///friendlyChampions[selfIndex] : this champion<br />
@@ -321,7 +322,7 @@ impl SummonedChampion {
 	fn turnToVoidSpawn(&mut self) {
 		println!("Unimplemented")
 	}
-	fn takeTurn(&mut self, friendlyChampions : &mut VecDeque<SummonedChampion>, enemyChampions : &mut VecDeque<SummonedChampion>,timeUnit : i8, movementAmount : i8, projectiles : &mut Vec<Projectile>) -> bool {
+	pub fn takeTurn(&mut self, friendlyChampions : &mut VecDeque<SummonedChampion>, enemyChampions : &mut VecDeque<SummonedChampion>,timeUnit : i8, movementAmount : i8, projectiles : &mut Vec<Projectile>) -> bool {
 		self.targetCountDown -= timeUnit;//Reduce cooldown to check target/ find new target
 		self.autoAttackDelay -= timeUnit as i16;//Risks going out of bounds as auto attack value may not be called for some time
 		self.gMD -= timeUnit as i16;
@@ -330,15 +331,14 @@ impl SummonedChampion {
 
 		{
 			let mut statusEffects = replace(&mut self.se, Vec::new());
-			let mut stun = ShouldStun { stun: 0 };
+			let mut stun = Stun { stun: 0 };
 			statusEffects.retain_mut(|x| x.perform_status(self, friendlyChampions, enemyChampions, timeUnit, &mut stun));
 			
 			if self.health <= 0.0 { return false }
 
 			self.se.extend(statusEffects);
 
-			if self.shed == 1 { self.shed = 2; }
-			else { self.shed = 0; }
+			self.updateShred();
 			
 			self.shields.retain_mut(|x| x.updateShield(timeUnit));
 			
@@ -405,7 +405,7 @@ impl SummonedChampion {
 					
 					*/
 					println!("as: {}, mod: {}", self.aS, self.attackSpeedModifier);
-					self.autoAttackDelay = max((100.0 / (self.aS * self.attackSpeedModifier)) as i16, 20); //calculating auto attack delay
+					self.autoAttackDelay = ((100.0 / (self.aS * self.attackSpeedModifier)) as i16).max(20); //calculating auto attack delay
 					println!("Auto attack delay set");
 					if self.items.contains(&26) { self.attackSpeedModifier *= 1.06 }//(!D) if attack speed doesnt increase when attack misses/ is dodged					
 					
@@ -545,7 +545,7 @@ impl SummonedChampion {
 		}
 		true
 	}
-	fn dealDamage(&mut self, friendlyChampions : &mut VecDeque<SummonedChampion>, target : &mut SummonedChampion, damageAmount : f32, damageType : DamageType, _isSplash : bool){
+	pub fn dealDamage(&mut self, friendlyChampions : &mut VecDeque<SummonedChampion>, target : &mut SummonedChampion, damageAmount : f32, damageType : DamageType, _isSplash : bool){
 		let mut damage : f32 = damageAmount * target.incomingDMGModifier;
 		let mut canCrit;
 		let mut critD = self.critD;
@@ -555,17 +555,7 @@ impl SummonedChampion {
 				canCrit = true;
 				damage /= 1.0 + target.ar;
 				if self.items.contains(&67){ //apply armor shred from last whisper
-
-					let mut alreadyHasShred = false;
-					for statusEffect in &target.se//check if they already have armor shred
-					{
-						if StatusType::LastWhisperShred() == statusEffect.status_type
-						{
-							alreadyHasShred = true;
-							break;
-						}
-					}
-					if ! alreadyHasShred//if they don't, give it
+					if ! target.se.contains( &StatusEffect {status_type : StatusType::LastWhisperShred(), ..Default::default()})
 					{
 						target.se.push(StatusEffect{duration : Some(500), status_type : StatusType::LastWhisperShred(), is_negative : true, ..Default::default()})
 					}
@@ -617,28 +607,14 @@ impl SummonedChampion {
 		self.heal(damage * self.omnivamp); //give omnivamp healing
 
 		for shield in &mut target.shields {//reduce damage due to shields
-			if damageType == shield.blocksType.unwrap_or(damageType) {//if shield is of correct dmg type (or doesn't specify)
-				if damage > shield.size//if damage greater than shield
-				{
-					damage -= shield.size;//reduce dmg but remove shield
-					shield.size = 0.0;
-					shield.duration = 0;
-				}
-				else {
-					shield.size -= damage;//reduce shield size
-					damage = 0.0;//set dmg to 0
-					if shield.pop//if shield has pop
-					{
-						shield.size = 0.0;//remove shield
-						shield.duration = 0;
-					}
-					break;
-				}
+			damage = shield.handleDamage(damage, damageType);
+			if damage <= 0.0 {
+				break;
 			}
 		}
 
-		self.titansResolveStack = min(self.titansResolveStack + 1, 25);//add titan's resolve stacks
-		target.titansResolveStack = min(target.titansResolveStack + 1, 25); //give enemy titan's resolve stacks
+		self.titansResolveStack = 25.min(self.titansResolveStack + 1);//add titan's resolve stacks
+		target.titansResolveStack = 25.min(target.titansResolveStack + 1); //give enemy titan's resolve stacks
 		
 		target.health -= damage;
 
@@ -714,10 +690,10 @@ impl SummonedChampion {
 				_ => println!("Unimplemented"),
 		}
 	}
-	fn getNumTargeting(&self, enemyChampions : &VecDeque<SummonedChampion>) -> usize {
+	pub fn getNumTargeting(&self, enemyChampions : &VecDeque<SummonedChampion>) -> usize {
 		enemyChampions.iter().filter(|p| p.target == self.id).count()
 	}
-	fn getIsTargetable(&self) -> bool {
+	pub fn getIsTargetable(&self) -> bool {
 		self.targetable && !self.banish
 	}
 	///GiveItemEffect : (func)<br />
@@ -851,10 +827,23 @@ impl SummonedChampion {
 			_ => println!("Unimplemented Item"),
 		}
 	}
+	pub fn EqualId(&self, id : usize) -> bool {
+		self.id == id
+	}
+	pub fn isShred(&self) -> bool {
+		self.shed == 2
+	}
+	pub fn updateShred(&mut self) {
+		if self.shed == 1 { 
+			self.shed = 2; 
+		}
+		else { 
+			self.shed = 0; 
+		}
+	}
 }
 
-impl Default for SummonedChampion
-{
+impl Default for SummonedChampion {
 	fn default() -> Self {
 		SummonedChampion { 
 			location: Location { ..Default::default()}, 
@@ -893,5 +882,11 @@ impl Default for SummonedChampion
 			omnivamp: 0.0,
 			hasSetup : false
 		}
+	}
+}
+
+impl fmt::Display for SummonedChampion {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		write!(f, "{}: {} {}", self.id, self.aID, self.health)
 	}
 }

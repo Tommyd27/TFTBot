@@ -1,5 +1,6 @@
+use crate::champions::DamageType;
 ///Implementation for Shields
-struct Shield {
+pub struct Shield {
 	///duration of shield
 	duration : i16,
 	///number of damage blocked
@@ -12,9 +13,20 @@ struct Shield {
 }
 
 impl Shield {
-	fn updateShield(&mut self, timeUnit : i8) -> bool { //updates self
+	pub fn updateShield(&mut self, timeUnit : i8) -> bool { //updates self
 		self.duration -= timeUnit as i16; //(!O)
 		return self.duration > 0 && self.size > 0.0
+	}
+	pub fn handleDamage(&mut self, damage : f32, damageType : DamageType) -> f32 {
+		if self.blocksType.is_none() || self.blocksType.unwrap() == damageType {
+			let out = damage - self.size;
+			self.size -= damage;
+			if self.pop {
+				self.size = 0.0;
+			}
+			return out.min(0.0);
+		}
+		return damage
 	}
 }
 ///Default for shield

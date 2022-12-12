@@ -1,16 +1,18 @@
+use std::collections::VecDeque;
+use crate::champions::{SummonedChampion};
 ///Records champion's stun state.<br />
-pub struct ShouldStun {
+pub struct Stun {
 	///Records whether champion is stunned:<br />
 	///0 = not stunned<br />
 	///1 = stunned<br />
 	///2 = stun immune
-	stun : u8
+	pub stun : u8
 }
 
 ///Status Type (enum):<br />
 ///Holds information about what the status does
 #[derive(PartialEq)]
-enum StatusType {
+pub enum StatusType {
 	///Attack Speed Buff:<br />
 	///(bool : whether the buff has been applied, f32 : actual modifier)
 	AttackSpeedBuff(f32),
@@ -106,7 +108,7 @@ enum StatusType {
 
 ///StatusEffect (struct)<br />:
 ///Stores a status type and a duration
-struct StatusEffect {
+pub struct StatusEffect {
 	///Duration of status effect in centiseconds
 	duration : Option<i16>,//optimisation so uses Option<i16> rather than i16
 
@@ -125,11 +127,11 @@ impl Default for StatusEffect {
 }
 
 impl StatusEffect {
-	fn perform_status(&mut self, affected_champion : &mut SummonedChampion, friendly_champions : &mut VecDeque<SummonedChampion>, enemy_champions : &mut VecDeque<SummonedChampion>, time_unit : i8, stun : &mut ShouldStun) -> bool {
+	pub fn perform_status(&mut self, affected_champion : &mut SummonedChampion, friendly_champions : &mut VecDeque<SummonedChampion>, enemy_champions : &mut VecDeque<SummonedChampion>, time_unit : i8, stun : &mut Stun) -> bool {
 		if self.duration.is_some() {
 			let mut n_duration = self.duration.unwrap().checked_sub(time_unit.into()).unwrap_or(0); //unwrap duration and do checked subtraction
 			
-			if affected_champion.shed == 2 && self.is_negative { n_duration = 0; }//if shed and negative set duration to 0
+			if affected_champion.isShred() && self.is_negative { n_duration = 0; }//if shed and negative set duration to 0
 			
 			if n_duration <= 0 {
 				match self.status_type {//undo status effect/ remove effect. some effects aren't actually removed but just reinitialise	
@@ -143,7 +145,7 @@ impl StatusEffect {
 						affected_champion.targetable = true//(!D) if have 2 untargetable effects this will untarget too early
 					}
 					StatusType::MorellonomiconBurn(dmg_per_tick, dmg_to_do, time_next_tick) => {
-						if affected_champion.shed == 2 { return false; }
+						if affected_champion.isShred() { return false; }
 						
 						if dmg_per_tick > dmg_to_do { 
 							affected_champion.health -= dmg_to_do; 
@@ -293,5 +295,11 @@ impl StatusEffect {
 			}
 		}
 		true
+	}
+}
+
+impl PartialEq for StatusEffect {
+	fn eq(&self, other : &Self) -> bool {
+		self.status_type == other.status_type
 	}
 }

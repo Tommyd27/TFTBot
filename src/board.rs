@@ -1,7 +1,10 @@
+use std::collections::VecDeque;
+use crate::champions::{SummonedChampion, PlacedChampion};
+use crate::projectiles::{Projectile};
 
 ///Board Struct:<br />
 ///Simulates battles
-struct Board
+pub struct Board
 {
 	///Vec of player 1's champs
 	p1Champions : VecDeque<SummonedChampion>, 
@@ -18,7 +21,7 @@ struct Board
 
 impl Board
 {
-	fn new(p1PlacedChamps : &VecDeque<PlacedChampion>, p2PlacedChamps : &VecDeque<PlacedChampion>, timeUnit : i8) -> Board
+	pub fn new(p1PlacedChamps : &VecDeque<PlacedChampion>, p2PlacedChamps : &VecDeque<PlacedChampion>, timeUnit : i8) -> Board
 	{
 		let mut p1Champions = VecDeque::new();
 		let mut p2Champions = VecDeque::new();
@@ -42,7 +45,7 @@ impl Board
 
 
 
-	fn StartBattle(mut self : Board) -> i8
+	pub fn StartBattle(mut self : Board) -> i8
 	{
 		let mut debugCount : u32 = 0;
 		let mut p1Projectiles : Vec<Projectile> = Vec::new();//instantiate projectiles vecs
@@ -83,7 +86,7 @@ impl Board
 			println!("Debug : Player 2 Won");
 			for champion in &self.p2Champions
 			{
-				println!("Champ Remaining ID,  Health : {0} {1}", champion.id, champion.health)
+				println!("Champ Remaining {champion}")
 			}
 			return 2;
 		}
@@ -92,7 +95,7 @@ impl Board
 			println!("Debug : Player 1 Won");
 			for champion in &self.p1Champions
 			{
-				println!("Champ Remaining ID,  Health : {0} {1}", champion.id, champion.health)
+				println!("Champ Remaining {champion}")
 			}
 			return 1;
 		}
