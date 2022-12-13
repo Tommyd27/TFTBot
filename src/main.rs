@@ -1,6 +1,5 @@
 #![allow(non_snake_case)] //Allows snake case
 
-use std::{cmp::{min, max}};
 use std::collections::VecDeque;
 
 use crate::{champions::PlacedChampion, board::Board, location::Location};
@@ -28,8 +27,8 @@ mod shields;
 
 
 fn main() {
-	let playerOneChamps : VecDeque<PlacedChampion> = VecDeque::from([PlacedChampion{id : 0, star : 0, items : [0, 0, 0], location : Location { x: 3, y: 0 }}]);
-	let playerTwoChamps : VecDeque<PlacedChampion> = VecDeque::from([PlacedChampion{id : 1, star : 0, items : [0, 0, 0], location : Location { x: 6, y: 7 }}]);
+	let playerOneChamps : VecDeque<PlacedChampion> = VecDeque::from([PlacedChampion::new(0, 0, [0, 0, 0], Location { x: 3, y: 0 })]);
+	let playerTwoChamps : VecDeque<PlacedChampion> = VecDeque::from([PlacedChampion::new(1, 0, [0, 0, 0], Location { x: 6, y: 7 })]);
 	let mut boardOutcome = 1;
 	let mut iterationCount = 0;
 	while boardOutcome != 2
