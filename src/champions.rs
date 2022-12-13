@@ -323,6 +323,8 @@ impl SummonedChampion {
 		println!("Unimplemented")
 	}
 	pub fn takeTurn(&mut self, friendlyChampions : &mut VecDeque<SummonedChampion>, enemyChampions : &mut VecDeque<SummonedChampion>,timeUnit : i8, movementAmount : i8, projectiles : &mut Vec<Projectile>) -> bool {
+		if self.health <= 0.0 { return false }
+
 		self.targetCountDown -= timeUnit;//Reduce cooldown to check target/ find new target
 		self.autoAttackDelay -= timeUnit as i16;//Risks going out of bounds as auto attack value may not be called for some time
 		self.gMD -= timeUnit as i16;
@@ -390,7 +392,6 @@ impl SummonedChampion {
 			if distanceToTarget <= self.ra {//if target in range
 				println!("Debug : Target in Range");
 				println!("Debug : Auto Attack Delay Remaining {0}", self.autoAttackDelay);//discrepency, does auto attack "charge" while moving
-				let mut dead = false;
 				if self.autoAttackDelay <= 0//if autoattack ready
 				{
 					println!("Debug : Delay Smaller than 0 - Attacking");
@@ -452,12 +453,9 @@ impl SummonedChampion {
 							println!("Debug : Health Lower than 0 - Removing");
 
 							if targetObject.items.contains(&36) {
-								targetObject.turnToVoidSpawn()
+								targetObject.turnToVoidSpawn();
 								//(!D) cant be asked to set everything to default)
 								//(!D) stats change depending on stage
-							}
-							else {
-								dead = true;
 							}
 							//(!D), only checks for champion death when it is auto attacked
 						}
@@ -469,9 +467,7 @@ impl SummonedChampion {
 					
 
 				}
-				if !dead {
-					enemyChampions.push_back(targetObject);
-				}
+				enemyChampions.push_back(targetObject);
 			}
 			else {
 				println!("Debug : Not in Range");

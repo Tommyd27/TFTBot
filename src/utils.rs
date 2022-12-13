@@ -41,3 +41,5 @@ pub fn sign(num : i8) -> i8 {
 	else if num > 0 { return 1 }
 	-1
 }
+
+const DEFAULT_CHAMPION : SummonedChampion = SummonedChampion {id : usize::MAX, ..Default::default()};

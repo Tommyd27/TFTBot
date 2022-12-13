@@ -34,7 +34,7 @@ pub struct Projectile
 impl Projectile
 {
 	///Simulates a single tick of a projectile
-	pub fn SimulateTick(self : &mut Projectile, possibleTargets : &mut VecDeque<SummonedChampion>, friendlyChampions : &mut VecDeque<SummonedChampion>) -> bool
+	pub fn SimulateTick(self : &mut Projectile, possibleTargets : &mut VecDeque<SummonedChampion>, friendlyChampions : &mut VecDeque<SummonedChampion>, deadChampions : &mut VecDeque<SummonedChampion>) -> bool
 	{
 		let targetLocation = match self.targetLocation //discrepency only checks after move to theoretically could phase through someone
 		{
@@ -72,12 +72,17 @@ impl Projectile
 		{
 			if self.location == possibleTarget.location//has a hit
 			{
-				let mut shooter = SummonedChampion {..Default::default()}; //(!O) has to be better way
-				let mut addBack = false;
+				let dead = false;
+				let shooter : SummonedChampion;
+
 				if let Some(shooterIndex) = findChampionIndexFromID(&friendlyChampions, self.shooterID) {//finds shooter id
 					shooter = friendlyChampions.swap_remove_back(shooterIndex).unwrap();
-					addBack = true;
-				};
+				}
+				else {
+					let deadChampIndex = findChampionIndexFromID(deadChampions, self.shooterID).unwrap();
+					shooter = deadChampions.swap_remove_back(deadChampIndex).unwrap();
+					dead = true;
+				}
 				shooter.dealDamage(friendlyChampions, possibleTarget, self.damage, self.damageType, false);//deals damage
 				if self.splashDamage > 0.0//if there is splash damage
 				{
@@ -86,8 +91,11 @@ impl Projectile
 						shooter.dealDamage(friendlyChampions, possibleSecondaryTarget, self.splashDamage, self.damageType, true);//deal secondary dmg
 					}
 				}
-				if addBack {
+				if  !dead {
 					friendlyChampions.push_back(shooter)
+				}
+				else {
+					deadChampions.push_back(shooter)
 				}
 				return false//remove self
 			}

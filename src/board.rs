@@ -25,15 +25,15 @@ impl Board
 	{
 		let mut p1Champions = VecDeque::new();
 		let mut p2Champions = VecDeque::new();
+		let len : usize = p1PlacedChamps.len();
 		for (i, p1Champion) in p1PlacedChamps.iter().enumerate()//(!O) converts placed champions to summoned champions
 		{
 			p1Champions.push_back(SummonedChampion::new(&p1Champion, i));//converts into summoned champ
-
 		}
 
 		for (i, p2Champion) in p2PlacedChamps.iter().enumerate()
 		{
-			p2Champions.push_back(SummonedChampion::new(&p2Champion, i));//converts into summoned champ
+			p2Champions.push_back(SummonedChampion::new(&p2Champion, i + len));//converts into summoned champ
 		}
 		
 		Board{p1Champions : p1Champions,
@@ -50,6 +50,7 @@ impl Board
 		let mut debugCount : u32 = 0;
 		let mut p1Projectiles : Vec<Projectile> = Vec::new();//instantiate projectiles vecs
 		let mut p2Projectiles : Vec<Projectile> = Vec::new();
+		let mut deadChamps : VecDeque<SummonedChampion> = VecDeque::new();
 		while self.p1Champions.len() > 0 && self.p2Champions.len() > 0//take turns while there are champions alive
 		{
 			println!("Debug : Iteration {}", debugCount);
@@ -61,6 +62,9 @@ impl Board
 				let alive = thisChamp.takeTurn(&mut self.p1Champions, &mut self.p2Champions, self.timeUnit, self.movementAmount, &mut p1Projectiles);
 				if alive{
 					self.p1Champions.push_back(thisChamp)
+				}
+				else {
+					deadChamps.push_back(thisChamp);
 				}
 			}
 
@@ -76,9 +80,12 @@ impl Board
 				if alive{
 					self.p2Champions.push_back(thisChamp)
 				}
+				else {
+					deadChamps.push_back(thisChamp)
+				}
 			}
-			p1Projectiles.retain_mut(|f| f.SimulateTick(&mut self.p2Champions, &mut self.p1Champions));
-			p2Projectiles.retain_mut(|f| f.SimulateTick(&mut self.p1Champions, &mut self.p2Champions));//simulate projectile ticks
+			p1Projectiles.retain_mut(|f| f.SimulateTick(&mut self.p2Champions, &mut self.p1Champions, &mut deadChamps));
+			p2Projectiles.retain_mut(|f| f.SimulateTick(&mut self.p1Champions, &mut self.p2Champions, &mut deadChamps));//simulate projectile ticks
 		}
 		println!("Debug : Battle Over");
 		if self.p1Champions.len() == 0//check winner and get champ information
