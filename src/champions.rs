@@ -294,11 +294,11 @@ pub struct SummonedChampion {
 
 impl SummonedChampion {
     ///converts PlacedChampion into SummonChampion
-    pub fn new(placedChampion: &PlacedChampion, id: usize) -> SummonedChampion {
-        let starLevel = placedChampion.star; //get star level
-        let ofChampion = &CHAMPIONS[placedChampion.id]; //get champ info
+    pub fn new(placed_champion: &PlacedChampion, id: usize) -> SummonedChampion {
+        let starLevel = placed_champion.star; //get star level
+        let ofChampion = &CHAMPIONS[placed_champion.id]; //get champ info
         SummonedChampion {
-            location: placedChampion.location, //create summoned champ with all details
+            location: placed_champion.location, //create summoned champ with all details
             movementProgress: [0, 0],
             health: ofChampion.hp[starLevel],
             initial_hp: 0.0,
@@ -319,7 +319,7 @@ impl SummonedChampion {
             target: 255,
             targetCells: Location { x: -1, y: -1 }, //(!O)
             aID: ofChampion.a_ID,
-            items: placedChampion.items,
+            items: placed_champion.items,
             ap: 1.0,
             se: Vec::new(),
             gMD: 0,
@@ -362,12 +362,12 @@ impl SummonedChampion {
             }
         }
         for item in self.items {
-            self.GiveItemEffect(item, friendlyChampions, enemyChampions)
+            self.give_item_effect(item, friendlyChampions, enemyChampions)
         }
         self.initial_hp = self.health
     }
     ///fn to heal set amount
-    fn heal(&mut self, mut healingAmount: f32) {
+    fn heal(&mut self, mut healing_amount: f32) {
         if self.se.contains(&StatusEffect {
             status_type: StatusType::GreviousWounds(),
             ..Default::default()
@@ -383,10 +383,10 @@ impl SummonedChampion {
     ///enemyChampions : all enemy champions, for targetting<br />
     ///timeUnit : time unit of a frame, in centiseconds<br />
     ///movementAmount : precalculated movement distance for 1 frame<br />
-    fn turnToVoidSpawn(&mut self) {
+    fn turn_to_void_spawn(&mut self) {
         println!("Unimplemented")
     }
-    pub fn takeTurn(
+    pub fn take_turn(
         &mut self,
         friendlyChampions: &mut VecDeque<SummonedChampion>,
         enemyChampions: &mut VecDeque<SummonedChampion>,
@@ -682,7 +682,7 @@ impl SummonedChampion {
         }
         true
     }
-    pub fn dealDamage(
+    pub fn deal_damage(
         &mut self,
         friendlyChampions: &mut VecDeque<SummonedChampion>,
         target: &mut SummonedChampion,
@@ -799,7 +799,7 @@ impl SummonedChampion {
             target.cm += (0.7 * damage) as u16; //(!D) should be 1% of premitigation and 7% of post.
         }
     }
-    fn castAbility(
+    fn cast_ability(
         &mut self,
         friendlyChampions: &mut VecDeque<SummonedChampion>,
         enemyChampions: &mut VecDeque<SummonedChampion>,
@@ -918,20 +918,20 @@ impl SummonedChampion {
             _ => println!("Unimplemented"),
         }
     }
-    pub fn getNumTargeting(&self, enemyChampions: &VecDeque<SummonedChampion>) -> usize {
+    pub fn get_num_targeting(&self, enemy_champions: &VecDeque<SummonedChampion>) -> usize {
         enemyChampions
             .iter()
             .filter(|p| p.target == self.id)
             .count()
     }
-    pub fn getIsTargetable(&self) -> bool {
+    pub fn get_is_targetable(&self) -> bool {
         self.targetable && !self.banish
     }
     ///GiveItemEffect : (func)<br />
     ///Gives an item effect to a champion<br />
     ///**Item IDS:**<br />
     ///0 : Null<br />1  : B.F Sword (+10 Attack Damage)<br />2  : Needlessly Large Rod (+10 Ability Power)<br />3  : Giants Belt (+150 health)<br />4  : Chain Vest (+20 Armor)<br />5  : Negatron Cloak (+20 Magic Resist)<br />6  : Recurve Bow (+10% Attack Speed)<br />7  : *Sparring Gloves* (+5% Crit Chance, +10% Dodge Chance)<br />8  : Tear of the Goddess (+15 Mana)<br />9  : Spatula<br />11 : Deathblade (+40, +70, +100 Attack Damage - Star Level Dependent)<br /> 12 : *Hextech Gunblade* (Dealing Magic and True Damage heals the owner and lowest health ally for 25% of the damage)<br />13 : Zekes Herald (Grants 30% bonus attack speed to the holder and 2 adjacent allies in same row)<br />14 : Edge of Night (At 50% health - once per combat - the holder briefly becomes untargetable and sheds negative effects. Then they gain 30% attack speed)<br />15 : Bloodthirster (Damage dealt heals holder for 25%. Once per combat at 40% Health, gain a 25% maximum health shield for up to 5 seconds)<br />16 : Giant Slayer (Abilities and attacks deal 25% more damage, increased to 50% if the holder has over 2200 maximum health)<br />17 : Infinity Edge (+10 Attack Damage, +75% Crit Chance, +10% Crit Damage, Converts every 1% excess critical strike chance into 1% bonus critical strike damage)<br />18 : Spear of Shojin (✓) (Basic attacks restore an additional 8 mana on-attack)<br />19 : Shimmerscale Emblem (Wearer becomes a shimmerscale, cannot equip on a shimmersclae)<br />22 : Rabadons Deathcap (+75 Ability Power)<br />23 : Morellonomicon (+30 Ability Power, magic or true damage from an ability burns the holders target, dealing 25% of the targets maximum health as trude damage over 10 seconds and applying grevious wounds for the duration)<br />24 : Locket of the Iron Solari (At the start of combat, the wearer and all allies within 2 hexes in the same row gain a 300 / 350 / 400 health shield for 15 seconds - star level dependent)<br />25 : Ionic Spark (Enemies within 3 hexes have their magic resistance reduced by 50% (does not stack). When enemies within 3 hexes cast their ability, they are dealt 250% of their maximum mana as magic damage)<br />26 : Guinsoos Rageblade (Basic attacks grant 6% bonus attack speed for the rest of combat, stacks with no upper limit)<br />27 : *Jeweled Gauntlet* (+15% Crit Chance, +40% Crit Damage, +10 Ability Power, The holders magic adn true damage from abilities can critically strike)<br />28 : Archangels Staff (Grants the wearer 20 ability power every 5 seconds)<br />29 : Dragonmancer Emblem (Wearer becomes an dragonmancer, cannot equip on an dragonmancer)<br />33 : Warmogs Armor (+1000 Health)<br />34 : Sunfire Cape (+400 Health. At the start of combat and every 2 seconds thereafter, applies a 10% maximum health burn as true damage over 10 seconds and applying grevious wounds for the duration)<br />35 : Zephyr (At the start of combat, banishes for 5 seconds the unit that mirrors the wielders placement on the other side of the board. Pierces through CC immunity effects)<br />36 : ZZ Rot Portal (At the start of combat, the wearer taunts enemies within 4 hexes. When the wearer dies, a Voidspawn arises, taunting nearby enemies. Summoned units can spawn Voidspawns at 25% effectiveness)<br />37 : *Banshees Claw* (+15% Dodge Chance, +150 Health, At the beginning of each round, the holder and allies within 1 hex in the same row gain a shield that blocks the first enemy ability, up to 600 damage)<br />38 : Redemption (Every 5 seconds, the wearer radiates an aura to allies within 1 hex, healing them for 12% missing health. Affected allies take 25% reduced damage from AOE attacks for  seconds)<br />39 : Guardian Emblem (Wearer becomes a guardian, cannot equip on a guardian)<br />44 : Bramble Vest (+60 Armor. Negatves 75% bonus damage from critical hits. On being hit by an attack, deal 75 / 100 / 150 magic damage to all nearby enemies (once every 2.5 seconds))<br />45 : Gargoyle Stoneplate (+18 Armor and Magic Resist for each enemy targeting the holder)<br />46 : *Titans Resolve* (Gain 2 attack damage and ability power when attacking or taking damage. After stacking 25 times, gain 25 armor and magic resist and stop stacking)<br />47 : *Shroud of Stillness* (Shoot a beam that delays the first cast of affected enemies by 35%)<br />48 : Frozen Heart (Reduce the attack speed of enemies within 2 hexes by 25%)<br />49 : Cavalier Emblem (Wearer becomes a cavalier, cannot equip on a cavalier)<br />55 : Dragons Claw (+120 Magic Resist, every 2 seconds, regenerate 1.2% maximum health for each enemy targeting the holder. If holder is a dragon, increase all bonuses and effects by 20%)<br />56 : *Runaans Hurricane* (+10 Atttack Damage, attacks fire a bolt at a nearby enemy, dealing 70% of the holders attack damage as physical damage)<br />57 : *Quicksilver* (+20% attack speed. Immune to crowd control for 15 secnds)<br />58 : Chalice of Power (+30 Ability Power to holder and 2 adjacent allies on same row)<br />59 : Mirage Emblem (Wearer becomes a mirage, cannot equip on a mirage)<br />66 : Rapid Firecannon (+50% attack speed and +1 attack range, attacks cannot miss)<br />67 : *Last Whisper* (Dealing physical damage reduces the targets armor by 50% for 5 seconds, does not stack)<br />68 : Statikk Shiv (+15% attack speed, every 3rd attack shocks enemies for 70 magic damage and reduces their magic resist by 50% for 5 seconds)<br />69 : Ragewing Emblem (Wearer becomes a ragewing, cannot equip on a ragewing)<br />77 : *Thiefs Gloves* (Each round equip 2 random items, improve with player level, you cannot equip other items)<br />78 : *Hand of Justice* (+15 attack damage, +15% ability power. Attacks and abilities heal for 15% of damage dealt. Each round randomly increase 1 effect by 30%)<br />79 : *Assassin Emblem* (Wearer becomes an assassin, cannot equip on an assassin)<br />88 : Blue Buff (+20 Starting Mana. Gain 20 mana after casting an ability)<br />89 : Mage Emblem (Wearer becomes a mage, cannot equip on a mage)<br />99 : Tacticians Crown (Increase board unit size by 1)<br />
-    fn GiveItemEffect(
+    fn give_item_effect(
         &mut self,
         item: u8,
         friendlyChampions: &mut VecDeque<SummonedChampion>,
@@ -1237,10 +1237,10 @@ impl SummonedChampion {
             _ => println!("Unimplemented Item"),
         }
     }
-    pub fn EqualId(&self, id: usize) -> bool {
+    pub fn equal_id(&self, id: usize) -> bool {
         self.id == id
     }
-    pub fn isShred(&self) -> bool {
+    pub fn is_shred(&self) -> bool {
         self.shed == 2
     }
     pub fn updateShred(&mut self) {
@@ -1484,6 +1484,9 @@ impl SummonedChampion {
         }
         true
     }
+    pub fn set_id(&mut self, id: usize) {
+        self.id = id
+    }
 }
 
 impl Default for SummonedChampion {
@@ -1533,5 +1536,51 @@ impl Default for SummonedChampion {
 impl fmt::Display for SummonedChampion {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}: {} {}", self.id, self.aID, self.health)
+    }
+}
+
+impl From<PlacedChampion> for SummonedChampion {
+    fn from(champ: PlacedChampion) -> Self {
+        let star_level = champ.star; //get star level
+        let of_champion = &CHAMPIONS[champ.id]; //get champ info
+        SummonedChampion {
+            location: champ.location, //create summoned champ with all details
+            movementProgress: [0, 0],
+            health: of_champion.hp[star_level],
+            initial_hp: 0.0,
+            cm: of_champion.sm, //update current mana to starting mana
+            dc: 0,
+            cr: 25,
+            critD: 0.3,
+            mc: of_champion.mc,
+            ar: of_champion.ar,
+            mr: of_champion.mr,
+            ad: of_champion.ad[star_level],
+            aS: of_champion.aS,
+            ra: of_champion.ra * 2, //because distanceBetweenPoints returns value twice as large
+            id: 0,
+            targetCountDown: 0,
+            autoAttackDelay: 0,
+            attackSpeedModifier: 1.0,
+            target: 255,
+            targetCells: Location { x: -1, y: -1 }, //(!O)
+            aID: of_champion.a_ID,
+            items: champ.items,
+            ap: 1.0,
+            se: Vec::new(),
+            gMD: 0,
+            starLevel: star_level,
+            incomingDMGModifier: 1.0,
+            targetable: true,
+            shed: 0,
+            shields: Vec::new(),
+            //sortBy : 0,
+            //traits : traits,
+            zap: false, //discrepency maybe if order of status Effects is ever affected, alternative would be to iterate through status Effects and check for ionic spark
+            banish: false, //discrepency with this and many others if one status effect banishing ends and another is still going on etc.
+            titansResolveStack: 0,
+            omnivamp: 0.0,
+            hasSetup: false,
+        }
     }
 }
