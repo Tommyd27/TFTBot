@@ -44,7 +44,7 @@ impl Board {
         } //creates new board
     }
 
-    pub fn StartBattle(mut self) -> i8 {
+    pub fn start_battle(mut self) -> i8 {
         let mut debug_count: u32 = 0;
         let mut p1_projectiles: Vec<Projectile> = Vec::new(); //instantiate projectiles vecs
         let mut p2_projectiles: Vec<Projectile> = Vec::new();

@@ -7,12 +7,12 @@ use std::collections::VecDeque;
 pub fn findChampionIndexFromID(champions: &VecDeque<SummonedChampion>, id: usize) -> Option<usize> {
     //(!D) swap this out for check targetable as well
 
-    if champions[id].EqualId(id) {
+    if champions[id].equal_id(id) {
         return Some(id);
     }
 
     for champ in champions {
-        if champ.EqualId(id) {
+        if champ.equal_id(id) {
             return Some(id);
         }
     }
@@ -24,17 +24,17 @@ pub fn findChampionIndexFromIDTargetable(
     id: usize,
 ) -> Option<usize> {
     let mut out: Option<usize> = None;
-    if champions[id].EqualId(id) {
+    if champions[id].equal_id(id) {
         out = Some(id)
     } else {
         for champ in champions {
-            if champ.EqualId(id) {
+            if champ.equal_id(id) {
                 out = Some(id);
                 break;
             }
         }
     }
-    if out.is_some() && champions[out.unwrap()].getIsTargetable() {
+    if out.is_some() && champions[out.unwrap()].get_is_targetable() {
         return out;
     }
     None

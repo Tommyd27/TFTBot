@@ -26,6 +26,6 @@ fn main() {
     )]);
     let mut board: Board = Board::new(&playerOneChamps, &playerTwoChamps, 10);
     println!("Debug : Starting Battle");
-    let boardOutcome = board.StartBattle();
+    let boardOutcome = board.start_battle();
     println!("Debug : Iteration Count {}", boardOutcome);
 }

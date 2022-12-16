@@ -75,9 +75,9 @@ impl Location {
         enemyChampions: &'a mut VecDeque<SummonedChampion>,
     ) -> Option<&'a mut SummonedChampion> {
         enemyChampions.iter_mut().reduce(|x, y| {
-            if !x.getIsTargetable() {
+            if !x.get_is_targetable() {
                 return y;
-            } else if !y.getIsTargetable() {
+            } else if !y.get_is_targetable() {
                 return x;
             }
 
@@ -95,9 +95,9 @@ impl Location {
             .iter_mut()
             .enumerate()
             .reduce(|(i, x), (j, y)| {
-                if !x.getIsTargetable() {
+                if !x.get_is_targetable() {
                     return (j, y);
-                } else if !y.getIsTargetable() {
+                } else if !y.get_is_targetable() {
                     return (i, x);
                 }
 

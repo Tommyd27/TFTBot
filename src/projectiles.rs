@@ -95,7 +95,7 @@ impl Projectile {
                     shooter = deadChampions.swap_remove_back(deadChampIndex).unwrap();
                     dead = true;
                 }
-                shooter.dealDamage(
+                shooter.deal_damage(
                     friendlyChampions,
                     possibleTarget,
                     self.damage,
@@ -110,7 +110,7 @@ impl Projectile {
                         .filter(self.location.getWithinDistance(3))
                     //iterate through possible splash hits
                     {
-                        shooter.dealDamage(
+                        shooter.deal_damage(
                             friendlyChampions,
                             possibleSecondaryTarget,
                             self.splashDamage,

@@ -31,7 +31,7 @@ pub struct Champion {
     ad: [f32; 3],
 
     ///attack speed (attacks per second)
-    aS: f32,
+    attack_speed: f32,
 
     ///attack range
     ra: i8,
@@ -51,7 +51,7 @@ pub const CHAMPIONS: [Champion; 4] = [
         ar: 0.25,
         mr: 0.25,
         ad: [40.0, 70.0, 130.0],
-        aS: 0.6,
+        attack_speed: 0.6,
         ra: 2,
         a_ID: 0,
     }, //Support
@@ -63,7 +63,7 @@ pub const CHAMPIONS: [Champion; 4] = [
         ar: 0.45,
         mr: 0.45,
         ad: [75.0, 100.0, 175.0],
-        aS: 0.7,
+        attack_speed: 0.7,
         ra: 1,
         a_ID: 1,
     }, //Bruiser
@@ -75,7 +75,7 @@ pub const CHAMPIONS: [Champion; 4] = [
         ar: 0.25,
         mr: 0.25,
         ad: [65.0, 120.0, 240.0],
-        aS: 0.7,
+        attack_speed: 0.7,
         ra: 3,
         a_ID: 2,
     }, //AD Ranged
@@ -87,7 +87,7 @@ pub const CHAMPIONS: [Champion; 4] = [
         ar: 0.25,
         mr: 0.25,
         ad: [50.0, 60.0, 70.0],
-        aS: 0.6,
+        attack_speed: 0.6,
         ra: 3,
         a_ID: 3,
     },
@@ -136,7 +136,7 @@ pub struct SummonedChampion {
     pub location: Location,
 
     ///progress of movement before new square, goes up to 10 then moves
-    movementProgress: [i8; 2],
+    movement_progress: [i8; 2],
 
     ///health
     health: f32,
@@ -148,7 +148,7 @@ pub struct SummonedChampion {
     ///crit rate in %
     cr: u8,
     ///crit damage
-    critD: f32,
+    crit_damage: f32,
 
     ///ability mana cost
     mc: u16,
@@ -163,31 +163,31 @@ pub struct SummonedChampion {
     ad: f32,
 
     ///attacks per second/ attack speed
-    aS: f32,
+    attack_speed: f32,
 
     ///auto attack range
     ra: i8,
 
     ///ability ID/ index
-    aID: usize,
+    a_ID: usize,
 
     ///id
     id: usize,
 
     ///cooldown before target chance
-    targetCountDown: i8,
+    target_cooldown: i8,
 
     ///cooldown before auto attacking again
-    autoAttackDelay: i16,
+    auto_attack_delay: i16,
 
     ///attack speed modifier from items and effects
-    attackSpeedModifier: f32,
+    attack_speed_modifier: f32,
 
     ///id of target
     target: usize,
 
     ///pathfinding target cell
-    targetCells: Location,
+    target_cells: Location,
 
     ///Stores all the item IDs the champion is holding.<br />
     ///**Item IDS:**<br />
@@ -255,13 +255,13 @@ pub struct SummonedChampion {
     se: Vec<StatusEffect>,
 
     ///generate mana delay (can't generate mana 1 secomnd after casting ability)
-    gMD: i16,
+    gain_mana_delay: i16,
 
     ///star level
-    starLevel: usize,
+    star_level: usize,
 
     ///incoming DMG modifier
-    incomingDMGModifier: f32,
+    incoming_damage_modifier: f32,
 
     ///starting HP
     initial_hp: f32,
@@ -284,47 +284,47 @@ pub struct SummonedChampion {
     banish: bool,
 
     ///titan's resolve stacks
-    titansResolveStack: u8,
+    titans_resolve_stacks: u8,
 
     ///omnivamp (% of healing from damage done)
     omnivamp: f32,
 
-    hasSetup: bool,
+    is_setup: bool,
 }
 
 impl SummonedChampion {
     ///converts PlacedChampion into SummonChampion
     pub fn new(placed_champion: &PlacedChampion, id: usize) -> SummonedChampion {
-        let starLevel = placed_champion.star; //get star level
-        let ofChampion = &CHAMPIONS[placed_champion.id]; //get champ info
+        let star_level = placed_champion.star; //get star level
+        let of_champ = &CHAMPIONS[placed_champion.id]; //get champ info
         SummonedChampion {
             location: placed_champion.location, //create summoned champ with all details
-            movementProgress: [0, 0],
-            health: ofChampion.hp[starLevel],
+            movement_progress: [0, 0],
+            health: of_champ.hp[star_level],
             initial_hp: 0.0,
-            cm: ofChampion.sm, //update current mana to starting mana
+            cm: of_champ.sm, //update current mana to starting mana
             dc: 0,
             cr: 25,
-            critD: 0.3,
-            mc: ofChampion.mc,
-            ar: ofChampion.ar,
-            mr: ofChampion.mr,
-            ad: ofChampion.ad[starLevel],
-            aS: ofChampion.aS,
-            ra: ofChampion.ra * 2, //because distanceBetweenPoints returns value twice as large
+            crit_damage: 0.3,
+            mc: of_champ.mc,
+            ar: of_champ.ar,
+            mr: of_champ.mr,
+            ad: of_champ.ad[star_level],
+            attack_speed: of_champ.attack_speed,
+            ra: of_champ.ra * 2, //because distanceBetweenPoints returns value twice as large
             id,
-            targetCountDown: 0,
-            autoAttackDelay: 0,
-            attackSpeedModifier: 1.0,
+            target_cooldown: 0,
+            auto_attack_delay: 0,
+            attack_speed_modifier: 1.0,
             target: 255,
-            targetCells: Location { x: -1, y: -1 }, //(!O)
-            aID: ofChampion.a_ID,
+            target_cells: Location { x: -1, y: -1 }, //(!O)
+            a_ID: of_champ.a_ID,
             items: placed_champion.items,
             ap: 1.0,
             se: Vec::new(),
-            gMD: 0,
-            starLevel,
-            incomingDMGModifier: 1.0,
+            gain_mana_delay: 0,
+            star_level,
+            incoming_damage_modifier: 1.0,
             targetable: true,
             shed: 0,
             shields: Vec::new(),
@@ -332,9 +332,9 @@ impl SummonedChampion {
             //traits : traits,
             zap: false, //discrepency maybe if order of status Effects is ever affected, alternative would be to iterate through status Effects and check for ionic spark
             banish: false, //discrepency with this and many others if one status effect banishing ends and another is still going on etc.
-            titansResolveStack: 0,
+            titans_resolve_stacks: 0,
             omnivamp: 0.0,
-            hasSetup: false,
+            is_setup: false,
         }
     }
 
@@ -343,7 +343,7 @@ impl SummonedChampion {
         friendlyChampions: &mut VecDeque<SummonedChampion>,
         enemyChampions: &mut VecDeque<SummonedChampion>,
     ) {
-        if self.hasSetup {
+        if self.is_setup {
             return;
         }
 
@@ -372,10 +372,10 @@ impl SummonedChampion {
             status_type: StatusType::GreviousWounds(),
             ..Default::default()
         }) {
-            healingAmount /= 2.0;
+            healing_amount /= 2.0;
         }
 
-        self.health = self.initial_hp.min(self.health + healingAmount);
+        self.health = self.initial_hp.min(self.health + healing_amount);
     }
     ///simulates a tick/ turn for a champion<br />
     ///friendlyChampions[selfIndex] : this champion<br />
@@ -398,9 +398,9 @@ impl SummonedChampion {
             return false;
         }
 
-        self.targetCountDown -= timeUnit; //Reduce cooldown to check target/ find new target
-        self.autoAttackDelay -= timeUnit as i16; //Risks going out of bounds as auto attack value may not be called for some time
-        self.gMD -= timeUnit as i16;
+        self.target_cooldown -= timeUnit; //Reduce cooldown to check target/ find new target
+        self.auto_attack_delay -= timeUnit as i16; //Risks going out of bounds as auto attack value may not be called for some time
+        self.gain_mana_delay -= timeUnit as i16;
 
         if self.banish {
             return true;
@@ -436,7 +436,7 @@ impl SummonedChampion {
 
             let mut targetObject: Option<SummonedChampion> = None;
 
-            if self.targetCountDown >= 0 {
+            if self.target_cooldown >= 0 {
                 //if already has target and doesnt want to change targets
                 match findChampionIndexFromIDTargetable(enemyChampions, self.target) {
                     Some(index) => {
@@ -449,7 +449,7 @@ impl SummonedChampion {
             if targetObject.is_none() {
                 //index not updating from initial intilialisation of 99, therefore need new target
                 println!("Debug : Looking for Target");
-                self.targetCountDown = 100; //reset target cooldown
+                self.target_cooldown = 100; //reset target cooldown
 
                 needNewTargetCell = true; //tells us to recalculate pathfinding later
                                           //discrepency what if target has moved regardless
@@ -459,7 +459,7 @@ impl SummonedChampion {
                     .getClosestToLocationTargetableIndex(enemyChampions)
                 {
                     Some((i, champ)) => {
-                        if champ.getIsTargetable() {
+                        if champ.get_is_targetable() {
                             index = Some(i)
                         }
                     }
@@ -481,9 +481,9 @@ impl SummonedChampion {
                 println!("Debug : Target in Range");
                 println!(
                     "Debug : Auto Attack Delay Remaining {0}",
-                    self.autoAttackDelay
+                    self.auto_attack_delay
                 ); //discrepency, does auto attack "charge" while moving
-                if self.autoAttackDelay <= 0
+                if self.auto_attack_delay <= 0
                 //if autoattack ready
                 {
                     println!("Debug : Delay Smaller than 0 - Attacking");
@@ -497,17 +497,20 @@ impl SummonedChampion {
                     autoAttackDelay (centiseconds) = 100 / (attackSpeed * attackSpeedMod)
 
                     */
-                    println!("as: {}, mod: {}", self.aS, self.attackSpeedModifier);
-                    self.autoAttackDelay =
-                        ((100.0 / (self.aS * self.attackSpeedModifier)) as i16).max(20); //calculating auto attack delay
+                    println!(
+                        "as: {}, mod: {}",
+                        self.attack_speed, self.attack_speed_modifier
+                    );
+                    self.auto_attack_delay =
+                        ((100.0 / (self.attack_speed * self.attack_speed_modifier)) as i16).max(20); //calculating auto attack delay
                     println!("Auto attack delay set");
                     if self.items.contains(&26) {
-                        self.attackSpeedModifier *= 1.06
+                        self.attack_speed_modifier *= 1.06
                     } //(!D) if attack speed doesnt increase when attack misses/ is dodged
 
                     //attack speed unclear, capped at five yet some champions let you boost beyond it?
                     //optimisation definitely here
-                    if self.gMD <= 0 {
+                    if self.gain_mana_delay <= 0 {
                         self.cm += 10;
                         if self.items.contains(&18) {
                             self.cm += 8;
@@ -516,7 +519,7 @@ impl SummonedChampion {
                     }
                     if self.items.contains(&68) {
                         //(!O) go through foreach in items and match statement
-                        self.dealDamage(
+                        self.deal_damage(
                             friendlyChampions,
                             &mut targetObject,
                             50.0,
@@ -534,7 +537,7 @@ impl SummonedChampion {
                         for enemyChamp in enemyChampions.iter_mut() {
                             count += 1;
 
-                            self.dealDamage(
+                            self.deal_damage(
                                 friendlyChampions,
                                 enemyChamp,
                                 50.0,
@@ -559,7 +562,7 @@ impl SummonedChampion {
                         let closestOtherEnemy =
                             self.location.getClosestToLocationTargetable(enemyChampions);
                         if let Some(target) = closestOtherEnemy {
-                            self.dealDamage(
+                            self.deal_damage(
                                 friendlyChampions,
                                 target,
                                 self.ad * 0.7,
@@ -576,7 +579,7 @@ impl SummonedChampion {
                     {
                         //(!O) from not generating random gen
                         println!("No Dodge");
-                        self.dealDamage(
+                        self.deal_damage(
                             friendlyChampions,
                             &mut targetObject,
                             self.ad,
@@ -591,7 +594,7 @@ impl SummonedChampion {
                             println!("Debug : Health Lower than 0 - Removing");
 
                             if targetObject.items.contains(&36) {
-                                targetObject.turnToVoidSpawn();
+                                targetObject.turn_to_void_spawn();
                                 //(!D) cant be asked to set everything to default)
                                 //(!D) stats change depending on stage
                             }
@@ -604,12 +607,12 @@ impl SummonedChampion {
                 enemyChampions.push_back(targetObject);
             } else {
                 println!("Debug : Not in Range");
-                if needNewTargetCell || self.location == self.targetCells {
+                if needNewTargetCell || self.location == self.target_cells {
                     //if need to update pathfinding or at pathfinding target
                     //optimisation?, accuracy vs performance cost
                     println!("Debug : Need Target Cell");
-                    self.targetCells = self.location; //setting target cells to location so if it does not find a target this frame will try to do it again
-                                                      //optimisation does not need to check every frame
+                    self.target_cells = self.location; //setting target cells to location so if it does not find a target this frame will try to do it again
+                                                       //optimisation does not need to check every frame
 
                     let mut lowestDistance: i8 = i8::MAX; //setting lowestDistance to high value
                     let mut newPosition;
@@ -628,27 +631,27 @@ impl SummonedChampion {
                             }
                             println!("Debug : Found a Target Cell");
                             lowestDistance = distanceToTarget;
-                            self.targetCells = newPosition;
+                            self.target_cells = newPosition;
                         }
                     }
                 }
 
                 println!("Debug : Moving to Target Cell");
-                self.movementProgress[0] +=
-                    movementAmount * sign(self.targetCells.x - self.location.x); //optimisation here
+                self.movement_progress[0] +=
+                    movementAmount * sign(self.target_cells.x - self.location.x); //optimisation here
                 println!(
                     "Debug : Position ({0:?}) -- Movement Progress ({1:?})",
-                    self.location, self.movementProgress
+                    self.location, self.movement_progress
                 );
-                if self.movementProgress[0].abs() == 10 {
-                    self.location.x += sign(self.movementProgress[0]);
-                    self.movementProgress[0] = 0;
+                if self.movement_progress[0].abs() == 10 {
+                    self.location.x += sign(self.movement_progress[0]);
+                    self.movement_progress[0] = 0;
                 }
-                self.movementProgress[1] +=
-                    movementAmount * sign(self.targetCells.y - self.location.y);
-                if self.movementProgress[1].abs() == 10 {
-                    self.location.y += sign(self.movementProgress[1]);
-                    self.movementProgress[1] = 0;
+                self.movement_progress[1] +=
+                    movementAmount * sign(self.target_cells.y - self.location.y);
+                if self.movement_progress[1].abs() == 10 {
+                    self.location.y += sign(self.movement_progress[1]);
+                    self.movement_progress[1] = 0;
                 }
 
                 enemyChampions.push_back(targetObject);
@@ -677,8 +680,8 @@ impl SummonedChampion {
             if self.items.contains(&88) {
                 self.cm = 20;
             }
-            self.gMD = 100;
-            self.castAbility(friendlyChampions, enemyChampions, projectiles);
+            self.gain_mana_delay = 100;
+            self.cast_ability(friendlyChampions, enemyChampions, projectiles);
         }
         true
     }
@@ -690,9 +693,9 @@ impl SummonedChampion {
         damageType: DamageType,
         _isSplash: bool,
     ) {
-        let mut damage: f32 = damageAmount * target.incomingDMGModifier;
+        let mut damage: f32 = damageAmount * target.incoming_damage_modifier;
         let canCrit;
-        let mut critD = self.critD;
+        let mut critD = self.crit_damage;
 
         match damageType {
             DamageType::Physical() => {
@@ -789,12 +792,12 @@ impl SummonedChampion {
             }
         }
 
-        self.titansResolveStack = 25.min(self.titansResolveStack + 1); //add titan's resolve stacks
-        target.titansResolveStack = 25.min(target.titansResolveStack + 1); //give enemy titan's resolve stacks
+        self.titans_resolve_stacks = 25.min(self.titans_resolve_stacks + 1); //add titan's resolve stacks
+        target.titans_resolve_stacks = 25.min(target.titans_resolve_stacks + 1); //give enemy titan's resolve stacks
 
         target.health -= damage;
 
-        if target.gMD <= 0 {
+        if target.gain_mana_delay <= 0 {
             // give mana is delay off
             target.cm += (0.7 * damage) as u16; //(!D) should be 1% of premitigation and 7% of post.
         }
@@ -805,7 +808,7 @@ impl SummonedChampion {
         enemyChampions: &mut VecDeque<SummonedChampion>,
         projectiles: &mut Vec<Projectile>,
     ) {
-        match self.aID {
+        match self.a_ID {
             0 => {
                 //let mut playerDistances : Vec<[i8 ; 2]> = Vec::new(); //instantiates empty vec to hold distance to friendly and enemy champions
 
@@ -818,7 +821,7 @@ impl SummonedChampion {
                         .iter_mut()
                         .map(|x| (self.location.distanceBetweenPoints(&x.location), x, false)),
                 );
-                let starLevel = self.starLevel; //gets current star level
+                let starLevel = self.star_level; //gets current star level
 
                 playerDistances.sort_unstable_by_key(|a| a.0); //sorts the player distances
                 let champCount: usize = [3, 4, 5][starLevel]; //how many champions it can hit/ effect
@@ -868,12 +871,12 @@ impl SummonedChampion {
                 }
             }
             1 => {
-                let starLevel = self.starLevel;
+                let starLevel = self.star_level;
                 let targetIndex = findChampionIndexFromID(enemyChampions, self.target).unwrap_or(0); //(!D) Can strike from out of range, should search for closest
                 self.heal((300.0 + 50.0 * starLevel as f32) * self.ap); //heals
 
                 //deals damage
-                self.dealDamage(
+                self.deal_damage(
                     friendlyChampions,
                     &mut enemyChampions[targetIndex],
                     (25.0 * starLevel as f32) * 4.0 * self.ad,
@@ -884,7 +887,7 @@ impl SummonedChampion {
             2 => {
                 let target = findChampionIndexFromID(enemyChampions, self.target).unwrap_or(0); //(!D) Can strike from out of range
                 let targetLocation = enemyChampions[target].location;
-                let damage: f32 = self.ad * 3.0 * (self.starLevel as f32);
+                let damage: f32 = self.ad * 3.0 * (self.star_level as f32);
                 projectiles.push(Projectile::new(
                     self.location,
                     Option::Some(targetLocation),
@@ -902,7 +905,7 @@ impl SummonedChampion {
                                                                                                 //gets their location
                 let targetLocation = enemyChampions[target].location;
                 //calculates damage
-                let damage: f32 = 250.0 * self.ap * (self.starLevel as f32);
+                let damage: f32 = 250.0 * self.ap * (self.star_level as f32);
                 //adds projectile to vec
                 projectiles.push(Projectile::new(
                     self.location,
@@ -919,7 +922,7 @@ impl SummonedChampion {
         }
     }
     pub fn get_num_targeting(&self, enemy_champions: &VecDeque<SummonedChampion>) -> usize {
-        enemyChampions
+        enemy_champions
             .iter()
             .filter(|p| p.target == self.id)
             .count()
@@ -939,18 +942,18 @@ impl SummonedChampion {
     ) {
         match item {
             0 => (),
-            1 => self.ad += 10.0,                 //BF Sword
-            2 => self.ap += 0.1,                  //Needlessly Large Rod
-            3 => self.health += 150.0,            //Giants Belt
-            4 => self.ar += 0.2,                  //Chain Vest
-            5 => self.mr += 0.2,                  //Negatron Cloak
-            6 => self.attackSpeedModifier *= 1.1, //Recurve Bow
+            1 => self.ad += 10.0,                   //BF Sword
+            2 => self.ap += 0.1,                    //Needlessly Large Rod
+            3 => self.health += 150.0,              //Giants Belt
+            4 => self.ar += 0.2,                    //Chain Vest
+            5 => self.mr += 0.2,                    //Negatron Cloak
+            6 => self.attack_speed_modifier *= 1.1, //Recurve Bow
             7 => {
                 self.cr += 5;
                 self.dc += 10
             } //Sparring Glove
-            8 => self.cm += 15,                   //Tear of the Goddess
-            11 => self.ad += [15.0, 30.0, 45.0][self.starLevel],
+            8 => self.cm += 15,                     //Tear of the Goddess
+            11 => self.ad += [15.0, 30.0, 45.0][self.star_level],
             12 => {
                 self.ad += 10.0;
                 self.ap += 0.1
@@ -958,13 +961,13 @@ impl SummonedChampion {
             13 => {
                 self.ad += 10.0;
                 self.health += 150.0;
-                self.attackSpeedModifier *= 1.3;
+                self.attack_speed_modifier *= 1.3;
                 for friendlyChamp in friendlyChampions
                     .iter_mut()
                     .filter(self.location.getWithinDistance(3))
                 {
                     if friendlyChamp.location.y == self.location.y {
-                        friendlyChamp.attackSpeedModifier *= 1.3;
+                        friendlyChamp.attack_speed_modifier *= 1.3;
                     }
                 }
             }
@@ -989,12 +992,12 @@ impl SummonedChampion {
             }
             16 => {
                 self.ad += 10.0;
-                self.attackSpeedModifier *= 0.1
+                self.attack_speed_modifier *= 0.1
             } //
             17 => {
                 self.ad += 10.0;
                 self.cr += 225;
-                self.critD += 0.1
+                self.crit_damage += 0.1
             } //(!D)?
             18 => {
                 self.ad += 10.0;
@@ -1011,7 +1014,7 @@ impl SummonedChampion {
             24 => {
                 self.ap += 0.1;
                 self.ar += 0.2; //Gives locket shield
-                let shieldAmount = [300.0, 350.0, 400.0][self.starLevel];
+                let shieldAmount = [300.0, 350.0, 400.0][self.star_level];
                 self.shields.push(Shield {
                     duration: 1500,
                     size: shieldAmount,
@@ -1036,12 +1039,12 @@ impl SummonedChampion {
             } //
             26 => {
                 self.ap += 0.1;
-                self.attackSpeedModifier *= 0.1
+                self.attack_speed_modifier *= 0.1
             } //
             27 => {
                 self.ap += 0.5;
                 self.cr += 15;
-                self.critD += 0.4
+                self.crit_damage += 0.4
             } // //(!D) does bonus ability damage include from components? //
             28 => {
                 self.ap += 0.1;
@@ -1076,7 +1079,7 @@ impl SummonedChampion {
             } //gives zephyr effect
             36 => {
                 self.health += 150.0;
-                self.attackSpeedModifier *= 0.1; //close enough, doesnt reset fully
+                self.attack_speed_modifier *= 0.1; //close enough, doesnt reset fully
                 for enemyChamp in enemyChampions
                     .iter_mut()
                     .filter(self.location.getWithinDistance(9))
@@ -1136,7 +1139,7 @@ impl SummonedChampion {
             }
             46 => {
                 self.ar += 0.2;
-                self.attackSpeedModifier *= 1.1;
+                self.attack_speed_modifier *= 1.1;
                 self.se.push(StatusEffect {
                     duration: Some(0),
                     status_type: StatusType::TitansResolve(0),
@@ -1171,13 +1174,13 @@ impl SummonedChampion {
             }
             56 => {
                 self.mr += 0.2;
-                self.attackSpeedModifier *= 1.1;
+                self.attack_speed_modifier *= 1.1;
                 self.ad += 10.0
             } //
             57 => {
                 self.mr += 0.2;
                 self.dc += 15;
-                self.attackSpeedModifier *= 1.2;
+                self.attack_speed_modifier *= 1.2;
                 self.se.push(StatusEffect {
                     duration: Some(15000),
                     status_type: StatusType::CrowdControlImmune(),
@@ -1200,15 +1203,15 @@ impl SummonedChampion {
                 }
             }
             66 => {
-                self.attackSpeedModifier *= 1.55;
+                self.attack_speed_modifier *= 1.55;
                 self.ra += 1;
             }
             67 => {
-                self.attackSpeedModifier *= 1.21;
+                self.attack_speed_modifier *= 1.21;
                 self.cr += 15;
             } //discrepency
             68 => {
-                self.attackSpeedModifier *= 1.21;
+                self.attack_speed_modifier *= 1.21;
                 self.cm += 15;
             }
             77 => {
@@ -1265,22 +1268,22 @@ impl SummonedChampion {
                 .checked_sub(time_unit.into())
                 .unwrap_or(0); //unwrap duration and do checked subtraction
 
-            if self.isShred() && status_effect.is_negative {
+            if self.is_shred() && status_effect.is_negative {
                 n_duration = 0;
             } //if shed and negative set duration to 0
 
             if n_duration <= 0 {
                 match status_effect.status_type {
                     //undo status effect/ remove effect. some effects aren't actually removed but just reinitialise
-                    StatusType::AttackSpeedBuff(modifier) => self.attackSpeedModifier /= modifier,
+                    StatusType::AttackSpeedBuff(modifier) => self.attack_speed_modifier /= modifier,
                     StatusType::IncreaseDamageTaken(modifier) => {
-                        self.incomingDMGModifier /= modifier
+                        self.incoming_damage_modifier /= modifier
                     }
                     StatusType::Untargetable() => {
                         self.targetable = true //(!D) if have 2 untargetable effects this will untarget too early
                     }
                     StatusType::MorellonomiconBurn(dmg_per_tick, dmg_to_do, time_next_tick) => {
-                        if self.isShred() {
+                        if self.is_shred() {
                             return false;
                         }
 
@@ -1317,7 +1320,7 @@ impl SummonedChampion {
                     }
                     StatusType::Gargoyles(oldNumTargeting) => {
                         n_duration = 100; //increase duration
-                        let numTargeting: f32 = self.getNumTargeting(enemy_champions) as f32;
+                        let numTargeting: f32 = self.get_num_targeting(enemy_champions) as f32;
                         let difference = numTargeting - oldNumTargeting; //get change
                         self.ar += 0.18 * difference;
                         self.mr += 0.18 * difference;
@@ -1335,7 +1338,7 @@ impl SummonedChampion {
                     StatusType::DragonClawHeal() => {
                         n_duration = 200; //reset status effect
 
-                        let numTargeting: f32 = self.getNumTargeting(enemy_champions) as f32;
+                        let numTargeting: f32 = self.get_num_targeting(enemy_champions) as f32;
                         self.heal(self.initial_hp * 0.012 * numTargeting);
                     }
                     StatusType::LastWhisperShred() => {
@@ -1402,16 +1405,16 @@ impl SummonedChampion {
                     StatusType::Taunted(tauntID) => {
                         if findChampionIndexFromID(enemy_champions, tauntID).is_some() {
                             self.target = tauntID;
-                            self.targetCountDown = 100;
+                            self.target_cooldown = 100;
                             n_duration = 20;
                         }
                     }
                     StatusType::TitansResolve(mut oldStackNum) => {
                         if oldStackNum != 25 {
-                            let difference: f32 = (self.titansResolveStack - oldStackNum).into();
+                            let difference: f32 = (self.titans_resolve_stacks - oldStackNum).into();
                             self.ad += 2.0 * difference;
                             self.ap += 0.02 * difference;
-                            oldStackNum = self.titansResolveStack;
+                            oldStackNum = self.titans_resolve_stacks;
                             if oldStackNum == 25 {
                                 self.ar += 0.25;
                                 self.mr += 0.25;
@@ -1446,7 +1449,7 @@ impl SummonedChampion {
             status_effect.applied = true;
             match status_effect.status_type {
                 StatusType::AttackSpeedBuff(modifier) => {
-                    self.attackSpeedModifier *= modifier;
+                    self.attack_speed_modifier *= modifier;
                 }
                 StatusType::Stun() => {
                     status_effect.applied = false;
@@ -1455,7 +1458,7 @@ impl SummonedChampion {
                     } //has to check stun.stun == 0 as if stun.stun == 2 it is immune
                 }
                 StatusType::IncreaseDamageTaken(modifier) => {
-                    self.incomingDMGModifier *= modifier;
+                    self.incoming_damage_modifier *= modifier;
                 }
                 StatusType::Assassin() => {
                     if self.location.y >= 4 {
@@ -1495,47 +1498,47 @@ impl Default for SummonedChampion {
             location: Location {
                 ..Default::default()
             },
-            movementProgress: [0, 0],
+            movement_progress: [0, 0],
             health: 0.0,
             cm: 0,
             dc: 0,
             cr: 0,
-            critD: 0.0,
+            crit_damage: 0.0,
             mc: 0,
             ar: 0.0,
             mr: 0.0,
             ad: 0.0,
-            aS: 0.0,
+            attack_speed: 0.0,
             ra: 0,
-            aID: 0,
+            a_ID: 0,
             id: 0,
-            targetCountDown: 0,
-            autoAttackDelay: 0,
-            attackSpeedModifier: 0.0,
+            target_cooldown: 0,
+            auto_attack_delay: 0,
+            attack_speed_modifier: 0.0,
             target: 0,
-            targetCells: Location { x: 0, y: 0 },
+            target_cells: Location { x: 0, y: 0 },
             items: [0, 0, 0],
             ap: 0.0,
             se: Vec::new(),
-            gMD: 0,
-            starLevel: 0,
-            incomingDMGModifier: 0.0,
+            gain_mana_delay: 0,
+            star_level: 0,
+            incoming_damage_modifier: 0.0,
             initial_hp: 0.0,
             targetable: false,
             shed: 0,
             shields: Vec::new(),
             zap: false,
             banish: false,
-            titansResolveStack: 0,
+            titans_resolve_stacks: 0,
             omnivamp: 0.0,
-            hasSetup: false,
+            is_setup: false,
         }
     }
 }
 
 impl fmt::Display for SummonedChampion {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}: {} {}", self.id, self.aID, self.health)
+        write!(f, "{}: {} {}", self.id, self.a_ID, self.health)
     }
 }
 
@@ -1545,32 +1548,32 @@ impl From<PlacedChampion> for SummonedChampion {
         let of_champion = &CHAMPIONS[champ.id]; //get champ info
         SummonedChampion {
             location: champ.location, //create summoned champ with all details
-            movementProgress: [0, 0],
+            movement_progress: [0, 0],
             health: of_champion.hp[star_level],
             initial_hp: 0.0,
             cm: of_champion.sm, //update current mana to starting mana
             dc: 0,
             cr: 25,
-            critD: 0.3,
+            crit_damage: 0.3,
             mc: of_champion.mc,
             ar: of_champion.ar,
             mr: of_champion.mr,
             ad: of_champion.ad[star_level],
-            aS: of_champion.aS,
+            attack_speed: of_champion.attack_speed,
             ra: of_champion.ra * 2, //because distanceBetweenPoints returns value twice as large
             id: 0,
-            targetCountDown: 0,
-            autoAttackDelay: 0,
-            attackSpeedModifier: 1.0,
+            target_cooldown: 0,
+            auto_attack_delay: 0,
+            attack_speed_modifier: 1.0,
             target: 255,
-            targetCells: Location { x: -1, y: -1 }, //(!O)
-            aID: of_champion.a_ID,
+            target_cells: Location { x: -1, y: -1 }, //(!O)
+            a_ID: of_champion.a_ID,
             items: champ.items,
             ap: 1.0,
             se: Vec::new(),
-            gMD: 0,
-            starLevel: star_level,
-            incomingDMGModifier: 1.0,
+            gain_mana_delay: 0,
+            star_level,
+            incoming_damage_modifier: 1.0,
             targetable: true,
             shed: 0,
             shields: Vec::new(),
@@ -1578,9 +1581,9 @@ impl From<PlacedChampion> for SummonedChampion {
             //traits : traits,
             zap: false, //discrepency maybe if order of status Effects is ever affected, alternative would be to iterate through status Effects and check for ionic spark
             banish: false, //discrepency with this and many others if one status effect banishing ends and another is still going on etc.
-            titansResolveStack: 0,
+            titans_resolve_stacks: 0,
             omnivamp: 0.0,
-            hasSetup: false,
+            is_setup: false,
         }
     }
 }
