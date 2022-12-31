@@ -91,7 +91,7 @@ impl Board {
             }
 
             p1_projectiles.retain_mut(|f| {
-                f.SimulateTick(
+                f.simulate_tick(
                     &mut self.p2_champions,
                     &mut self.p1_champions,
                     &mut dead_champs,
@@ -99,7 +99,7 @@ impl Board {
             });
 
             p2_projectiles.retain_mut(|f| {
-                f.SimulateTick(
+                f.simulate_tick(
                     &mut self.p1_champions,
                     &mut self.p2_champions,
                     &mut dead_champs,

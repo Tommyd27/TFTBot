@@ -4,7 +4,7 @@ use std::collections::VecDeque;
 ///champions : &Vec<SummonedChampion> - List of champions to iterate through<br />
 ///id : usize - ID wanted<br />
 ///returns : Option<usize> - Some(correct id) or None if not found
-pub fn findChampionIndexFromID(champions: &VecDeque<SummonedChampion>, id: usize) -> Option<usize> {
+pub fn find_champion_index_from_id(champions: &VecDeque<SummonedChampion>, id: usize) -> Option<usize> {
     //(!D) swap this out for check targetable as well
 
     if champions[id].equal_id(id) {
@@ -19,7 +19,7 @@ pub fn findChampionIndexFromID(champions: &VecDeque<SummonedChampion>, id: usize
     None
 }
 ///Same as find champ index from id but also checks it is targetable/ not banished
-pub fn findChampionIndexFromIDTargetable(
+pub fn find_champion_index_from_id_targetable(
     champions: &VecDeque<SummonedChampion>,
     id: usize,
 ) -> Option<usize> {

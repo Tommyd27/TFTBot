@@ -6,20 +6,20 @@ pub struct Shield {
     ///number of damage blocked
     pub size: f32,
     ///Optional choice for whether it only blocks a certain type
-    pub blocksType: Option<DamageType>,
+    pub blocks_type: Option<DamageType>,
 
     ///Whether it pops after receiving any damage
     pub pop: bool,
 }
 
 impl Shield {
-    pub fn updateShield(&mut self, timeUnit: i8) -> bool {
+    pub fn update_shield(&mut self, time_unit: i8) -> bool {
         //updates self
-        self.duration -= timeUnit as i16; //(!O)
+        self.duration -= time_unit as i16; //(!O)
         self.duration > 0 && self.size > 0.0
     }
-    pub fn handleDamage(&mut self, damage: f32, damageType: DamageType) -> f32 {
-        if self.blocksType.is_none() || self.blocksType.unwrap() == damageType {
+    pub fn handle_damage(&mut self, damage: f32, damage_type: DamageType) -> f32 {
+        if self.blocks_type.is_none() || self.blocks_type.unwrap() == damage_type {
             let out = damage - self.size;
             self.size -= damage;
             if self.pop {
@@ -36,7 +36,7 @@ impl Default for Shield {
         Shield {
             duration: 0,
             size: 0.0,
-            blocksType: None,
+            blocks_type: None,
             pop: false,
         }
     }

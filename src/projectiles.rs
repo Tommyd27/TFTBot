@@ -1,7 +1,7 @@
 use crate::{
     champions::{DamageType, SummonedChampion},
     location::Location,
-    utils::{findChampionIndexFromID, sign},
+    utils::{find_champion_index_from_id, sign},
 };
 use std::collections::VecDeque;
 ///Projectile struct
@@ -10,119 +10,119 @@ pub struct Projectile {
     location: Location,
 
     ///location progress
-    locationProgress: [i8; 2],
+    location_progress: [i8; 2],
 
     ///target location
-    targetLocation: Option<Location>,
+    target_location: Option<Location>,
 
     ///enemy Champion index
-    targetID: usize,
+    target_id: usize,
 
     ///projectile damage
     damage: f32,
 
     ///projectile damage type
-    damageType: DamageType,
+    damage_type: DamageType,
 
     ///amount of splash damage
-    splashDamage: f32,
+    splash_damage: f32,
 
     ///speed of projectile
     speed: i8,
 
     ///id of shooter (so can give item effects etc)
-    shooterID: usize,
+    shooter_id: usize,
 }
 
 impl Projectile {
     ///Simulates a single tick of a projectile
-    pub fn SimulateTick(
+    pub fn simulate_tick(
         self: &mut Projectile,
-        possibleTargets: &mut VecDeque<SummonedChampion>,
-        friendlyChampions: &mut VecDeque<SummonedChampion>,
-        deadChampions: &mut VecDeque<SummonedChampion>,
+        possible_targets: &mut VecDeque<SummonedChampion>,
+        friendly_champions: &mut VecDeque<SummonedChampion>,
+        dead_champions: &mut VecDeque<SummonedChampion>,
     ) -> bool {
-        let targetLocation = match self.targetLocation //discrepency only checks after move to theoretically could phase through someone
+        let target_location = match self.target_location //discrepency only checks after move to theoretically could phase through someone
 		{
 			Some(location) => {location}, //gets target location
 			None => {
-				let outLocation = findChampionIndexFromID(possibleTargets, self.targetID);//gets location of target champion
-				match outLocation
+				let out_location = find_champion_index_from_id(possible_targets, self.target_id);//gets location of target champion
+				match out_location
 				{
-					Some(index) => possibleTargets[index].location,
+					Some(index) => possible_targets[index].location,
 					None => Location { x: -1, y: -1 },
 				}
 
 
 		}};
-        if targetLocation.x == -1 {
+        if target_location.x == -1 {
             return false;
         } //not found, remove projectile
 
-        let subtractedDistance = Location::subPositions(&targetLocation, &self.location);
+        let subtracted_distance = Location::sub_positions(&target_location, &self.location);
 
-        self.locationProgress[0] += self.speed * sign(subtractedDistance.x);
-        self.locationProgress[1] += self.speed * sign(subtractedDistance.y); //add location progress
-        if self.locationProgress[0].abs() >= 10
+        self.location_progress[0] += self.speed * sign(subtracted_distance.x);
+        self.location_progress[1] += self.speed * sign(subtracted_distance.y); //add location progress
+        if self.location_progress[0].abs() >= 10
         //if above 10, move
         {
-            self.location.x += sign(self.locationProgress[0]);
+            self.location.x += sign(self.location_progress[0]);
         }
-        if self.locationProgress[1].abs() >= 10 {
-            self.location.y += sign(self.locationProgress[1]);
+        if self.location_progress[1].abs() >= 10 {
+            self.location.y += sign(self.location_progress[1]);
         }
-        if !self.location.checkValid() {
+        if !self.location.check_valid() {
             return false;
         } //if out of grid, remove
 
-        for possibleTarget in possibleTargets.iter_mut()
+        for possible_target in possible_targets.iter_mut()
         //iterate through all possible collisions
         {
-            if self.location == possibleTarget.location
+            if self.location == possible_target.location
             //has a hit
             {
                 let mut dead = false;
                 let mut shooter: SummonedChampion;
 
-                if let Some(shooterIndex) =
-                    findChampionIndexFromID(friendlyChampions, self.shooterID)
+                if let Some(shooter_index) =
+                    find_champion_index_from_id(friendly_champions, self.shooter_id)
                 {
                     //finds shooter id
-                    shooter = friendlyChampions.swap_remove_back(shooterIndex).unwrap();
+                    shooter = friendly_champions.swap_remove_back(shooter_index).unwrap();
                 } else {
-                    let deadChampIndex =
-                        findChampionIndexFromID(deadChampions, self.shooterID).unwrap();
-                    shooter = deadChampions.swap_remove_back(deadChampIndex).unwrap();
+                    let dead_champion_index =
+                        find_champion_index_from_id(dead_champions, self.shooter_id).unwrap();
+                    shooter = dead_champions.swap_remove_back(dead_champion_index).unwrap();
                     dead = true;
                 }
                 shooter.deal_damage(
-                    friendlyChampions,
-                    possibleTarget,
+                    friendly_champions,
+                    possible_target,
                     self.damage,
-                    self.damageType,
+                    self.damage_type,
                     false,
                 ); //deals damage
-                if self.splashDamage > 0.0
+                if self.splash_damage > 0.0
                 //if there is splash damage
                 {
-                    for possibleSecondaryTarget in possibleTargets
+                    for possible_secondary_target in possible_targets
                         .iter_mut()
-                        .filter(self.location.getWithinDistance(3))
+                        .filter(self.location.get_within_distance(3))
                     //iterate through possible splash hits
                     {
                         shooter.deal_damage(
-                            friendlyChampions,
-                            possibleSecondaryTarget,
-                            self.splashDamage,
-                            self.damageType,
+                            friendly_champions,
+                            possible_secondary_target,
+                            self.splash_damage,
+                            self.damage_type,
                             true,
                         ); //deal secondary dmg
                     }
                 }
                 if !dead {
-                    friendlyChampions.push_back(shooter)
+                    friendly_champions.push_back(shooter)
                 } else {
-                    deadChampions.push_back(shooter)
+                    dead_champions.push_back(shooter)
                 }
                 return false; //remove self
             }
@@ -132,24 +132,24 @@ impl Projectile {
     ///Makes new projectile
     pub fn new(
         location: Location,
-        targetLocation: Option<Location>,
-        targetID: usize,
+        target_location: Option<Location>,
+        target_id: usize,
         damage: f32,
-        damageType: DamageType,
-        splashDamage: f32,
+        damage_type: DamageType,
+        splash_damage: f32,
         speed: i8,
-        shooterID: usize,
+        shooter_id: usize,
     ) -> Projectile {
         Projectile {
             location,
-            locationProgress: [0, 0],
-            targetLocation,
-            targetID,
+            location_progress: [0, 0],
+            target_location,
+            target_id,
             damage,
-            damageType,
-            splashDamage,
+            damage_type,
+            splash_damage,
             speed,
-            shooterID,
+            shooter_id,
         }
     }
 }

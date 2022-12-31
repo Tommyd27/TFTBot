@@ -12,20 +12,20 @@ mod status_effects;
 mod utils;
 
 fn main() {
-    let playerOneChamps: VecDeque<PlacedChampion> = VecDeque::from([PlacedChampion::new(
+    let player_one_champs: VecDeque<PlacedChampion> = VecDeque::from([PlacedChampion::new(
         0,
         0,
         [0, 0, 0],
         Location { x: 3, y: 0 },
     )]);
-    let playerTwoChamps: VecDeque<PlacedChampion> = VecDeque::from([PlacedChampion::new(
+    let player_two_champs: VecDeque<PlacedChampion> = VecDeque::from([PlacedChampion::new(
         1,
         0,
         [0, 0, 0],
         Location { x: 6, y: 7 },
     )]);
-    let mut board: Board = Board::new(&playerOneChamps, &playerTwoChamps, 10);
+    let mut board: Board = Board::new(&player_one_champs, &player_two_champs, 10);
     println!("Debug : Starting Battle");
-    let boardOutcome = board.start_battle();
-    println!("Debug : Iteration Count {}", boardOutcome);
+    let board_outcome = board.start_battle();
+    println!("Debug : Iteration Count {}", board_outcome);
 }

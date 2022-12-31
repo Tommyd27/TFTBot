@@ -1,0 +1,2 @@
+-Rewrite Damage Amount + Damage Type into a single object, as the two almost always accompany each other.
+ Maybe include splash damage in it.
