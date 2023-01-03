@@ -1,6 +1,9 @@
 /* Imports */
 use crate::{board::Board, champions::PlacedChampion, location::Location};
 use std::collections::VecDeque;
+use std::env;
+#[macro_use]
+extern crate log;
 
 /* Crate Modules */
 mod board;
@@ -12,6 +15,9 @@ mod status_effects;
 mod utils;
 
 fn main() {
+    env::set_var("RUST_LOG", "debug");
+    env_logger::init();
+    
     let player_one_champs: VecDeque<PlacedChampion> = VecDeque::from([PlacedChampion::new(
         0,
         0,
@@ -26,6 +32,7 @@ fn main() {
     )]);
     let mut board: Board = Board::new(&player_one_champs, &player_two_champs, 10);
     println!("Debug : Starting Battle");
+    return;
     let board_outcome = board.start_battle();
     println!("Debug : Iteration Count {}", board_outcome);
 }
