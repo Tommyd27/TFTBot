@@ -122,6 +122,7 @@ pub struct PlacedChampion {
 
 impl PlacedChampion {
     pub fn new(id: usize, star: usize, items: [u8; 3], location: Location) -> PlacedChampion {
+        info!("Creating new placed champion {}", id);
         PlacedChampion {
             id,
             star,
@@ -295,6 +296,11 @@ pub struct SummonedChampion {
 impl SummonedChampion {
     ///converts PlacedChampion into SummonChampion
     pub fn new(placed_champion: &PlacedChampion, id: usize) -> SummonedChampion {
+        info!(
+            "New Summoned Champion ID : {} Champion ID : {}",
+            id, placed_champion.id
+        );
+
         let star_level = placed_champion.star; //get star level
         let of_champ = &CHAMPIONS[placed_champion.id]; //get champ info
         SummonedChampion {
@@ -346,9 +352,10 @@ impl SummonedChampion {
         if self.is_setup {
             return;
         }
-
+        info!("Setup of Champion {}", self.id);
         if self.items[0] == 77 {
             //(!D) doesnt give accurate item pairs
+            info!("Champion has thieves gloves, giving items");
             let level = true; //implement getting level
             if level {
                 self.items[1] =
@@ -362,20 +369,29 @@ impl SummonedChampion {
             }
         }
         for item in self.items {
+            info!("Giving item effect {}", item);
             self.give_item_effect(item, friendly_champions, enemy_champions)
         }
-        self.initial_hp = self.health
+        self.initial_hp = self.health;
+        info!("Set HP to {}", self.health);
     }
     ///fn to heal set amount
     fn heal(&mut self, mut healing_amount: f32) {
+        info!("{self} - Healing");
         if self.se.contains(&StatusEffect {
             status_type: StatusType::GreviousWounds(),
             ..Default::default()
         }) {
+            info!(
+                "Has Grevious Wounds cutting halving healing before: {}",
+                healing_amount
+            );
             healing_amount /= 2.0;
+            info!("After {}", healing_amount);
         }
 
         self.health = self.initial_hp.min(self.health + healing_amount);
+        info!("{self}");
     }
     ///simulates a tick/ turn for a champion<br />
     ///friendlyChampions[selfIndex] : this champion<br />
@@ -384,7 +400,7 @@ impl SummonedChampion {
     ///timeUnit : time unit of a frame, in centiseconds<br />
     ///movementAmount : precalculated movement distance for 1 frame<br />
     fn turn_to_void_spawn(&mut self) {
-        println!("Unimplemented")
+        error!("Unimplemented turn to voidspawn");
     }
     pub fn take_turn(
         &mut self,
@@ -394,7 +410,9 @@ impl SummonedChampion {
         movement_amount: i8,
         projectiles: &mut Vec<Projectile>,
     ) -> bool {
+        info!("Taking turn for {self}");
         if self.health <= 0.0 {
+            info!("Health below zero, removing self");
             return false;
         }
 
@@ -403,10 +421,12 @@ impl SummonedChampion {
         self.gain_mana_delay -= time_unit as i16;
 
         if self.banish {
+            info!("Is banished");
             return true;
         }
 
         {
+            info!("Simulating status effects");
             let mut status_effects = take(&mut self.se);
             let mut stun = Stun { stun: 0 };
             status_effects.retain_mut(|x| {
@@ -414,6 +434,7 @@ impl SummonedChampion {
             });
 
             if self.health <= 0.0 {
+                info!("Health below zero from status effect, removing");
                 return false;
             }
 
@@ -424,6 +445,7 @@ impl SummonedChampion {
             self.shields.retain_mut(|x| x.update_shield(time_unit));
 
             if stun.stun == 1 {
+                info!("Is stunned");
                 return true;
             }
         }
@@ -431,35 +453,42 @@ impl SummonedChampion {
         //does auto attack delay need to reset on pathing? does attack instantly after reaching path/ in range
 
         {
+            info!("Calculating auto attack or movement");
             //targetObject/ pathfinding block
             let mut need_new_target_cell: bool = false; //Bool to store whether new path is needed
 
             let mut target_object: Option<SummonedChampion> = None;
 
             if self.target_cooldown >= 0 {
+                info!("Cooldown above zero, trying to find target {}", self.target);
                 //if already has target and doesnt want to change targets
-                if let Some(index) = find_champion_index_from_id_targetable(enemy_champions, self.target) {
+                if let Some(index) =
+                    find_champion_index_from_id_targetable(enemy_champions, self.target)
+                {
                     target_object = enemy_champions.swap_remove_back(index);
+                    info!("Target found? : {}", target_object.is_some());
                 }
             }
 
             if target_object.is_none() {
                 //index not updating from initial intilialisation of 99, therefore need new target
-                println!("Debug : Looking for Target");
+                info!("Could not find target or need new target");
                 self.target_cooldown = 100; //reset target cooldown
 
                 need_new_target_cell = true; //tells us to recalculate pathfinding later
-                                          //discrepency what if target has moved regardless
+                                             //discrepency what if target has moved regardless
                 let mut index: Option<usize> = None;
                 if let Some((i, champ)) = self
                     .location
-                    .get_closest_to_location_targetable_index(enemy_champions) {
+                    .get_closest_to_location_targetable_index(enemy_champions)
+                {
                     if champ.get_is_targetable() {
+                        info!("Found closest to location that is targetable index : {i}");
                         index = Some(i)
                     }
-                    
                 }
                 if index.is_none() {
+                    info!("No targetable champions, ending turn");
                     return true;
                 }
 
@@ -467,8 +496,12 @@ impl SummonedChampion {
             }
 
             let mut target_object: SummonedChampion = target_object.unwrap();
+            info!("Target is {target_object}");
             self.target = target_object.id;
-            let distance_to_target = self.location.distance_between_points(&target_object.location);
+            let distance_to_target = self
+                .location
+                .distance_between_points(&target_object.location);
+            info!("Distance to target {distance_to_target}");
 
             if distance_to_target <= self.ra {
                 //if target in range
@@ -553,8 +586,9 @@ impl SummonedChampion {
 
                     if self.items.contains(&56) {
                         //(!D) can be dodged
-                        let closest_other_enemy =
-                            self.location.get_closest_to_location_targetable(enemy_champions);
+                        let closest_other_enemy = self
+                            .location
+                            .get_closest_to_location_targetable(enemy_champions);
                         if let Some(target) = closest_other_enemy {
                             self.deal_damage(
                                 friendly_champions,
@@ -615,11 +649,14 @@ impl SummonedChampion {
                     //optimisation
                     {
                         new_position = Location::add_position_vec(&self.location, possible_move);
-                        let distance_to_target =
-                            target_object.location.distance_between_points(&new_position);
+                        let distance_to_target = target_object
+                            .location
+                            .distance_between_points(&new_position);
                         if distance_to_target < lowest_distance {
                             if (!new_position.check_valid())
-                                || friendly_champions.iter().any(|f| f.location == new_position)
+                                || friendly_champions
+                                    .iter()
+                                    .any(|f| f.location == new_position)
                             {
                                 continue;
                             }
@@ -746,11 +783,14 @@ impl SummonedChampion {
             if self.items.contains(&12) {
                 //give gunblade healing
                 let healing = damage / 4.0; //calculate healing
-                self.heal(healing); //heal self                    
+                self.heal(healing); //heal self
 
-                if let Some(lowest_hp_champ) = friendly_champions
+                if let Some(lowest_hp_champ) =
+                    friendly_champions
                         .iter_mut()
-                        .reduce(|x, y| if x.health < y.health { x } else { y }) {//get lowest HP ally 
+                        .reduce(|x, y| if x.health < y.health { x } else { y })
+                {
+                    //get lowest HP ally
                     //if there are any allies
                     lowest_hp_champ.heal(healing)
                 }
@@ -766,7 +806,11 @@ impl SummonedChampion {
                 let damage_to_do = target.initial_hp / 4.0;
                 target.se.push(StatusEffect {
                     duration: Some(100),
-                    status_type: StatusType::MorellonomiconBurn(damage_to_do / 10.0, damage_to_do, 100),
+                    status_type: StatusType::MorellonomiconBurn(
+                        damage_to_do / 10.0,
+                        damage_to_do,
+                        100,
+                    ),
                     is_negative: true,
                     ..Default::default()
                 }) //discrepency unsure whether burn just reapplies itself
@@ -803,10 +847,11 @@ impl SummonedChampion {
             0 => {
                 //let mut playerDistances : Vec<[i8 ; 2]> = Vec::new(); //instantiates empty vec to hold distance to friendly and enemy champions
 
-                let mut player_distances: Vec<(i8, &mut SummonedChampion, bool)> = friendly_champions
-                    .iter_mut()
-                    .map(|x| (self.location.distance_between_points(&x.location), x, true))
-                    .collect();
+                let mut player_distances: Vec<(i8, &mut SummonedChampion, bool)> =
+                    friendly_champions
+                        .iter_mut()
+                        .map(|x| (self.location.distance_between_points(&x.location), x, true))
+                        .collect();
                 player_distances.extend(
                     enemy_champions
                         .iter_mut()
@@ -863,7 +908,8 @@ impl SummonedChampion {
             }
             1 => {
                 let star_level = self.star_level;
-                let target_index = find_champion_index_from_id(enemy_champions, self.target).unwrap_or(0); //(!D) Can strike from out of range, should search for closest
+                let target_index =
+                    find_champion_index_from_id(enemy_champions, self.target).unwrap_or(0); //(!D) Can strike from out of range, should search for closest
                 self.heal((300.0 + 50.0 * star_level as f32) * self.ap); //heals
 
                 //deals damage
@@ -893,7 +939,7 @@ impl SummonedChampion {
             3 => {
                 //fetches target index
                 let target = find_champion_index_from_id(enemy_champions, self.target).unwrap_or(0); //(!D) Can strike from out of range
-                                                                                                //gets their location
+                                                                                                     //gets their location
                 let target_location = enemy_champions[target].location;
                 //calculates damage
                 let damage: f32 = 250.0 * self.ap * (self.star_level as f32);
@@ -1402,14 +1448,16 @@ impl SummonedChampion {
                     }
                     StatusType::TitansResolve(old_stack_num) => {
                         if old_stack_num != 25 {
-                            let difference: f32 = (self.titans_resolve_stacks - old_stack_num).into();
+                            let difference: f32 =
+                                (self.titans_resolve_stacks - old_stack_num).into();
                             self.ad += 2.0 * difference;
                             self.ap += 0.02 * difference;
                             if self.titans_resolve_stacks == 25 {
                                 self.ar += 0.25;
                                 self.mr += 0.25;
                             }
-                            status_effect.status_type = StatusType::TitansResolve(self.titans_resolve_stacks);
+                            status_effect.status_type =
+                                StatusType::TitansResolve(self.titans_resolve_stacks);
                         }
                         return true;
                     }
