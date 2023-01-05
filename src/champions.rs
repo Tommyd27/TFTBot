@@ -346,11 +346,10 @@ impl SummonedChampion {
             shiv_attack_count: 0,
         }
     }
-
     pub fn setup(
         &mut self,
         friendly_champions: &mut VecDeque<SummonedChampion>,
-        enemy_champions: &mut VecDeque<SummonedChampion>,
+        enemy_champions: &mut VecDeque<SummonedChampion>
     ) {
         if self.is_setup {
             return;
@@ -666,18 +665,18 @@ impl SummonedChampion {
                             {
                                 continue;
                             }
-                            println!("Debug : Found a Target Cell");
+                            info!("Found target cell {}", new_position);
                             lowest_distance = distance_to_target;
                             self.target_cells = new_position;
                         }
                     }
                 }
 
-                println!("Debug : Moving to Target Cell");
+                info!("Moving to Target Cell {}", self.target_cells);
                 self.movement_progress[0] +=
                     movement_amount * sign(self.target_cells.x - self.location.x); //optimisation here
-                println!(
-                    "Debug : Position ({0:?}) -- Movement Progress ({1:?})",
+                info!(
+                    "Position ({0:?}) -- Movement Progress ({1:?})",
                     self.location, self.movement_progress
                 );
                 if self.movement_progress[0].abs() == 10 {
@@ -696,10 +695,12 @@ impl SummonedChampion {
         }
         //Ionic spark, optimisation, could be status effect but enemies not passed into function? also doesnt need to be check every turn
         if self.items.contains(&25) {
+            info!("giving ionic spark effect");
             for champ in enemy_champions
                 .iter_mut()
                 .filter(self.location.get_within_distance(7))
             {
+                info!("Push to {champ}");
                 champ.se.push(StatusEffect {
                     duration: Some((time_unit + 1).into()),
                     status_type: StatusType::IonicSparkEffect(),
@@ -710,11 +711,14 @@ impl SummonedChampion {
         }
 
         if self.cm >= self.mc {
+            info!("Enough mana casting ability");
             if self.zap {
+                info!("Zap");
                 self.health -= (self.mc as f32) * 2.5;
             }
             self.cm = 0;
             if self.items.contains(&88) {
+                info!("Bluebuff");
                 self.cm = 20;
             }
             self.gain_mana_delay = 100;
@@ -730,7 +734,9 @@ impl SummonedChampion {
         damage_type: DamageType,
         _is_splash: bool,
     ) {
+        info!("Dealing {damage_amount} from {self} to {target}");
         let mut damage: f32 = damage_amount * target.incoming_damage_modifier;
+        info!("Increased to {damage}");
         let can_crit;
         let mut crit_damage = self.crit_damage;
 
@@ -767,6 +773,7 @@ impl SummonedChampion {
         }
 
         if can_crit && self.cr > rand::thread_rng().gen_range(0..100) {
+            info!("Crit");
             let mut additional_crit_damage = damage * crit_damage;
             if target.items.contains(&44) {
                 //reduce dmg if target has bramble vest
@@ -825,9 +832,12 @@ impl SummonedChampion {
 
         self.heal(damage * self.omnivamp); //give omnivamp healing
 
+        info!("Accounting for shield");
         for shield in &mut target.shields {
             //reduce damage due to shields
+            info!("shield : {}", shield.size);
             damage = shield.handle_damage(damage, damage_type);
+            info!("damage : {}", damage);
             if damage <= 0.0 {
                 break;
             }
@@ -849,6 +859,7 @@ impl SummonedChampion {
         enemy_champions: &mut VecDeque<SummonedChampion>,
         projectiles: &mut Vec<Projectile>,
     ) {
+        info!("casting ability");
         match self.a_id {
             0 => {
                 //let mut playerDistances : Vec<[i8 ; 2]> = Vec::new(); //instantiates empty vec to hold distance to friendly and enemy champions
@@ -983,6 +994,7 @@ impl SummonedChampion {
         friendly_champions: &mut VecDeque<SummonedChampion>,
         enemy_champions: &mut VecDeque<SummonedChampion>,
     ) {
+        info!("giving item {}", item);
         match item {
             0 => (),
             1 => self.ad += 10.0,                   //BF Sword
@@ -1304,6 +1316,7 @@ impl SummonedChampion {
         time_unit: i8,
         stun: &mut Stun,
     ) -> bool {
+        info!("Performing status");
         if status_effect.duration.is_some() {
             let mut n_duration = status_effect
                 .duration

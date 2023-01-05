@@ -114,3 +114,9 @@ impl Location {
         generate_filter(FilterType::DistanceFilter(distance, self))
     }
 }
+
+impl std::fmt::Display for Location {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "x, y, z  {}, {}, {}", self.x, self.y, self.calculate_z())
+    }
+}
