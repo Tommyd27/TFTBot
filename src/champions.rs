@@ -291,6 +291,8 @@ pub struct SummonedChampion {
     omnivamp: f32,
 
     is_setup: bool,
+
+    shiv_attack_count: u8,
 }
 
 impl SummonedChampion {
@@ -341,6 +343,7 @@ impl SummonedChampion {
             titans_resolve_stacks: 0,
             omnivamp: 0.0,
             is_setup: false,
+            shiv_attack_count: 0,
         }
     }
 
@@ -544,10 +547,11 @@ impl SummonedChampion {
                         }
                         info!("Current mana {}", self.cm);
                     }
-                    if self.items.contains(&68) {
+                    self.shiv_attack_count += 1;
+                    if self.items.contains(&68) && self.shiv_attack_count == 3 {
                         //(!O) go through foreach in items and match statement
-                        info!("Has shiv");
-                        warn!("Shiv doesn't proc every 3 autos but every auto need to fix");
+                        info!("Has shiv and on third auto, applying affect");
+
                         self.deal_damage(
                             friendly_champions,
                             &mut target_object,
@@ -582,9 +586,11 @@ impl SummonedChampion {
                             }
                         }
                     }
-
+                    self.shiv_attack_count %= 3;
                     if self.items.contains(&56) {
                         //(!D) can be dodged
+                        info!("Has runaan's, performing second auto");
+                        warn!("Runaan's can be dodged, treated like normal auto");
                         let closest_other_enemy = self
                             .location
                             .get_closest_to_location_targetable(enemy_champions);
@@ -598,14 +604,14 @@ impl SummonedChampion {
                             ) //discrepency runaans can miss
                         }
                     }
-                    println!("maybe dodge");
+                    info!("Auto attacking");
                     if target_object.dc == 0
                         || target_object.dc < rand::thread_rng().gen_range(0..100)
                         || self.items.contains(&66)
                     //calculating whether to dodge
                     {
                         //(!O) from not generating random gen
-                        println!("No Dodge");
+                        info!("Not dodged");
                         self.deal_damage(
                             friendly_champions,
                             &mut target_object,
@@ -614,13 +620,14 @@ impl SummonedChampion {
                             false,
                         );
 
-                        println!("Debug : Enemy Champion Health is {0}", target_object.health);
+                        info!("Enemy Champion Health is {0}", target_object.health);
                         if target_object.health <= 0.0
                         //if enemy champion dead
                         {
-                            println!("Debug : Health Lower than 0 - Removing");
+                            info!("Health Lower than 0 - Removing");
 
                             if target_object.items.contains(&36) {
+                                info!("Turning to void spawn");
                                 target_object.turn_to_void_spawn();
                                 //(!D) cant be asked to set everything to default)
                                 //(!D) stats change depending on stage
@@ -628,16 +635,16 @@ impl SummonedChampion {
                             //(!D), only checks for champion death when it is auto attacked
                         }
                     } else {
-                        println!("Debug : Dodged Attack");
+                        info!("Dodged Attack");
                     }
                 }
                 enemy_champions.push_back(target_object);
             } else {
-                println!("Debug : Not in Range");
+                info!("Not in Range");
                 if need_new_target_cell || self.location == self.target_cells {
                     //if need to update pathfinding or at pathfinding target
                     //optimisation?, accuracy vs performance cost
-                    println!("Debug : Need Target Cell");
+                    info!("Need Target Cell");
                     self.target_cells = self.location; //setting target cells to location so if it does not find a target this frame will try to do it again
                                                        //optimisation does not need to check every frame
 
@@ -1570,6 +1577,7 @@ impl Default for SummonedChampion {
             titans_resolve_stacks: 0,
             omnivamp: 0.0,
             is_setup: false,
+            shiv_attack_count: 0,
         }
     }
 }
@@ -1622,6 +1630,7 @@ impl From<PlacedChampion> for SummonedChampion {
             titans_resolve_stacks: 0,
             omnivamp: 0.0,
             is_setup: false,
+            shiv_attack_count: 0,
         }
     }
 }
