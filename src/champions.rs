@@ -505,15 +505,12 @@ impl SummonedChampion {
 
             if distance_to_target <= self.ra {
                 //if target in range
-                println!("Debug : Target in Range");
-                println!(
-                    "Debug : Auto Attack Delay Remaining {0}",
-                    self.auto_attack_delay
-                ); //discrepency, does auto attack "charge" while moving
+                info!("Target in range, attacking or reducing auto attack cooldown");
+                info!("Auto Attack Delay Remaining {0}", self.auto_attack_delay); //discrepency, does auto attack "charge" while moving
                 if self.auto_attack_delay <= 0
                 //if autoattack ready
                 {
-                    println!("Debug : Delay Smaller than 0 - Attacking");
+                    info!("Ready to attack");
                     /*
                     self.aS = attacks per 1 second
                     self.autoAttackDelay = time in 1/10 of second until next attack
@@ -524,28 +521,33 @@ impl SummonedChampion {
                     autoAttackDelay (centiseconds) = 100 / (attackSpeed * attackSpeedMod)
 
                     */
-                    println!(
+                    info!(
                         "as: {}, mod: {}",
                         self.attack_speed, self.attack_speed_modifier
                     );
                     self.auto_attack_delay =
                         ((100.0 / (self.attack_speed * self.attack_speed_modifier)) as i16).max(20); //calculating auto attack delay
-                    println!("Auto attack delay set");
+                    info!("Auto attack delay set to {}", self.auto_attack_delay);
                     if self.items.contains(&26) {
-                        self.attack_speed_modifier *= 1.06
+                        self.attack_speed_modifier *= 1.06;
+                        info!("Increasing speed with Rageblade")
                     } //(!D) if attack speed doesnt increase when attack misses/ is dodged
 
                     //attack speed unclear, capped at five yet some champions let you boost beyond it?
                     //optimisation definitely here
                     if self.gain_mana_delay <= 0 {
                         self.cm += 10;
+                        info!("Gaining mana");
                         if self.items.contains(&18) {
                             self.cm += 8;
+                            info!("Additional mana from shojin");
                         }
-                        println!("gain mana");
+                        info!("Current mana {}", self.cm);
                     }
                     if self.items.contains(&68) {
                         //(!O) go through foreach in items and match statement
+                        info!("Has shiv");
+                        warn!("Shiv doesn't proc every 3 autos but every auto need to fix");
                         self.deal_damage(
                             friendly_champions,
                             &mut target_object,
@@ -559,11 +561,8 @@ impl SummonedChampion {
                             is_negative: true,
                             ..Default::default()
                         });
-                        let mut count = 0;
 
-                        for enemy_champ in enemy_champions.iter_mut() {
-                            count += 1;
-
+                        for (i, enemy_champ) in enemy_champions.iter_mut().enumerate() {
                             self.deal_damage(
                                 friendly_champions,
                                 enemy_champ,
@@ -578,7 +577,7 @@ impl SummonedChampion {
                                 ..Default::default()
                             });
 
-                            if count >= 3 {
+                            if i > 2 {
                                 break;
                             }
                         }
