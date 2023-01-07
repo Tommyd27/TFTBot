@@ -42,20 +42,26 @@ impl Projectile {
         friendly_champions: &mut VecDeque<SummonedChampion>,
         dead_champions: &mut VecDeque<SummonedChampion>,
     ) -> bool {
+        info!("Simulating projectile");
         let target_location = match self.target_location //discrepency only checks after move to theoretically could phase through someone
 		{
-			Some(location) => {location}, //gets target location
+			Some(location) => {
+                info!("Target {location}");
+                location}, //gets target location
 			None => {
 				let out_location = find_champion_index_from_id(possible_targets, self.target_id);//gets location of target champion
-				match out_location
+				info!("Finding location from id : {:?}", out_location);
+                match out_location
 				{
 					Some(index) => possible_targets[index].location,
 					None => Location { x: -1, y: -1 },
 				}
+                
 
 
 		}};
         if target_location.x == -1 {
+            info!("Not valid location, removing");
             return false;
         } //not found, remove projectile
 
@@ -72,6 +78,7 @@ impl Projectile {
             self.location.y += sign(self.location_progress[1]);
         }
         if !self.location.check_valid() {
+            info!("Out of grid leaving");
             return false;
         } //if out of grid, remove
 
@@ -81,6 +88,7 @@ impl Projectile {
             if self.location == possible_target.location
             //has a hit
             {
+                info!("has a hit");
                 let mut dead = false;
                 let mut shooter: SummonedChampion;
 
@@ -89,11 +97,13 @@ impl Projectile {
                 {
                     //finds shooter id
                     shooter = friendly_champions.swap_remove_back(shooter_index).unwrap();
+                    info!("shooter alive");
                 } else {
                     let dead_champion_index =
                         find_champion_index_from_id(dead_champions, self.shooter_id).unwrap();
                     shooter = dead_champions.swap_remove_back(dead_champion_index).unwrap();
                     dead = true;
+                    info!("shooter dead")
                 }
                 shooter.deal_damage(
                     friendly_champions,
