@@ -6,14 +6,16 @@ use std::collections::VecDeque;
 ///returns : Option<usize> - Some(correct id) or None if not found
 pub fn find_champion_index_from_id(champions: &VecDeque<SummonedChampion>, id: usize) -> Option<usize> {
     //(!D) swap this out for check targetable as well
-
-    if champions[id].equal_id(id) {
+    info!("finding champ from id");
+    if id < champions.len() && champions[id].equal_id(id) {
+        info!("found from index");
         return Some(id);
     }
 
-    for champ in champions {
+    for (i, champ) in champions.iter().enumerate() {
         if champ.equal_id(id) {
-            return Some(id);
+            info!("found from id");
+            return Some(i);
         }
     }
     None
@@ -24,12 +26,13 @@ pub fn find_champion_index_from_id_targetable(
     id: usize,
 ) -> Option<usize> {
     let mut out: Option<usize> = None;
-    if champions[id].equal_id(id) {
+    info!("finding from id targetable");
+    if id < champions.len() && champions[id].equal_id(id) {
         out = Some(id)
     } else {
-        for champ in champions {
+        for (i, champ) in champions.iter().enumerate() {
             if champ.equal_id(id) {
-                out = Some(id);
+                out = Some(i);
                 break;
             }
         }

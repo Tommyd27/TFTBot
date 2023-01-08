@@ -115,6 +115,7 @@ impl Projectile {
                 if self.splash_damage > 0.0
                 //if there is splash damage
                 {
+                    info!("dealing splash");
                     for possible_secondary_target in possible_targets
                         .iter_mut()
                         .filter(self.location.get_within_distance(3))

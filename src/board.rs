@@ -59,8 +59,10 @@ impl Board {
             debug_count += 1; //count turns
             info!("Taking Champion Turns");
             for _champ_count in 0..self.p1_champions.len() {
+                
                 //take turn for all p1Champs
                 let mut this_champ = self.p1_champions.pop_front().unwrap();
+                println!("{_champ_count} champ count");
                 this_champ.setup(&mut self.p1_champions, &mut self.p2_champions);
                 let alive = this_champ.take_turn(
                     &mut self.p1_champions,

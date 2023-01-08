@@ -43,6 +43,7 @@ pub struct Champion {
 ///CHAMPIONS (const):<br />
 ///Stores all the champion information
 pub const CHAMPIONS: [Champion; 4] = [
+    //Support
     Champion {
         _id: 0,
         hp: [650.0, 1100.0, 2100.0],
@@ -54,7 +55,8 @@ pub const CHAMPIONS: [Champion; 4] = [
         attack_speed: 0.6,
         ra: 2,
         a_id: 0,
-    }, //Support
+    }, 
+    //Bruiser
     Champion {
         _id: 1,
         hp: [800.0, 1400.0, 2500.0],
@@ -66,7 +68,8 @@ pub const CHAMPIONS: [Champion; 4] = [
         attack_speed: 0.7,
         ra: 1,
         a_id: 1,
-    }, //Bruiser
+    }, 
+    //AD Ranged
     Champion {
         _id: 2,
         hp: [700.0, 1200.0, 2200.0],
@@ -78,7 +81,8 @@ pub const CHAMPIONS: [Champion; 4] = [
         attack_speed: 0.7,
         ra: 3,
         a_id: 2,
-    }, //AD Ranged
+    }, 
+    //AP Ranged
     Champion {
         _id: 2,
         hp: [700.0, 1200.0, 2200.0],
@@ -91,7 +95,7 @@ pub const CHAMPIONS: [Champion; 4] = [
         ra: 3,
         a_id: 3,
     },
-]; //AP Ranged
+]; 
 
 ///Enum for the 3 damage types Physical, Magical and True
 #[derive(PartialEq, Eq, Clone, Copy)] //derives clone copy and partial equal
@@ -376,6 +380,7 @@ impl SummonedChampion {
         }
         self.initial_hp = self.health;
         info!("Set HP to {}", self.health);
+        self.is_setup = true;
     }
     ///fn to heal set amount
     fn heal(&mut self, mut healing_amount: f32) {
@@ -418,9 +423,9 @@ impl SummonedChampion {
             return false;
         }
 
-        self.target_cooldown -= time_unit; //Reduce cooldown to check target/ find new target
-        self.auto_attack_delay -= time_unit as i16; //Risks going out of bounds as auto attack value may not be called for some time
-        self.gain_mana_delay -= time_unit as i16;
+        self.target_cooldown = self.target_cooldown.checked_sub(time_unit).unwrap_or(-1); //Reduce cooldown to check target/ find new target
+        self.auto_attack_delay = self.auto_attack_delay.checked_sub(time_unit as i16).unwrap_or(-1); //Risks going out of bounds as auto attack value may not be called for some time
+        self.gain_mana_delay = self.gain_mana_delay.checked_sub(time_unit as i16).unwrap_or(-1);
 
         if self.banish {
             info!("Is banished");

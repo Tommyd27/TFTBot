@@ -16,6 +16,7 @@ impl Shield {
     pub fn update_shield(&mut self, time_unit: i8) -> bool {
         //updates self
         self.duration -= time_unit as i16; //(!O)
+        info!("updating shield {} {}", self.duration, self.size);
         self.duration > 0 && self.size > 0.0
     }
     pub fn handle_damage(&mut self, damage: f32, damage_type: DamageType) -> f32 {
