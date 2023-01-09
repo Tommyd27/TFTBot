@@ -41,7 +41,9 @@ fn main() {
         //println!("Board {}", board);
         let mut board = Board::new(&p1_champs, &p2_champs, 10);
         let board_outcome = board.start_battle() as usize;
+        println!("Outcome {board_outcome}");
         outcomes[board_outcome - 1] += 1;
+        
     }
     let duration = start.elapsed();
     /*info!("Time elapsed in expensive_function() is: {:?}", duration);
