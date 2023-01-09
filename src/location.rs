@@ -1,4 +1,5 @@
 use crate::champions::SummonedChampion;
+use rand::Rng;
 use std::collections::VecDeque;
 enum FilterType {
     ///i8 : Distance to check
@@ -58,6 +59,17 @@ impl Location {
         }
         false
     }
+    pub fn generate_random_position_team(team: bool) -> Location {
+        let y: i8 = if team {
+            rand::thread_rng().gen_range(0..4)
+        } else {
+            rand::thread_rng().gen_range(4..8)
+        };
+        let low = 2 - (y / 2) + 1;
+        let high = 10 - (y / 2);
+        let x: i8 = rand::thread_rng().gen_range(low..high);
+        Location { x, y }
+    }
     pub fn get_closest_to_location<'a>(
         &self,
         enemy_champions: &'a mut VecDeque<SummonedChampion>,
@@ -101,7 +113,9 @@ impl Location {
                     return (i, x);
                 }
 
-                if x.location.distance_between_points(self) < y.location.distance_between_points(self) {
+                if x.location.distance_between_points(self)
+                    < y.location.distance_between_points(self)
+                {
                     return (i, x);
                 }
                 (j, y)

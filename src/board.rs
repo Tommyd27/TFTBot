@@ -1,5 +1,7 @@
-use crate::champions::{PlacedChampion, SummonedChampion};
+use crate::champions::{PlacedChampion, SummonedChampion, CHAMPIONS};
 use crate::projectiles::Projectile;
+use core::fmt;
+use rand::Rng;
 use std::collections::VecDeque;
 
 ///Board Struct:<br />
@@ -45,7 +47,23 @@ impl Board {
             movement_amount: 10 / (time_unit as i8), //(!O)
         } //creates new board
     }
-
+    pub fn generate_random_board(time_unit: i8) -> Board {
+        let num_p1_champs: usize = rand::thread_rng().gen_range(1..4);
+        let num_p2_champs: usize = rand::thread_rng().gen_range(1..4);
+        let p1_champions: VecDeque<SummonedChampion> = (0..num_p1_champs)
+            .map(|f: usize| SummonedChampion::generate_random_champ(false, f))
+            .collect();
+        let p2_champions: VecDeque<SummonedChampion> = (num_p1_champs
+            ..num_p1_champs + num_p2_champs)
+            .map(|f: usize| SummonedChampion::generate_random_champ(false, f))
+            .collect();
+        Board {
+            p1_champions,
+            p2_champions,
+            time_unit,
+            movement_amount: 10 / (time_unit as i8),
+        }
+    }
     pub fn start_battle(mut self) -> i8 {
         let mut debug_count: u32 = 0;
         let mut p1_projectiles: Vec<Projectile> = Vec::new(); //instantiate projectiles vecs
@@ -59,10 +77,8 @@ impl Board {
             debug_count += 1; //count turns
             info!("Taking Champion Turns");
             for _champ_count in 0..self.p1_champions.len() {
-                
                 //take turn for all p1Champs
                 let mut this_champ = self.p1_champions.pop_front().unwrap();
-                println!("{_champ_count} champ count");
                 this_champ.setup(&mut self.p1_champions, &mut self.p2_champions);
                 let alive = this_champ.take_turn(
                     &mut self.p1_champions,
@@ -120,7 +136,19 @@ impl Board {
             } else if self.p2_champions.is_empty() {
                 info!("Player 1 Wins");
                 return 1;
+            } else if debug_count > 10000 {
+                return 3;
             }
         }
+    }
+}
+
+impl std::fmt::Display for Board {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "p1: {:?},\np2: {:?}",
+            self.p1_champions, self.p2_champions
+        )
     }
 }

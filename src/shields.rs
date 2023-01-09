@@ -1,5 +1,6 @@
 use crate::champions::DamageType;
 ///Implementation for Shields
+#[derive(Debug)]
 pub struct Shield {
     ///duration of shield
     pub duration: i16,

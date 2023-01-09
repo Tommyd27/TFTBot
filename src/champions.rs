@@ -4,9 +4,15 @@ use crate::shields::Shield;
 use crate::status_effects::{StatusEffect, StatusType, Stun};
 use crate::utils::{find_champion_index_from_id, find_champion_index_from_id_targetable, sign};
 use core::fmt;
+use rand::seq::SliceRandom;
 use rand::Rng;
 use std::collections::VecDeque;
 use std::mem::take;
+
+const VALID_ITEMS: [u8; 42] = [
+    1, 2, 3, 4, 5, 6, 7, 8, 11, 12, 13, 14, 15, 16, 17, 18, 22, 23, 24, 25, 26, 27, 28, 33, 34, 35,
+    37, 38, 44, 45, 46, 47, 48, 55, 56, 57, 58, 66, 67, 68, 78, 88,
+];
 ///Stores basic information surrounding a champion
 pub struct Champion {
     ///index in champions array
@@ -16,10 +22,10 @@ pub struct Champion {
     hp: [f32; 3],
 
     ///starting mana
-    sm: u16,
+    sm: i16,
 
     ///ability mana cost
-    mc: u16,
+    mc: i16,
 
     ///base armor value
     ar: f32,
@@ -55,7 +61,7 @@ pub const CHAMPIONS: [Champion; 4] = [
         attack_speed: 0.6,
         ra: 2,
         a_id: 0,
-    }, 
+    },
     //Bruiser
     Champion {
         _id: 1,
@@ -68,7 +74,7 @@ pub const CHAMPIONS: [Champion; 4] = [
         attack_speed: 0.7,
         ra: 1,
         a_id: 1,
-    }, 
+    },
     //AD Ranged
     Champion {
         _id: 2,
@@ -81,7 +87,7 @@ pub const CHAMPIONS: [Champion; 4] = [
         attack_speed: 0.7,
         ra: 3,
         a_id: 2,
-    }, 
+    },
     //AP Ranged
     Champion {
         _id: 2,
@@ -95,10 +101,10 @@ pub const CHAMPIONS: [Champion; 4] = [
         ra: 3,
         a_id: 3,
     },
-]; 
+];
 
 ///Enum for the 3 damage types Physical, Magical and True
-#[derive(PartialEq, Eq, Clone, Copy)] //derives clone copy and partial equal
+#[derive(PartialEq, Eq, Clone, Copy, Debug)] //derives clone copy and partial equal
 pub enum DamageType {
     Physical(),
     Magical(),
@@ -135,7 +141,9 @@ impl PlacedChampion {
         }
     }
 }
+
 ///Struct for champion placed on board in a battle
+#[derive(Debug)]
 pub struct SummonedChampion {
     ///array of p, q coordinates, r can be calculated with r = -p - q
     pub location: Location,
@@ -146,7 +154,7 @@ pub struct SummonedChampion {
     ///health
     health: f32,
     ///current mana
-    cm: u16,
+    cm: i16,
 
     ///dodge chance in %
     dc: u8,
@@ -156,7 +164,7 @@ pub struct SummonedChampion {
     crit_damage: f32,
 
     ///ability mana cost
-    mc: u16,
+    mc: i16,
 
     ///armor
     ar: f32,
@@ -353,7 +361,7 @@ impl SummonedChampion {
     pub fn setup(
         &mut self,
         friendly_champions: &mut VecDeque<SummonedChampion>,
-        enemy_champions: &mut VecDeque<SummonedChampion>
+        enemy_champions: &mut VecDeque<SummonedChampion>,
     ) {
         if self.is_setup {
             return;
@@ -381,6 +389,25 @@ impl SummonedChampion {
         self.initial_hp = self.health;
         info!("Set HP to {}", self.health);
         self.is_setup = true;
+    }
+
+    pub fn generate_random_champ(team: bool, id: usize) -> SummonedChampion {
+        let random_pos = Location::generate_random_position_team(team);
+        let of_champion = rand::thread_rng().gen_range(0..CHAMPIONS.len());
+        let star: usize = rand::thread_rng().gen_range(1..3);
+        let items: [u8; 3] = {
+            let item1 = *VALID_ITEMS.choose(&mut rand::thread_rng()).unwrap();
+            let item2 = *VALID_ITEMS.choose(&mut rand::thread_rng()).unwrap();
+            let item3 = *VALID_ITEMS.choose(&mut rand::thread_rng()).unwrap();
+            [item1, item2, item3]
+        };
+        let champ_of = PlacedChampion {
+            id: of_champion,
+            star,
+            items,
+            location: random_pos,
+        };
+        SummonedChampion::new(&champ_of, id)
     }
     ///fn to heal set amount
     fn heal(&mut self, mut healing_amount: f32) {
@@ -424,8 +451,14 @@ impl SummonedChampion {
         }
 
         self.target_cooldown = self.target_cooldown.checked_sub(time_unit).unwrap_or(-1); //Reduce cooldown to check target/ find new target
-        self.auto_attack_delay = self.auto_attack_delay.checked_sub(time_unit as i16).unwrap_or(-1); //Risks going out of bounds as auto attack value may not be called for some time
-        self.gain_mana_delay = self.gain_mana_delay.checked_sub(time_unit as i16).unwrap_or(-1);
+        self.auto_attack_delay = self
+            .auto_attack_delay
+            .checked_sub(time_unit as i16)
+            .unwrap_or(-1); //Risks going out of bounds as auto attack value may not be called for some time
+        self.gain_mana_delay = self
+            .gain_mana_delay
+            .checked_sub(time_unit as i16)
+            .unwrap_or(-1);
 
         if self.banish {
             info!("Is banished");
@@ -855,7 +888,11 @@ impl SummonedChampion {
 
         if target.gain_mana_delay <= 0 {
             // give mana is delay off
-            target.cm += (0.7 * damage) as u16; //(!D) should be 1% of premitigation and 7% of post.
+            target.cm = target
+                .cm
+                .checked_add((0.7 * damage) as i16)
+                .unwrap_or(target.mc);
+            //(!D) should be 1% of premitigation and 7% of post.
         }
     }
     fn cast_ability(
@@ -1056,7 +1093,7 @@ impl SummonedChampion {
             } //
             17 => {
                 self.ad += 10.0;
-                self.cr += 225;
+                self.cr += 75;
                 self.crit_damage += 0.1
             } //(!D)?
             18 => {

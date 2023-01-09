@@ -9,7 +9,7 @@ pub struct Stun {
 
 ///Status Type (enum):<br />
 ///Holds information about what the status does
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum StatusType {
     ///Attack Speed Buff:<br />
     ///(bool : whether the buff has been applied, f32 : actual modifier)
@@ -106,6 +106,7 @@ pub enum StatusType {
 
 ///StatusEffect (struct)<br />:
 ///Stores a status type and a duration
+#[derive(Debug)]
 pub struct StatusEffect {
     ///Duration of status effect in centiseconds
     pub duration: Option<i16>, //optimisation so uses Option<i16> rather than i16
