@@ -3,7 +3,7 @@ use crate::projectiles::Projectile;
 use core::fmt;
 use rand::Rng;
 use std::collections::VecDeque;
-
+const MOVEMENT_AMOUNT_CONST : i8 = 10;
 ///Board Struct:<br />
 ///Simulates battles
 pub struct Board {
@@ -44,7 +44,7 @@ impl Board {
             p1_champions,
             p2_champions,
             time_unit,
-            movement_amount: 10 / (time_unit as i8), //(!O)
+            movement_amount: MOVEMENT_AMOUNT_CONST / time_unit, //(!O)
         } //creates new board
     }
     pub fn generate_random_board(time_unit: i8) -> Board {
@@ -61,7 +61,7 @@ impl Board {
             p1_champions,
             p2_champions,
             time_unit,
-            movement_amount: 10 / (time_unit as i8),
+            movement_amount: MOVEMENT_AMOUNT_CONST / time_unit,
         }
     }
     pub fn start_battle(mut self) -> i8 {
