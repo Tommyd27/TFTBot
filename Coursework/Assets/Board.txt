@@ -81,5 +81,12 @@ Board:
 						movement_amount = MOVEMENT_AMOUNT_CONST / time_unit
 					}
 				ENDMETHOD
+		
+		setup_board:
+			Arguments:
+				self (Board):
+					Board to setup
+			Pseudocode:
+			
 
 
