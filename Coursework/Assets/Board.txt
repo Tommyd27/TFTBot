@@ -1,0 +1,85 @@
+Board:
+	Fields:
+		p1_champions:
+			Type: VecDeque of Summoned Champion
+			Holds player one’s champions.
+			
+			VecDeque (double-ended vector/ list) to allow double-ended access to the vector, as when a champion is taking its turn, it is removed from the front of the list and added to the back of the list. This allows access to the Summoned Champion object and can call take turn on it, passing in the friendly and enemy champions vec. The object must be removed from the vector otherwise there would be two mutable copies (one in the vector and one performing the take_turn call), which is not allowed by the borrow checker.
+			
+		p2_champions:
+			Same as p1_champions but for the second player.
+			
+		time_unit:
+			Type : i8
+			The time unit of the board, the length of time simulated in a single tick.
+			
+			While time unit will never be negative, so could be u8, time unit is i8 to allow it to be used to perform calculations with other variables (change_target_cooldown and alike), without having to typecasting it to i8.
+		
+		movement_amount:
+			Type : i8
+			The amount of movement progress a unit can make in one tick.
+			
+			Calculated by a const / time unit, so always accounts for higher or lower time units. The const will be altered until movement is similar/ aligns with that of TFT.
+
+	Methods:
+		new:
+			Arguments:
+				p1_placed_champs (VecDeque<PlacedChampion>):
+					Vec of player one's placed champions.
+				p2_placed_champs (VecDeque<PlacedChampion>):
+					Vec of player two's placed champions.
+				time_unit (i8):
+					Time unit of board.
+			Pseudocode:
+				METHOD new(p1_placed_champs : Vec<PlacedChampion>, p2_placed_champs : Vec<PlacedChampion>, time_unit : i8) -> Board
+					let p1_champions = VecDeque::new() //generate empty VecDeque to hold p1_champions
+					let p2_champions = VecDeque::new() //generate empty VecDeque to hold p2_champions
+					
+					let i = 0 //for counting index
+					FOR champ in p1_placed_champs: //for each placed, p1 champion
+						p1_champions.append(SummonedChampion::new(from : champ, id : i) //Add a new Summoned Champion to the list, generated from "champ" placed champion and with id i
+						i += 1
+					ENDFOR
+					//do not reset i to allow p2 champs to have unique id
+					FOR champ in p2_placed_champs: //for each placed, p1 champion
+						p2_champions.append(SummonedChampion::new(from : champ, id : i) //Add a new Summoned Champion to the list, generated from "champ" placed champion and with id i
+						i += 1
+					ENDFOR
+					//create new board with inputted fields.
+					return Board {
+						p1_champions: p1_champions,
+						p2_champions: p2_champions,
+						time_unit : time_unit,
+						movement_amount : MOVEMENT_AMOUNT_CONST / time_unit
+						}
+				ENDMETHOD
+
+					
+					
+		generate_random_board:
+			Arguments:
+				time_unit (i8):
+					Time unit for board.
+			Pseudocode:
+				METHOD generate_random_board( time_unit : i8) -> Board
+					let num_p1_champs = GENERATE_RANDOM_NUMBER(min: 1, max : 4) //generate random number 1 to 4
+					let num_p2_champs = GENERATE_RANDOM_NUMBER(min: 1, max : 4) //generate random number 1 to 4
+					let p1_champs : Vec<SummonedChampion> = Vec::new() //Create an empty vector of Summoned Champions
+					let p2_champs : Vec<SummonedChampion> = Vec::new() //Create an empty vector of Summoned Champions
+					FOR champ in 0 to num_p1_champs:  //for each champ in range
+						let new_champ = SummonedChampion::generate_random_champ(team : 0, id : champ) //generate random champ on team zero, with id champ.
+						p1_champs.append(new_champ) //add new champion to list
+					ENDFOR
+					FOR champ in 0 to num_p2_champs:  //for each champ in range
+						let new_champ = SummonedChampion::generate_random_champ(team : 1, id : champ + num_p1_champs) //generate random champ on team zero, with id champ + num_p1_champs (ensures that all ids are unique).
+						p2_champs.append(new_champ) //add new champion to list
+					ENDFOR
+					return Board {
+						p1_champions : p1_champs,
+						p2_champions : p2_champs,
+						time_unit : time_unit,
+						movement_amount = MOVEMENT_AMOUNT_CONST / time_unit
+					}
+				ENDMETHOD
+
+
