@@ -1,4 +1,4 @@
-use crate::champions::DamageType;
+use super::champions::DamageType;
 ///Implementation for Shields
 #[derive(Debug)]
 pub struct Shield {

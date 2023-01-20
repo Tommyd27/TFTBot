@@ -1,8 +1,8 @@
-use crate::location::Location;
-use crate::projectiles::Projectile;
-use crate::shields::Shield;
-use crate::status_effects::{StatusEffect, StatusType, Stun};
-use crate::utils::{find_champion_index_from_id, find_champion_index_from_id_targetable, sign};
+use super::location::Location;
+use super::projectiles::Projectile;
+use super::shields::Shield;
+use super::status_effects::{StatusEffect, StatusType, Stun};
+use super::utils::{find_champion_index_from_id, find_champion_index_from_id_targetable, sign};
 use core::fmt;
 use rand::seq::SliceRandom;
 use rand::Rng;

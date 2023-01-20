@@ -1,9 +1,9 @@
-use crate::champions::{PlacedChampion, SummonedChampion, CHAMPIONS};
-use crate::projectiles::Projectile;
+use super::champions::{PlacedChampion, SummonedChampion, CHAMPIONS};
+use super::projectiles::Projectile;
 use core::fmt;
 use rand::Rng;
 use std::collections::VecDeque;
-const MOVEMENT_AMOUNT_CONST : i8 = 10;
+const MOVEMENT_AMOUNT_CONST: i8 = 10;
 ///Board Struct:<br />
 ///Simulates battles
 pub struct Board {

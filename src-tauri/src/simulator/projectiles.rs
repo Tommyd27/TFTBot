@@ -1,4 +1,4 @@
-use crate::{
+use super::{
     champions::{DamageType, SummonedChampion},
     location::Location,
     utils::{find_champion_index_from_id, sign},

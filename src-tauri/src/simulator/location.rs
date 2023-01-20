@@ -1,4 +1,4 @@
-use crate::champions::SummonedChampion;
+use super::champions::SummonedChampion;
 use rand::Rng;
 use std::collections::VecDeque;
 enum FilterType {

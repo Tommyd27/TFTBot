@@ -2,6 +2,11 @@
     all(not(debug_assertions), target_os = "windows"),
     windows_subsystem = "windows"
 )]
+use std::env;
+mod simulator;
+
+#[macro_use]
+extern crate log;
 
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 #[tauri::command]
@@ -10,6 +15,9 @@ fn greet(name: &str) -> String {
 }
 
 fn main() {
+    env::set_var("RUST_LOG", "error");
+    env_logger::init();
+    info!("Program Start Up");
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![greet])
         .run(tauri::generate_context!())

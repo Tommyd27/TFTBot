@@ -1,10 +1,13 @@
-use crate::champions::SummonedChampion;
+use super::champions::SummonedChampion;
 use std::collections::VecDeque;
 ///findChampionIndexFromID:<br />
 ///champions : &Vec<SummonedChampion> - List of champions to iterate through<br />
 ///id : usize - ID wanted<br />
 ///returns : Option<usize> - Some(correct id) or None if not found
-pub fn find_champion_index_from_id(champions: &VecDeque<SummonedChampion>, id: usize) -> Option<usize> {
+pub fn find_champion_index_from_id(
+    champions: &VecDeque<SummonedChampion>,
+    id: usize,
+) -> Option<usize> {
     //(!D) swap this out for check targetable as well
     info!("finding champ from id");
     if id < champions.len() && champions[id].equal_id(id) {

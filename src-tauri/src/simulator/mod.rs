@@ -1,11 +1,9 @@
-use crate::champions::SummonedChampion;
+use champions::SummonedChampion;
 /* Imports */
-use crate::{board::Board, champions::PlacedChampion, location::Location};
 use std::collections::VecDeque;
 use std::env;
 use std::time::{Duration, Instant};
-#[macro_use]
-extern crate log;
+use {board::Board, champions::PlacedChampion, location::Location};
 
 /* Crate Modules */
 mod board;
@@ -17,10 +15,6 @@ mod status_effects;
 mod utils;
 
 fn main() {
-    env::set_var("RUST_LOG", "error");
-    env_logger::init();
-    info!("Program Start Up");
-
     let p1_champs: VecDeque<PlacedChampion> = VecDeque::from([PlacedChampion::new(
         0,
         0,
