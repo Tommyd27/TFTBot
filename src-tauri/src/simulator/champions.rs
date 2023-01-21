@@ -42,8 +42,8 @@ pub struct Champion {
     ///attack range
     ra: i8,
 
-    ///ability id: index in abilities array
-    a_id: usize,
+    /*///ability id: index in abilities array
+    a_id: usize,*/
 }
 
 ///CHAMPIONS (const):<br />
@@ -60,7 +60,6 @@ pub const CHAMPIONS: [Champion; 4] = [
         ad: [40.0, 70.0, 130.0],
         attack_speed: 0.6,
         ra: 2,
-        a_id: 0,
     },
     //Bruiser
     Champion {
@@ -73,7 +72,6 @@ pub const CHAMPIONS: [Champion; 4] = [
         ad: [75.0, 100.0, 175.0],
         attack_speed: 0.7,
         ra: 1,
-        a_id: 1,
     },
     //AD Ranged
     Champion {
@@ -86,7 +84,6 @@ pub const CHAMPIONS: [Champion; 4] = [
         ad: [65.0, 120.0, 240.0],
         attack_speed: 0.7,
         ra: 3,
-        a_id: 2,
     },
     //AP Ranged
     Champion {
@@ -99,7 +96,6 @@ pub const CHAMPIONS: [Champion; 4] = [
         ad: [50.0, 60.0, 70.0],
         attack_speed: 0.6,
         ra: 3,
-        a_id: 3,
     },
 ];
 
@@ -181,8 +177,6 @@ pub struct SummonedChampion {
     ///auto attack range
     ra: i8,
 
-    ///ability ID/ index
-    a_id: usize,
 
     ///id
     id: usize,
@@ -338,7 +332,6 @@ impl SummonedChampion {
             attack_speed_modifier: 1.0,
             target: 255,
             target_cells: Location { x: -1, y: -1 }, //(!O)
-            a_id: of_champ.a_id,
             items: placed_champion.items,
             ap: 1.0,
             se: Vec::new(),
@@ -1610,7 +1603,6 @@ impl Default for SummonedChampion {
             ad: 0.0,
             attack_speed: 0.0,
             ra: 0,
-            a_id: 0,
             id: 0,
             target_cooldown: 0,
             auto_attack_delay: 0,
@@ -1668,7 +1660,6 @@ impl From<PlacedChampion> for SummonedChampion {
             attack_speed_modifier: 1.0,
             target: 255,
             target_cells: Location { x: -1, y: -1 }, //(!O)
-            a_id: of_champion.a_id,
             items: champ.items,
             ap: 1.0,
             se: Vec::new(),
