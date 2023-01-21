@@ -22,6 +22,9 @@ log = "0.4.0"
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 tauri = { version = "1.2", features = ["shell-open"] }
+tokio = { version = "1", features = ["full"] }
+thiserror = "1"
+surrealdb = "1.0.0-beta.8"
 
 [features]
 # by default Tauri runs in production mode

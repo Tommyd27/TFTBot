@@ -9,6 +9,10 @@ use rand::seq::SliceRandom;
 use rand::Rng;
 use std::collections::VecDeque;
 use std::mem::take;
+use surrealdb::sql::{Value, Object};
+use crate::prelude::*;
+use crate::error;
+
 const VALID_ITEMS: [u8; 42] = [
     1, 2, 3, 4, 5, 6, 7, 8, 11, 12, 13, 14, 15, 16, 17, 18, 22, 23, 24, 25, 26, 27, 28, 33, 34, 35,
     37, 38, 44, 45, 46, 47, 48, 55, 56, 57, 58, 66, 67, 68, 78, 88,
@@ -16,42 +20,78 @@ const VALID_ITEMS: [u8; 42] = [
 ///Stores basic information surrounding a champion
 pub struct Champion {
     ///index in champions array
-    _id: u8,
-
+    pub id: u8,
     ///healthpoints (star level dependent)
     hp: [f32; 3],
-
     ///starting mana
     sm: i16,
-
     ///ability mana cost
     mc: i16,
-
     ///base armor value
     ar: f32,
-
     ///Base Magic Resist Value
     mr: f32,
-
     ///attack damage (star level dependent)
     ad: [f32; 3],
-
     ///attack speed (attacks per second)
     attack_speed: f32,
-
     ///attack range
     ra: i8,
-
     /*///ability id: index in abilities array
     a_id: usize,*/
 }
 
+impl TryFrom<Object> for Champion {
+    type Error = Error;
+    fn try_from(mut obj: Object) -> Result<Self> {
+        let ad_one : f32 = obj.remove("ad_one").unwrap().as_float() as f32;
+        let ad_two : f32 = obj.remove("ad_two").unwrap().as_float() as f32;
+        let ad_three : f32 = obj.remove("ad_three").unwrap().as_float() as f32;
+        let ar : f32 = obj.remove("ar").unwrap().as_float() as f32;
+        let attack_speed : f32 = obj.remove("attack_speed").unwrap().as_float() as f32;
+        let health_one : f32 = obj.remove("health_one").unwrap().as_float() as f32;
+        let health_two : f32 = obj.remove("health_two").unwrap().as_float() as f32;
+        let health_three : f32 = obj.remove("health_three").unwrap().as_float() as f32;
+        let id = obj.remove("id").unwrap();
+        println!("{id:?}");
+        let mc : i16 = obj.remove("mc").unwrap().as_int() as i16;
+        let mr : f32 = obj.remove("mr").unwrap().as_float() as f32;
+        let ra : i8 = obj.remove("ra").unwrap().as_int() as i8;
+        let sm : i16 = obj.remove("sm").unwrap().as_int() as i16;
+        Ok(Champion { ..Default::default() })
+    }
+}
+impl Default for Champion {
+    fn default() -> Self {
+        Champion { id: 0, hp: [0.0, 0.0, 0.0], sm: 0, mc: 0, ar: 0.0, mr: 0.0, ad: [0.0, 0.0, 0.0], attack_speed: 0.0, ra: 0 }
+    }
+}
+
+impl Champion {
+    pub fn into_values(&self) -> [(String, Value) ; 13] {
+        [
+            ("id".into(), self.id.into()),
+            ("health_one".into(), self.hp[0].into()),
+            ("health_two".into(), self.hp[1].into()),
+            ("health_three".into(), self.hp[2].into()),
+            ("sm".into(), self.sm.into()),
+            ("mc".into(), self.mc.into()),
+            ("ar".into(), self.ar.into()),
+            ("mr".into(), self.mr.into()),
+            ("ad_one".into(), self.ad[0].into()),
+            ("ad_two".into(), self.ad[1].into()),
+            ("ad_three".into(), self.ad[2].into()),
+            ("attack_speed".into(), self.attack_speed.into()),
+            ("ra".into(), self.ra.into())
+        ]
+    }
+}
 ///CHAMPIONS (const):<br />
 ///Stores all the champion information
-pub const CHAMPIONS: [Champion; 4] = [
+pub const DEFAULT_CHAMPIONS: [Champion; 4] = [
     //Support
     Champion {
-        _id: 0,
+        id: 0,
         hp: [650.0, 1100.0, 2100.0],
         sm: 70,
         mc: 140,
@@ -63,7 +103,7 @@ pub const CHAMPIONS: [Champion; 4] = [
     },
     //Bruiser
     Champion {
-        _id: 1,
+        id: 1,
         hp: [800.0, 1400.0, 2500.0],
         sm: 50,
         mc: 100,
@@ -75,7 +115,7 @@ pub const CHAMPIONS: [Champion; 4] = [
     },
     //AD Ranged
     Champion {
-        _id: 2,
+        id: 2,
         hp: [700.0, 1200.0, 2200.0],
         sm: 35,
         mc: 100,
@@ -87,7 +127,7 @@ pub const CHAMPIONS: [Champion; 4] = [
     },
     //AP Ranged
     Champion {
-        _id: 2,
+        id: 3,
         hp: [700.0, 1200.0, 2200.0],
         sm: 35,
         mc: 150,
@@ -310,7 +350,7 @@ impl SummonedChampion {
         );
 
         let star_level = placed_champion.star; //get star level
-        let of_champ = &CHAMPIONS[placed_champion.id]; //get champ info
+        let of_champ = &DEFAULT_CHAMPIONS[placed_champion.id]; //get champ info
         SummonedChampion {
             location: placed_champion.location, //create summoned champ with all details
             movement_progress: [0, 0],
@@ -386,7 +426,7 @@ impl SummonedChampion {
 
     pub fn generate_random_champ(team: bool, id: usize) -> SummonedChampion {
         let random_pos = Location::generate_random_position_team(team);
-        let of_champion = rand::thread_rng().gen_range(0..CHAMPIONS.len());
+        let of_champion = rand::thread_rng().gen_range(0..DEFAULT_CHAMPIONS.len());
         let star: usize = rand::thread_rng().gen_range(1..3);
         let items: [u8; 3] = {
             let item1 = *VALID_ITEMS.choose(&mut rand::thread_rng()).unwrap();
@@ -895,7 +935,7 @@ impl SummonedChampion {
         projectiles: &mut Vec<Projectile>,
     ) {
         info!("casting ability");
-        match self.a_id {
+        match self.id {
             0 => {
                 //let mut playerDistances : Vec<[i8 ; 2]> = Vec::new(); //instantiates empty vec to hold distance to friendly and enemy champions
 
@@ -1048,23 +1088,7 @@ impl SummonedChampion {
         }
 
         match item {
-            /*0 => (),
-            1 => self.ad += 10.0,                   //BF Sword
-            2 => self.ap += 0.1,                    //Needlessly Large Rod
-            3 => self.health += 150.0,              //Giants Belt
-            4 => self.ar += 0.2,                    //Chain Vest
-            5 => self.mr += 0.2,                    //Negatron Cloak
-            6 => self.attack_speed_modifier *= 1.1, //Recurve Bow
-            7 => {
-                self.cr += 5;
-                self.dc += 10
-            } //Sparring Glove
-            8 => self.cm += 15,                     //Tear of the Goddess*/
-            11 => {self.ad += item_obj.ad * self.star_level},
-            /*12 => {
-                self.ad += 10.0;
-                self.ap += 0.1
-            }*/
+            11 => {self.ad += item_obj.ad * (self.star_level as f32)},
             13 => {
                 for friendly_champion in friendly_champions
                     .iter_mut()
@@ -1076,8 +1100,6 @@ impl SummonedChampion {
                 }
             }
             14 => {
-                self.ad += 10.0;
-                self.ar += 0.2;
                 self.se.push(StatusEffect {
                     duration: Some(0),
                     status_type: StatusType::EdgeOfNight(),
@@ -1085,39 +1107,13 @@ impl SummonedChampion {
                 })
             } //gives edge of night buff
             15 => {
-                self.ad += 10.0;
-                self.mr += 0.2;
                 self.se.push(StatusEffect {
                     duration: Some(0),
                     status_type: StatusType::Bloodthirster(),
                     ..Default::default()
                 }); //gives bloodthirster buff
-                self.omnivamp += 0.25;
             }
-            16 => {
-                self.ad += 10.0;
-                self.attack_speed_modifier *= 0.1
-            } //
-            17 => {
-                self.ad += 10.0;
-                self.cr += 75;
-                self.crit_damage += 0.1
-            } //(!D)?
-            18 => {
-                self.ad += 10.0;
-                self.cm += 15
-            } //
-            19 => {
-                self.ad += 10.0;
-            } //(!U)
-            22 => self.ap += 0.75,
-            23 => {
-                self.ap += 0.40;
-                self.health += 150.0
-            } //
             24 => {
-                self.ap += 0.1;
-                self.ar += 0.2; //Gives locket shield
                 let shield_amount = [300.0, 350.0, 400.0][self.star_level];
                 self.shields.push(Shield {
                     duration: 1500,
@@ -1137,35 +1133,14 @@ impl SummonedChampion {
                     } //gives shield
                 }
             }
-            25 => {
-                self.ap += 0.1;
-                self.mr += 0.2;
-            } //
-            26 => {
-                self.ap += 0.1;
-                self.attack_speed_modifier *= 0.1
-            } //
-            27 => {
-                self.ap += 0.5;
-                self.cr += 15;
-                self.crit_damage += 0.4
-            } // //(!D) does bonus ability damage include from components? //
             28 => {
-                self.ap += 0.1;
-                self.cm += 15;
                 self.se.push(StatusEffect {
                     duration: Some(500),
                     status_type: StatusType::ArchangelStaff(0.2),
                     ..Default::default()
                 })
             }
-            29 => {
-                self.ap += 0.1;
-            } //add next trait
-            33 => self.health += 1000.0,
             34 => {
-                self.health += 300.0;
-                self.ar += 0.2;
                 self.se.push(StatusEffect {
                     duration: Some(0),
                     status_type: StatusType::GiveSunfire(),
@@ -1173,8 +1148,6 @@ impl SummonedChampion {
                 })
             } //(!U)
             35 => {
-                self.health += 150.0;
-                self.mr += 0.2;
                 self.se.push(StatusEffect {
                     duration: Some(0),
                     status_type: StatusType::Zephyr(500),
@@ -1182,8 +1155,6 @@ impl SummonedChampion {
                 })
             } //gives zephyr effect
             36 => {
-                self.health += 150.0;
-                self.attack_speed_modifier *= 0.1; //close enough, doesnt reset fully
                 for enemy_champion in enemy_champions
                     .iter_mut()
                     .filter(self.location.get_within_distance(9))
@@ -1197,8 +1168,6 @@ impl SummonedChampion {
                 }
             }
             37 => {
-                self.health += 150.0;
-                self.dc += 15;
                 self.shields.push(Shield {
                     duration: 1500,
                     size: 600.0,
@@ -1222,19 +1191,13 @@ impl SummonedChampion {
                 }
             }
             38 => {
-                self.health += 150.0;
-                self.cm += 15;
                 self.se.push(StatusEffect {
                     duration: Some(100),
                     status_type: StatusType::RedemptionGive(),
                     ..Default::default()
                 })
             } //Gives redemption effect
-            39 => self.health += 150.0, //(!U)
-            44 => self.ar += 0.8, //(!D) says grants 40 bonus armor, is that the 40 from the two chain vests?
             45 => {
-                self.ar += 0.2;
-                self.mr += 0.2; //
                 self.se.push(StatusEffect {
                     duration: Some(0),
                     status_type: StatusType::Gargoyles(0.0),
@@ -1242,8 +1205,6 @@ impl SummonedChampion {
                 }) //(!D) only updates every second
             }
             46 => {
-                self.ar += 0.2;
-                self.attack_speed_modifier *= 1.1;
                 self.se.push(StatusEffect {
                     duration: Some(0),
                     status_type: StatusType::TitansResolve(0),
@@ -1251,8 +1212,6 @@ impl SummonedChampion {
                 })
             }
             47 => {
-                self.ar += 0.2;
-                self.dc += 15;
                 self.se.push(StatusEffect {
                     duration: Some(0),
                     status_type: StatusType::ShroudOfStillness(),
@@ -1260,8 +1219,6 @@ impl SummonedChampion {
                 })
             }
             48 => {
-                self.ar += 0.2;
-                self.cm += 15;
                 self.se.push(StatusEffect {
                     duration: Some(0),
                     status_type: StatusType::ProtectorsVow(),
@@ -1269,22 +1226,13 @@ impl SummonedChampion {
                 })
             }
             55 => {
-                self.mr += 1.2;
                 self.se.push(StatusEffect {
                     duration: Some(200),
                     status_type: StatusType::DragonClawHeal(),
                     ..Default::default()
                 })
             }
-            56 => {
-                self.mr += 0.2;
-                self.attack_speed_modifier *= 1.1;
-                self.ad += 10.0
-            } //
             57 => {
-                self.mr += 0.2;
-                self.dc += 15;
-                self.attack_speed_modifier *= 1.2;
                 self.se.push(StatusEffect {
                     duration: Some(15000),
                     status_type: StatusType::CrowdControlImmune(),
@@ -1292,9 +1240,6 @@ impl SummonedChampion {
                 });
             }
             58 => {
-                self.cm += 15;
-                self.mr += 0.2;
-                self.ap += 0.3;
                 for friendly_champion in friendly_champions
                     .iter_mut()
                     .filter(self.location.get_within_distance(3))
@@ -1306,25 +1251,7 @@ impl SummonedChampion {
                     }
                 }
             }
-            66 => {
-                self.attack_speed_modifier *= 1.55;
-                self.ra += 1;
-            }
-            67 => {
-                self.attack_speed_modifier *= 1.21;
-                self.cr += 15;
-            } //discrepency
-            68 => {
-                self.attack_speed_modifier *= 1.21;
-                self.cm += 15;
-            }
-            77 => {
-                self.cr += 15;
-                self.dc += 15;
-            }
             78 => {
-                self.cm += 10;
-                self.cr += 15;
 
                 if rand::thread_rng().gen_range(0..100) > 50
                 //(!D) does this even mf'ing work
@@ -1338,10 +1265,7 @@ impl SummonedChampion {
                     self.omnivamp += 0.3;
                 }
             }
-            88 => {
-                self.cm += 50;
-            }
-            _ => println!("Unimplemented Item"),
+            _ => (),
         }
     }
     pub fn equal_id(&self, id: usize) -> bool {
@@ -1645,14 +1569,14 @@ impl Default for SummonedChampion {
 
 impl fmt::Display for SummonedChampion {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}: {} {}", self.id, self.a_id, self.health)
+        write!(f, "{}: {}", self.id, self.health)
     }
 }
 
 impl From<PlacedChampion> for SummonedChampion {
     fn from(champ: PlacedChampion) -> Self {
         let star_level = champ.star; //get star level
-        let of_champion = &CHAMPIONS[champ.id]; //get champ info
+        let of_champion = &DEFAULT_CHAMPIONS[champ.id]; //get champ info
         SummonedChampion {
             location: champ.location, //create summoned champ with all details
             movement_progress: [0, 0],

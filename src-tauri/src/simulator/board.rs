@@ -1,4 +1,4 @@
-use super::champions::{PlacedChampion, SummonedChampion, CHAMPIONS};
+use super::champions::{PlacedChampion, SummonedChampion, DEFAULT_CHAMPIONS};
 use super::projectiles::Projectile;
 use core::fmt;
 use rand::Rng;

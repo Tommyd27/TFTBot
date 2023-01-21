@@ -7,13 +7,13 @@ use {board::Board, champions::PlacedChampion, location::Location};
 
 /* Crate Modules */
 mod board;
-mod champions;
+pub mod champions;
 mod location;
 mod projectiles;
 mod shields;
 mod status_effects;
 mod utils;
-mod item;
+pub mod item;
 
 fn main() {
     let p1_champs: VecDeque<PlacedChampion> = VecDeque::from([PlacedChampion::new(
