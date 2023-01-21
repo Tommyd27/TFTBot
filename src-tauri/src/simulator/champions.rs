@@ -3,12 +3,12 @@ use super::projectiles::Projectile;
 use super::shields::Shield;
 use super::status_effects::{StatusEffect, StatusType, Stun};
 use super::utils::{find_champion_index_from_id, find_champion_index_from_id_targetable, sign};
+use super::item::{Item, DEFAULT_ITEMS};
 use core::fmt;
 use rand::seq::SliceRandom;
 use rand::Rng;
 use std::collections::VecDeque;
 use std::mem::take;
-
 const VALID_ITEMS: [u8; 42] = [
     1, 2, 3, 4, 5, 6, 7, 8, 11, 12, 13, 14, 15, 16, 17, 18, 22, 23, 24, 25, 26, 27, 28, 33, 34, 35,
     37, 38, 44, 45, 46, 47, 48, 55, 56, 57, 58, 66, 67, 68, 78, 88,
@@ -1030,8 +1030,25 @@ impl SummonedChampion {
         enemy_champions: &mut VecDeque<SummonedChampion>,
     ) {
         info!("giving item {}", item);
+
+        let item_obj = DEFAULT_ITEMS[(item as usize) - 1];
+        {
+            self.health += item_obj.health;
+            self.ad += item_obj.ad;
+            self.ap += item_obj.ap;
+            self.ar += item_obj.ar;
+            self.mr += item_obj.mr;
+            self.attack_speed_modifier *= item_obj.attack_speed_modifier;
+            self.ra += item_obj.ra;
+            self.cr += item_obj.cr;
+            self.dc += item_obj.dc;
+            self.cm += item_obj.cm;
+            self.omnivamp += item_obj.omnivamp;
+            self.crit_damage += item_obj.crit_damage;
+        }
+
         match item {
-            0 => (),
+            /*0 => (),
             1 => self.ad += 10.0,                   //BF Sword
             2 => self.ap += 0.1,                    //Needlessly Large Rod
             3 => self.health += 150.0,              //Giants Belt
@@ -1042,16 +1059,13 @@ impl SummonedChampion {
                 self.cr += 5;
                 self.dc += 10
             } //Sparring Glove
-            8 => self.cm += 15,                     //Tear of the Goddess
-            11 => self.ad += [15.0, 30.0, 45.0][self.star_level],
-            12 => {
+            8 => self.cm += 15,                     //Tear of the Goddess*/
+            11 => {self.ad += item_obj.ad * self.star_level},
+            /*12 => {
                 self.ad += 10.0;
                 self.ap += 0.1
-            }
+            }*/
             13 => {
-                self.ad += 10.0;
-                self.health += 150.0;
-                self.attack_speed_modifier *= 1.3;
                 for friendly_champion in friendly_champions
                     .iter_mut()
                     .filter(self.location.get_within_distance(3))

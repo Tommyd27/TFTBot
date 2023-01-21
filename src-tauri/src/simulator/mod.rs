@@ -13,6 +13,7 @@ mod projectiles;
 mod shields;
 mod status_effects;
 mod utils;
+mod item;
 
 fn main() {
     let p1_champs: VecDeque<PlacedChampion> = VecDeque::from([PlacedChampion::new(
