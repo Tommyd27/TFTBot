@@ -9,7 +9,7 @@ use rand::seq::SliceRandom;
 use rand::Rng;
 use std::collections::VecDeque;
 use std::mem::take;
-use surrealdb::sql::{Value, Object};
+use surrealdb::sql::{Value, Object, Thing};
 use crate::prelude::*;
 use crate::error;
 
@@ -18,6 +18,7 @@ const VALID_ITEMS: [u8; 42] = [
     37, 38, 44, 45, 46, 47, 48, 55, 56, 57, 58, 66, 67, 68, 78, 88,
 ];
 ///Stores basic information surrounding a champion
+#[derive(Debug)]
 pub struct Champion {
     ///index in champions array
     pub id: u8,
@@ -52,13 +53,12 @@ impl TryFrom<Object> for Champion {
         let health_one : f32 = obj.remove("health_one").unwrap().as_float() as f32;
         let health_two : f32 = obj.remove("health_two").unwrap().as_float() as f32;
         let health_three : f32 = obj.remove("health_three").unwrap().as_float() as f32;
-        let id = obj.remove("id").unwrap();
-        println!("{id:?}");
+        let id : u8 = Value::from(obj.remove("id").unwrap().record().unwrap().id).as_int() as u8;
         let mc : i16 = obj.remove("mc").unwrap().as_int() as i16;
         let mr : f32 = obj.remove("mr").unwrap().as_float() as f32;
         let ra : i8 = obj.remove("ra").unwrap().as_int() as i8;
         let sm : i16 = obj.remove("sm").unwrap().as_int() as i16;
-        Ok(Champion { ..Default::default() })
+        Ok(Champion { id, hp: [health_one, health_two, health_three], sm, mc, ar, mr, ad: [ad_one, ad_two, ad_three], attack_speed, ra})
     }
 }
 impl Default for Champion {

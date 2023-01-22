@@ -22,14 +22,12 @@ impl Store
 		Ok(Store {ds, ses})
 	}
 	pub async fn setup(&self) -> Result<()> {
-		self.fetch_champions().await;
-		self.fetch_items().await;
-		if false {
+		if self.fetch_champions_ids().await?.is_empty() {
 			for champ in DEFAULT_CHAMPIONS {
 				self.insert_champion(&champ).await;
 			}
 		}
-		if false {
+		if self.fetch_items_ids().await?.is_empty() {
 			for item in DEFAULT_ITEMS {
 				self.insert_item(&item).await;
 			}
@@ -52,25 +50,24 @@ impl Store
 		let data : BTreeMap<String, Value> = item.into_values().into();
 		let vars : BTreeMap<String, Value> = [("data".into(), data.into())].into();
 
-		let ress = self.ds.execute(&sql, &self.ses, Some(vars), false).await?;
+		let ress : Vec<Result<Object>> = into_iter_objects(self.ds.execute(&sql, &self.ses, Some(vars), false).await?)?.collect();
 		println!("{ress:?}");
 		Ok(())
 	}
-	pub async fn fetch_champions(&self) -> Result<()>{
+	pub async fn fetch_champions(&self) -> Result<Vec<Champion>>{
 		let sql = "SELECT * FROM champions";
 		let ress = self.ds.execute(sql, &self.ses, None, false).await?;
-		//println!("{ress:?}");
 
-		let into_iter : Vec<Result<Object>> = into_iter_objects(ress)?.collect();
-		//println!("{into_iter:?}");
+		Ok(into_iter_objects(ress)?.map(|f| Champion::try_from(f.unwrap()).unwrap()).collect())
+	}
 
-		for obj in into_iter {
-			let obj = obj?;
-			let champ = Champion::try_from(obj);
-			break
-		}
-
-		Ok(())
+	pub async fn fetch_champions_ids(&self) -> Result<Vec<u8>> {
+		let sql = "SELECT id FROM champions";
+		Ok(into_iter_objects(self.ds.execute(sql, &self.ses, None, false).await?)?.map(|f| Value::from(f.unwrap().remove("id").unwrap().record().unwrap().id).as_int() as u8).collect())
+	}
+	pub async fn fetch_items_ids(&self) -> Result<Vec<u8>> {
+		let sql = "SELECT id FROM items";
+		Ok(into_iter_objects(self.ds.execute(sql, &self.ses, None, false).await?)?.map(|f| Value::from(f.unwrap().remove("id").unwrap().record().unwrap().id).as_int() as u8).collect())
 	}
 	pub async fn fetch_items(&self) -> Result<()> {
 		let sql = "SELECT * FROM champions";
