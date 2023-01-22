@@ -24,12 +24,18 @@ impl Store
 	pub async fn setup(&self) -> Result<()> {
 		if self.fetch_champions_ids().await?.is_empty() {
 			for champ in DEFAULT_CHAMPIONS {
-				self.insert_champion(&champ).await;
+				match self.insert_champion(&champ).await {
+					Ok(()) => info!("successfully inserted champ: {}", champ.id),
+					Err(e) => error!("error inserting champ: {}. {}", champ.id, e)
+				}
 			}
 		}
 		if self.fetch_items_ids().await?.is_empty() {
 			for item in DEFAULT_ITEMS {
-				self.insert_item(&item).await;
+				match self.insert_item(&item).await {
+					Ok(()) => info!("successfully inserted item: {}", item.id),
+					Err(e) => error!("error inserting item: {}. {}", item.id, e)
+				}
 			}
 		}
 		Ok(())
@@ -69,11 +75,11 @@ impl Store
 		let sql = "SELECT id FROM items";
 		Ok(into_iter_objects(self.ds.execute(sql, &self.ses, None, false).await?)?.map(|f| Value::from(f.unwrap().remove("id").unwrap().record().unwrap().id).as_int() as u8).collect())
 	}
-	pub async fn fetch_items(&self) -> Result<()> {
-		let sql = "SELECT * FROM champions";
+	pub async fn fetch_items(&self) -> Result<Vec<Item>> {
+		let sql = "SELECT * FROM items";
 		let ress = self.ds.execute(sql, &self.ses, None, false).await?;
 		//println!("{ress:?}");
-		Ok(())
+		Ok(into_iter_objects(ress)?.map(|f| Item::try_from(f.unwrap()).unwrap()).collect())
 	}
 }
 

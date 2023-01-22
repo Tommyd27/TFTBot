@@ -8,6 +8,8 @@ mod simulator;
 mod store;
 mod error;
 mod prelude;
+mod ipc;
+
 
 use crate::prelude::*;
 
@@ -25,13 +27,17 @@ async fn main() -> Result<()> {
     env_logger::init();
     info!("Program Start Up");
     let store = Store::new().await?;
-    store.setup().await;
-
-    let store = Arc::new(store);
+    if store.setup().await.is_ok() {
+        let store = Arc::new(store);
     tauri::Builder::default()
         .manage(store)
         .invoke_handler(tauri::generate_handler![greet])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
-    Ok(())
+        Ok(())
+    }
+    else {
+        Err(Error::DatabaseError("Failure to Start Up"))
+    }
+    
 }

@@ -1,4 +1,5 @@
-use super::champions::{PlacedChampion, SummonedChampion, DEFAULT_CHAMPIONS};
+use super::champions::{PlacedChampion, SummonedChampion, DEFAULT_CHAMPIONS, Champion};
+use super::item::Item;
 use super::projectiles::Projectile;
 use core::fmt;
 use rand::Rng;
@@ -6,7 +7,7 @@ use std::collections::VecDeque;
 const MOVEMENT_AMOUNT_CONST: i8 = 10;
 ///Board Struct:<br />
 ///Simulates battles
-pub struct Board {
+pub struct Board<'a> {
     ///vecdeque of player 1's champs
     p1_champions: VecDeque<SummonedChampion>,
 
@@ -18,14 +19,14 @@ pub struct Board {
 
     ///movement amount per tick, is calculated by const / time unit
     movement_amount: i8,
+
+    champions : &'a Vec<Champion>,
+
+    items : &'a Vec<Item>,
 }
 
-impl Board {
-    pub fn new(
-        p1_placed_champs: &VecDeque<PlacedChampion>,
-        p2_placed_champs: &VecDeque<PlacedChampion>,
-        time_unit: i8,
-    ) -> Board {
+impl Board <'_> {
+    pub fn new <'a>(p1_placed_champs: &VecDeque<PlacedChampion>, p2_placed_champs: &VecDeque<PlacedChampion>, champions : &'a Vec<Champion>, items : &'a Vec<Item>, time_unit: i8) -> Board<'a> {
         info!("New Board");
         let mut p1_champions = VecDeque::new();
         let mut p2_champions = VecDeque::new();
@@ -33,11 +34,11 @@ impl Board {
         info!("Creating Champions");
         for (i, p1_champ) in p1_placed_champs.iter().enumerate() {
             //(!O) converts placed champions to summoned champions
-            p1_champions.push_back(SummonedChampion::new(p1_champ, i)); //converts into summoned champ
+            p1_champions.push_back(SummonedChampion::new(p1_champ, i, champions)); //converts into summoned champ
         }
 
         for (i, p2_champ) in p2_placed_champs.iter().enumerate() {
-            p2_champions.push_back(SummonedChampion::new(p2_champ, i + len)); //converts into summoned champ
+            p2_champions.push_back(SummonedChampion::new(p2_champ, i + len, champions)); //converts into summoned champ
         }
         info!("Champions Created");
         Board {
@@ -45,23 +46,27 @@ impl Board {
             p2_champions,
             time_unit,
             movement_amount: MOVEMENT_AMOUNT_CONST / time_unit, //(!O)
+            champions,
+            items,
         } //creates new board
     }
-    pub fn generate_random_board(time_unit: i8) -> Board {
+    pub fn generate_random_board <'a> (time_unit: i8, champions : &'a Vec<Champion>, items : &'a Vec<Item>) -> Board <'a> {
         let num_p1_champs: usize = rand::thread_rng().gen_range(1..4);
         let num_p2_champs: usize = rand::thread_rng().gen_range(1..4);
         let p1_champions: VecDeque<SummonedChampion> = (0..num_p1_champs)
-            .map(|f: usize| SummonedChampion::generate_random_champ(false, f))
+            .map(|f: usize| SummonedChampion::generate_random_champ(false, f, champions))
             .collect();
         let p2_champions: VecDeque<SummonedChampion> = (num_p1_champs
             ..num_p1_champs + num_p2_champs)
-            .map(|f: usize| SummonedChampion::generate_random_champ(false, f))
+            .map(|f: usize| SummonedChampion::generate_random_champ(false, f, champions))
             .collect();
         Board {
             p1_champions,
             p2_champions,
             time_unit,
             movement_amount: MOVEMENT_AMOUNT_CONST / time_unit,
+            champions,
+            items
         }
     }
     pub fn start_battle(mut self) -> i8 {
@@ -143,7 +148,7 @@ impl Board {
     }
 }
 
-impl std::fmt::Display for Board {
+impl std::fmt::Display for Board <'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,

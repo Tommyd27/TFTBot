@@ -16,7 +16,7 @@ mod utils;
 pub mod item;
 
 fn main() {
-    let p1_champs: VecDeque<PlacedChampion> = VecDeque::from([PlacedChampion::new(
+    /*let p1_champs: VecDeque<PlacedChampion> = VecDeque::from([PlacedChampion::new(
         0,
         0,
         [0, 0, 0],
@@ -34,7 +34,7 @@ fn main() {
     for _ in 0..1 {
         //let mut board: Board = Board::generate_random_board(10);
 
-        let mut board = Board::new(&p1_champs, &p2_champs, 10);
+        let mut board = Board::new(&p1_champs, &p2_champs, 10,);
         println!("Board {}", board);
         let board_outcome = board.start_battle() as usize;
         println!("Outcome {board_outcome}");
@@ -46,5 +46,5 @@ fn main() {
     info!("Program End")*/
     println!("Time elapsed in expensive_function() is: {:?}", duration);
     println!("outcomes {:?}", outcomes);
-    println!("Program End")
+    println!("Program End")*/
 }

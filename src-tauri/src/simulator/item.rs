@@ -1,3 +1,4 @@
+use serde::{Serialize, Deserialize};
 use surrealdb::sql::{Array, Datetime, Object, Value};
 use crate::prelude::*;
 pub const DEFAULT_ITEMS : [Item ; 47] = [
@@ -50,7 +51,7 @@ pub const DEFAULT_ITEMS : [Item ; 47] = [
     Item {id : 88, cm : 50, health : 0.0, ad : 0.0, ap : 0.0, ar : 0.0, mr : 0.0, ra : 0, attack_speed_modifier : 1.0, cr : 0, dc : 0, omnivamp : 0.0, crit_damage : 0.0},
 ];
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 pub struct Item {
     pub id : u8,
     pub health : f32,
@@ -87,6 +88,25 @@ impl Item {
     }
 }
 
+impl TryFrom<Object> for Item {
+    type Error = Error;
+    fn try_from(mut obj: Object) -> Result<Self> {
+        let ad = obj.remove("ad").unwrap().as_float() as f32;
+        let ap = obj.remove("ap").unwrap().as_float() as f32;
+        let ar = obj.remove("ar").unwrap().as_float() as f32;
+        let mr = obj.remove("mr").unwrap().as_float() as f32;
+        let attack_speed_modifier = obj.remove("attack_speed_modifier").unwrap().as_float() as f32;
+        let cm = obj.remove("cm").unwrap().as_int() as i16;
+        let cr = obj.remove("cr").unwrap().as_int() as u8;
+        let crit_damage = obj.remove("crit_damage").unwrap().as_float() as f32;
+        let dc = obj.remove("dc").unwrap().as_int() as u8;
+        let health = obj.remove("health").unwrap().as_float() as f32;
+        let omnivamp = obj.remove("omnivamp").unwrap().as_float() as f32;
+        let ra = obj.remove("ra").unwrap().as_int() as i8;
+        let id : u8 = Value::from(obj.remove("id").unwrap().record().unwrap().id).as_int() as u8;
+        Ok(Item { id, ad, ap, attack_speed_modifier, health, ar, mr, ra, cr, dc, cm, omnivamp, crit_damage}) 
+    }
+}
 impl Default for Item {
     fn default() -> Self {
         Item {

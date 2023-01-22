@@ -10,6 +10,7 @@ use rand::Rng;
 use std::collections::VecDeque;
 use std::mem::take;
 use surrealdb::sql::{Value, Object, Thing};
+use serde::{Serialize, Deserialize};
 use crate::prelude::*;
 use crate::error;
 
@@ -18,7 +19,7 @@ const VALID_ITEMS: [u8; 42] = [
     37, 38, 44, 45, 46, 47, 48, 55, 56, 57, 58, 66, 67, 68, 78, 88,
 ];
 ///Stores basic information surrounding a champion
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Champion {
     ///index in champions array
     pub id: u8,
@@ -343,14 +344,14 @@ pub struct SummonedChampion {
 
 impl SummonedChampion {
     ///converts PlacedChampion into SummonChampion
-    pub fn new(placed_champion: &PlacedChampion, id: usize) -> SummonedChampion {
+    pub fn new(placed_champion: &PlacedChampion, id: usize, champions : &Vec<Champion>) -> SummonedChampion {
         info!(
             "New Summoned Champion ID : {} Champion ID : {}",
             id, placed_champion.id
         );
 
         let star_level = placed_champion.star; //get star level
-        let of_champ = &DEFAULT_CHAMPIONS[placed_champion.id]; //get champ info
+        let of_champ = &champions[placed_champion.id]; //get champ info
         SummonedChampion {
             location: placed_champion.location, //create summoned champ with all details
             movement_progress: [0, 0],
@@ -424,9 +425,9 @@ impl SummonedChampion {
         self.is_setup = true;
     }
 
-    pub fn generate_random_champ(team: bool, id: usize) -> SummonedChampion {
+    pub fn generate_random_champ(team: bool, id: usize, champions : &Vec<Champion>) -> SummonedChampion {
         let random_pos = Location::generate_random_position_team(team);
-        let of_champion = rand::thread_rng().gen_range(0..DEFAULT_CHAMPIONS.len());
+        let of_champion = rand::thread_rng().gen_range(0..champions.len());
         let star: usize = rand::thread_rng().gen_range(1..3);
         let items: [u8; 3] = {
             let item1 = *VALID_ITEMS.choose(&mut rand::thread_rng()).unwrap();
@@ -440,7 +441,7 @@ impl SummonedChampion {
             items,
             location: random_pos,
         };
-        SummonedChampion::new(&champ_of, id)
+        SummonedChampion::new(&champ_of, id, champions)
     }
     ///fn to heal set amount
     fn heal(&mut self, mut healing_amount: f32) {
