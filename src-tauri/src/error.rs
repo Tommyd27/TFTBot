@@ -1,4 +1,6 @@
-#[derive(thiserror::Error, Debug)]
+use serde::Serialize;
+
+#[derive(thiserror::Error, Debug, Serialize)]
 pub enum Error {
 	#[error(transparent)]
 	Surreal(#[from] surrealdb::Error),
@@ -15,5 +17,8 @@ pub enum Error {
 
 	#[error("Database Error: '{0}'")]
 	DatabaseError(&'static str),
+
+	#[error("Failed to retrieve store")]
+	StoreError,
 	
 }

@@ -10,17 +10,12 @@ mod error;
 mod prelude;
 mod ipc;
 
-
+use crate::ipc::{retrieve_all_items, retrieve_all_units, retrieve_item_from_id, retrieve_unit_from_id, retrieve_all_item_ids, retrieve_all_unit_ids};
 use crate::prelude::*;
 
 #[macro_use]
 extern crate log;
 
-// Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
 #[tokio::main]
 async fn main() -> Result<()> {
     env::set_var("RUST_LOG", "error");
@@ -29,11 +24,19 @@ async fn main() -> Result<()> {
     let store = Store::new().await?;
     if store.setup().await.is_ok() {
         let store = Arc::new(store);
-    tauri::Builder::default()
-        .manage(store)
-        .invoke_handler(tauri::generate_handler![greet])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        tauri::Builder::default()
+            .manage(store)
+            .invoke_handler(tauri::generate_handler![
+                retrieve_all_items,
+                retrieve_all_units,
+                retrieve_item_from_id,
+                retrieve_unit_from_id,
+                retrieve_all_item_ids,
+                retrieve_all_unit_ids
+                
+            ])
+            .run(tauri::generate_context!())
+            .expect("error while running tauri application");
         Ok(())
     }
     else {
