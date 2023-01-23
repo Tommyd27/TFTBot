@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::str::FromStr;
 
 use crate::prelude::*;
 use crate::simulator::{
