@@ -2,30 +2,37 @@
     import { invoke } from "@tauri-apps/api/tauri"
 
     async function fetch_champs() {
-        console.log(await invoke("retrieve_all_unit_ids"))
-        return await invoke("retrieve_all_unit_ids")
+        champs_list = await invoke("retrieve_all_units")
+        return 0
     }
     async function fetch_items() {
-        return await invoke("retrieve_all_item_ids")
+        items_list = await invoke("retrieve_all_items")
+        return 0
     }
+    function update_champ () {
 
-    let champs = fetch_champs()
-    let items = fetch_items()
+    }
+    let champs_list = []
+    let items_list = []
+    fetch_champs()
+    fetch_items()
+    
+    let selected_champ = fetch_champs()
+    let selected_item = fetch_items()
 </script>
 
-{#await champs}
-    <p>...fetching champs</p>
-{:then}
-    <p></p>
-{:catch error}
-    <p>Failure to fetch champs {error}</p>
+<select value = {selected_champ} on:change={update_champ}>
+    {#each champs_list as champ}
+        <option value = {champ}>
+            {champ.id}
+        </option>
+    {/each}
+</select>
+
+{#await selected_champ}
+    <p>loading...</p>
+{:then selected_champ} 
+    <input value="{champs_list[selected_champ].hp}">
 {/await}
 
-{#await items}
-    <p>...fetching items</p>
-{:then}
-
-{:catch error}
-    <p>Failure to fetch items {error}</p>
-{/await}
 <h1>Change Stats</h1>
