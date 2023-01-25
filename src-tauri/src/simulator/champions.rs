@@ -24,7 +24,7 @@ pub struct Champion {
     ///index in champions array
     pub id: u8,
     ///healthpoints (star level dependent)
-    hp: [f32; 3],
+    hp: f32,
     ///starting mana
     sm: i16,
     ///ability mana cost
@@ -34,7 +34,7 @@ pub struct Champion {
     ///Base Magic Resist Value
     mr: f32,
     ///attack damage (star level dependent)
-    ad: [f32; 3],
+    ad: f32,
     ///attack speed (attacks per second)
     attack_speed: f32,
     ///attack range
@@ -46,42 +46,34 @@ pub struct Champion {
 impl TryFrom<Object> for Champion {
     type Error = Error;
     fn try_from(mut obj: Object) -> Result<Self> {
-        let ad_one : f32 = obj.remove("ad_one").unwrap().as_float() as f32;
-        let ad_two : f32 = obj.remove("ad_two").unwrap().as_float() as f32;
-        let ad_three : f32 = obj.remove("ad_three").unwrap().as_float() as f32;
+        let ad : f32 = obj.remove("ad").unwrap().as_float() as f32;
         let ar : f32 = obj.remove("ar").unwrap().as_float() as f32;
         let attack_speed : f32 = obj.remove("attack_speed").unwrap().as_float() as f32;
-        let health_one : f32 = obj.remove("health_one").unwrap().as_float() as f32;
-        let health_two : f32 = obj.remove("health_two").unwrap().as_float() as f32;
-        let health_three : f32 = obj.remove("health_three").unwrap().as_float() as f32;
+        let hp : f32 = obj.remove("hp").unwrap().as_float() as f32;
         let id : u8 = Value::from(obj.remove("id").unwrap().record().unwrap().id).as_int() as u8;
         let mc : i16 = obj.remove("mc").unwrap().as_int() as i16;
         let mr : f32 = obj.remove("mr").unwrap().as_float() as f32;
         let ra : i8 = obj.remove("ra").unwrap().as_int() as i8;
         let sm : i16 = obj.remove("sm").unwrap().as_int() as i16;
-        Ok(Champion { id, hp: [health_one, health_two, health_three], sm, mc, ar, mr, ad: [ad_one, ad_two, ad_three], attack_speed, ra})
+        Ok(Champion { id, hp, sm, mc, ar, mr, ad, attack_speed, ra})
     }
 }
 impl Default for Champion {
     fn default() -> Self {
-        Champion { id: 0, hp: [0.0, 0.0, 0.0], sm: 0, mc: 0, ar: 0.0, mr: 0.0, ad: [0.0, 0.0, 0.0], attack_speed: 0.0, ra: 0 }
+        Champion { id: 0, hp: 0.0, sm: 0, mc: 0, ar: 0.0, mr: 0.0, ad: 0.0, attack_speed: 0.0, ra: 0 }
     }
 }
 
 impl Champion {
-    pub fn into_values(&self) -> [(String, Value) ; 13] {
+    pub fn into_values(&self) -> [(String, Value) ; 9] {
         [
             ("id".into(), self.id.into()),
-            ("health_one".into(), self.hp[0].into()),
-            ("health_two".into(), self.hp[1].into()),
-            ("health_three".into(), self.hp[2].into()),
+            ("hp".into(), self.hp.into()),
             ("sm".into(), self.sm.into()),
             ("mc".into(), self.mc.into()),
             ("ar".into(), self.ar.into()),
             ("mr".into(), self.mr.into()),
-            ("ad_one".into(), self.ad[0].into()),
-            ("ad_two".into(), self.ad[1].into()),
-            ("ad_three".into(), self.ad[2].into()),
+            ("ad".into(), self.ad.into()),
             ("attack_speed".into(), self.attack_speed.into()),
             ("ra".into(), self.ra.into())
         ]
@@ -93,48 +85,48 @@ pub const DEFAULT_CHAMPIONS: [Champion; 4] = [
     //Support
     Champion {
         id: 0,
-        hp: [650.0, 1100.0, 2100.0],
+        hp: 1100.0,
         sm: 70,
         mc: 140,
         ar: 0.25,
         mr: 0.25,
-        ad: [40.0, 70.0, 130.0],
+        ad: 70.0,
         attack_speed: 0.6,
         ra: 2,
     },
     //Bruiser
     Champion {
         id: 1,
-        hp: [800.0, 1400.0, 2500.0],
+        hp: 1400.0,
         sm: 50,
         mc: 100,
         ar: 0.45,
         mr: 0.45,
-        ad: [75.0, 100.0, 175.0],
+        ad: 100.0,
         attack_speed: 0.7,
         ra: 1,
     },
     //AD Ranged
     Champion {
         id: 2,
-        hp: [700.0, 1200.0, 2200.0],
+        hp: 1200.0,
         sm: 35,
         mc: 100,
         ar: 0.25,
         mr: 0.25,
-        ad: [65.0, 120.0, 240.0],
+        ad: 120.0,
         attack_speed: 0.7,
         ra: 3,
     },
     //AP Ranged
     Champion {
         id: 3,
-        hp: [700.0, 1200.0, 2200.0],
+        hp: 1200.0,
         sm: 35,
         mc: 150,
         ar: 0.25,
         mr: 0.25,
-        ad: [50.0, 60.0, 70.0],
+        ad: 60.0,
         attack_speed: 0.6,
         ra: 3,
     },
@@ -355,7 +347,7 @@ impl SummonedChampion {
         SummonedChampion {
             location: placed_champion.location, //create summoned champ with all details
             movement_progress: [0, 0],
-            health: of_champ.hp[star_level],
+            health: of_champ.hp,
             initial_hp: 0.0,
             cm: of_champ.sm, //update current mana to starting mana
             dc: 0,
@@ -364,7 +356,7 @@ impl SummonedChampion {
             mc: of_champ.mc,
             ar: of_champ.ar,
             mr: of_champ.mr,
-            ad: of_champ.ad[star_level],
+            ad: of_champ.ad,
             attack_speed: of_champ.attack_speed,
             ra: of_champ.ra * 2, //because distanceBetweenPoints returns value twice as large
             id,
@@ -1581,7 +1573,7 @@ impl From<PlacedChampion> for SummonedChampion {
         SummonedChampion {
             location: champ.location, //create summoned champ with all details
             movement_progress: [0, 0],
-            health: of_champion.hp[star_level],
+            health: of_champion.hp,
             initial_hp: 0.0,
             cm: of_champion.sm, //update current mana to starting mana
             dc: 0,
@@ -1590,7 +1582,7 @@ impl From<PlacedChampion> for SummonedChampion {
             mc: of_champion.mc,
             ar: of_champion.ar,
             mr: of_champion.mr,
-            ad: of_champion.ad[star_level],
+            ad: of_champion.ad,
             attack_speed: of_champion.attack_speed,
             ra: of_champion.ra * 2, //because distanceBetweenPoints returns value twice as large
             id: 0,
