@@ -54,3 +54,19 @@ pub async fn retrieve_all_item_ids(connection : AppHandle<Wry>) -> Result<Vec<u8
     }
     Err(Error::StoreError)
 }
+
+#[command]
+pub async fn update_unit(selected_unit : Champion, connection : AppHandle<Wry>) -> Result<()> {
+    if let Ok(store) = get_store_from_state(connection) {
+        return store.update_champion(selected_unit).await;
+    }
+    Err(Error::StoreError)
+}
+
+#[command]
+pub async fn update_unit(selected_item : Item, connection : AppHandle<Wry>) -> Result<()> {
+    if let Ok(store) = get_store_from_state(connection) {
+        return store.update_item(selected_item).await;
+    }
+    Err(Error::StoreError)
+}

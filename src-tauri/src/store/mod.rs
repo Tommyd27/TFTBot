@@ -47,7 +47,6 @@ impl Store {
         let vars: BTreeMap<String, Value> = [("data".into(), data.into())].into();
 
         let ress = self.ds.execute(&sql, &self.ses, Some(vars), false).await?;
-        println!("{ress:?}");
         Ok(())
     }
     pub async fn insert_item(&self, item: &Item) -> Result<()> {
@@ -116,6 +115,22 @@ impl Store {
         Ok(into_iter_objects(ress)?
             .map(|f| Item::try_from(f.unwrap()).unwrap())
             .collect())
+    }
+    pub async fn update_champion(&self, champion : Champion) -> Result<()> {
+        let sql = format!("UPDATE champions:{id} CONTENT $data", id = champion.id);
+        let data: BTreeMap<String, Value> = champion.into_values().into();
+        let vars: BTreeMap<String, Value> = [("data".into(), data.into())].into();
+
+        let ress = self.ds.execute(&sql, &self.ses, Some(vars), false).await?;
+        Ok(())
+    }
+    pub async fn update_item(&self, item : Item) -> Result<()> {
+        let sql = format!("UPDATE items:{id} CONTENT $data", id = item.id);
+        let data: BTreeMap<String, Value> = item.into_values().into();
+        let vars: BTreeMap<String, Value> = [("data".into(), data.into())].into();
+
+        let ress = self.ds.execute(&sql, &self.ses, Some(vars), false).await?;
+        Ok(())
     }
 }
 
