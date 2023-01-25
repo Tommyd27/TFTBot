@@ -27,7 +27,7 @@
     <div class="column2">
         <h2>bURGER</h2>
     </div>
-    <div class="column1">
+    <div class="column3">
         <h1>borger</h1>
     </div>
 </div>
@@ -38,7 +38,14 @@
     }
     
     .column1 {
-        flex: 10%;
+        flex: 5%;
+        background-color: grey;
+        display:grid;
+        grid-template-columns: 40px 40px;
+    }
+
+    .column3 {
+        flex: 15%;
         background-color: grey;
         display:grid;
         grid-template-columns: 40px 40px;
