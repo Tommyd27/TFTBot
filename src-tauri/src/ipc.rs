@@ -64,7 +64,7 @@ pub async fn update_unit(selected_unit : Champion, connection : AppHandle<Wry>) 
 }
 
 #[command]
-pub async fn update_unit(selected_item : Item, connection : AppHandle<Wry>) -> Result<()> {
+pub async fn update_item(selected_item : Item, connection : AppHandle<Wry>) -> Result<()> {
     if let Ok(store) = get_store_from_state(connection) {
         return store.update_item(selected_item).await;
     }
