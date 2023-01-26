@@ -18,11 +18,14 @@
 
 <div class="row">
     <div class="column1">
-        <UnitItemDragDrop champ_or_item = {1}></UnitItemDragDrop>
-        <UnitItemDragDrop champ_or_item = {2}></UnitItemDragDrop>
-        <UnitItemDragDrop champ_or_item = {3}></UnitItemDragDrop>
-        <UnitItemDragDrop champ_or_item = {4}></UnitItemDragDrop>
-
+        <h2 style = "font-size: 20px">Champs</h2><br>
+        {#each champs_list as champ}
+            <UnitItemDragDrop champ_or_item = {champ}></UnitItemDragDrop>
+        {/each}
+        <h2 style = "font-size: 20px">Items</h2><br>
+        {#each items_list as item}
+            <UnitItemDragDrop champ_or_item = {item}></UnitItemDragDrop>
+        {/each}
     </div>
     <div class="column2">
         <h2>bURGER</h2>

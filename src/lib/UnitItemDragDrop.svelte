@@ -1,10 +1,10 @@
 <script>
     // @ts-nocheck 
-    export let champ_or_item = 2;
+    export let champ_or_item;
 </script>
 
 <div>
-    <h1>{champ_or_item}</h1>
+    <h1>{champ_or_item.id}</h1>
     
 </div>
 
