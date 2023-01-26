@@ -1,6 +1,7 @@
 <script>
     // @ts-nocheck 
     import UnitItemDragDrop from "$lib/UnitItemDragDrop.svelte";
+    import Hexagon from "$lib/Hexagon.svelte";
     import { invoke } from "@tauri-apps/api/tauri"
     async function fetch_champs() {
         champs_list = await invoke("retrieve_all_units")
@@ -28,7 +29,7 @@
         {/each}
     </div>
     <div class="column2">
-        <h2>bURGER</h2>
+        <Hexagon></Hexagon>
     </div>
     <div class="column3">
         <h1>borger</h1>
