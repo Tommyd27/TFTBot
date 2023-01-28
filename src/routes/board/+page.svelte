@@ -8,25 +8,29 @@
     import { invoke } from "@tauri-apps/api/tauri"
     async function fetch_champs() {
         champs_list = await invoke("retrieve_all_units")
-        let champ = champs_list[0]
+        /*let champ = champs_list[0]
         champ.placed_id = "A"
-        champ.items = [3, 4, 6];
+        champ.items = [93, 94, 96];
+        champ.star_level = 3;
         grid[1][1] = champ
+        grid[1][2] = champ
+        grid[0][0] = champ
+        grid[3][3] = champ
+        grid[7][7] = champ*/
     }
     async function fetch_items() {
         items_list = await invoke("retrieve_all_items")
     }
     function hex_click(i, j) {
-        console.log(i, j)
         champ = grid[i][j]
-        console.log(champ)
         if (champ == show) {
             show = null
         }
         else {
-            console.log("hello")
             show = champ
-            pos = [50 * i, 50 * j];
+            pos = [80 + 130 * j, 200 + 80 * i];
+            console.log(pos)
+            console.log(i, j)
         }
     }
     function create_grid() {
@@ -78,7 +82,8 @@
 </div>
 
 {#if show} 
-    <div style = "position: absolute; top: {pos[0]}; right: {pos[1]}">
+    <!--<div style = "position: absolute; top: {pos[0]}; right: {pos[1]}" class = "info_bar">-->
+    <div style = "position: absolute; top: {pos[1]}px; left: {pos[0]}px" class = "info_bar">
         <h1>Champ: {show.placed_id}</h1>
         <h1>Type: {show.id}</h1>
         <h1>Star Level: {show.star_level}</h1>
@@ -112,5 +117,13 @@
     }
     .hex-row {
         clear: left;
+    }
+
+    .info_bar {
+        width: 140px;
+        height: 160px;
+        font-size: 10px;
+        background-color: aliceblue;
+        z-index: 3;
     }
 </style>
