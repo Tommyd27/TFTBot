@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use crate::simulator::champions::PlacedChampion;
 use crate::simulator::{champions::Champion, item::Item};
 use crate::store::Store;
 use std::sync::Arc;
@@ -69,4 +70,9 @@ pub async fn update_item(selected_item : Item, connection : AppHandle<Wry>) -> R
         return store.update_item(selected_item).await;
     }
     Err(Error::StoreError)
+}
+
+#[command]
+pub async fn submit_board(player_one_champs : Vec<PlacedChampion>, player_two_champs : Vec<PlacedChampion>, time_unit : i8, time_till_draw: u32, connection : AppHandle<Wry>) -> Result<()> {
+    Ok(())
 }

@@ -23,10 +23,12 @@ pub struct Board<'a> {
     champions : &'a Vec<Champion>,
 
     items : &'a Vec<Item>,
+
+    ticks_till_draw : u32,
 }
 
 impl Board <'_> {
-    pub fn new <'a>(p1_placed_champs: &VecDeque<PlacedChampion>, p2_placed_champs: &VecDeque<PlacedChampion>, champions : &'a Vec<Champion>, items : &'a Vec<Item>, time_unit: i8) -> Board<'a> {
+    pub fn new <'a>(p1_placed_champs: &VecDeque<PlacedChampion>, p2_placed_champs: &VecDeque<PlacedChampion>, champions : &'a Vec<Champion>, items : &'a Vec<Item>, time_unit: i8, ticks_till_draw : u32) -> Board<'a> {
         info!("New Board");
         let mut p1_champions = VecDeque::new();
         let mut p2_champions = VecDeque::new();
@@ -48,9 +50,10 @@ impl Board <'_> {
             movement_amount: MOVEMENT_AMOUNT_CONST / time_unit, //(!O)
             champions,
             items,
+            ticks_till_draw
         } //creates new board
     }
-    pub fn generate_random_board <'a> (time_unit: i8, champions : &'a Vec<Champion>, items : &'a Vec<Item>) -> Board <'a> {
+    pub fn generate_random_board <'a> (time_unit: i8, champions : &'a Vec<Champion>, items : &'a Vec<Item>, ticks_till_draw : u32) -> Board <'a> {
         let num_p1_champs: usize = rand::thread_rng().gen_range(1..4);
         let num_p2_champs: usize = rand::thread_rng().gen_range(1..4);
         let p1_champions: VecDeque<SummonedChampion> = (0..num_p1_champs)
@@ -66,7 +69,8 @@ impl Board <'_> {
             time_unit,
             movement_amount: MOVEMENT_AMOUNT_CONST / time_unit,
             champions,
-            items
+            items,
+            ticks_till_draw
         }
     }
     pub fn start_battle(mut self) -> i8 {
@@ -141,7 +145,7 @@ impl Board <'_> {
             } else if self.p2_champions.is_empty() {
                 info!("Player 1 Wins");
                 return 1;
-            } else if debug_count > 10000 {
+            } else if debug_count > self.ticks_till_draw {
                 return 3;
             }
         }

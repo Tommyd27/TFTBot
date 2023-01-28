@@ -1,13 +1,20 @@
 <script>
     //@ts-nocheck
     export let champion;
+    let color = "aquamarine"
+    $: if (champion && champion.team) {
+        color = "#ffa895"
+    }
+    else {
+        color = "#49ff2d"
+    }
 </script>
 <div class = "hex">
     
     <div class = "top"></div>
 
     <!--<div class = "middle"></div>-->
-    <button on:click>
+    <button on:click on:mouseup style = "background-color: {color}">
         {#if champion}
             {champion.placed_id}
         {/if}

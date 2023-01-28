@@ -3,7 +3,7 @@
     export let champ_or_item;
 </script>
 
-<div>
+<div on:mousedown>
     <h1>{champ_or_item.id}</h1>
     
 </div>
