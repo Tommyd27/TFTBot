@@ -1,6 +1,8 @@
+use serde::Serialize;
+
 use super::champions::DamageType;
 ///Implementation for Shields
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Shield {
     ///duration of shield
     pub duration: i16,

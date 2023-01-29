@@ -3,8 +3,11 @@ use super::{
     location::Location,
     utils::{find_champion_index_from_id, sign},
 };
+
+use serde::Serialize;
 use std::collections::VecDeque;
 ///Projectile struct
+#[derive(Clone, Serialize)]
 pub struct Projectile {
     ///location of projectile
     location: Location,

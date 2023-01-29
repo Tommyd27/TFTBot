@@ -1,3 +1,5 @@
+use serde::Serialize;
+
 ///Records champion's stun state.<br />
 pub struct Stun {
     ///Records whether champion is stunned:<br />
@@ -9,7 +11,7 @@ pub struct Stun {
 
 ///Status Type (enum):<br />
 ///Holds information about what the status does
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone, Serialize)]
 pub enum StatusType {
     ///Attack Speed Buff:<br />
     ///(bool : whether the buff has been applied, f32 : actual modifier)
@@ -106,7 +108,7 @@ pub enum StatusType {
 
 ///StatusEffect (struct)<br />:
 ///Stores a status type and a duration
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize)]
 pub struct StatusEffect {
     ///Duration of status effect in centiseconds
     pub duration: Option<i16>, //optimisation so uses Option<i16> rather than i16

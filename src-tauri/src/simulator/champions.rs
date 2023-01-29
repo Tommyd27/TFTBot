@@ -3,7 +3,7 @@ use super::projectiles::Projectile;
 use super::shields::Shield;
 use super::status_effects::{StatusEffect, StatusType, Stun};
 use super::utils::{find_champion_index_from_id, find_champion_index_from_id_targetable, sign};
-use super::item::{Item, DEFAULT_ITEMS};
+use super::item::{Item};
 use core::fmt;
 use rand::seq::SliceRandom;
 use rand::Rng;
@@ -133,7 +133,7 @@ pub const DEFAULT_CHAMPIONS: [Champion; 4] = [
 ];
 
 ///Enum for the 3 damage types Physical, Magical and True
-#[derive(PartialEq, Eq, Clone, Copy, Debug)] //derives clone copy and partial equal
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Serialize)] //derives clone copy and partial equal
 pub enum DamageType {
     Physical(),
     Magical(),
@@ -145,6 +145,7 @@ pub enum DamageType {
 ///PlacedChampion (struct):
 ///Stores information about a champion's location and status on a board (as well as ID of actual champion)
 ///Not used in battles, only for planning phase
+#[derive(Deserialize)]
 pub struct PlacedChampion {
     ///id given at instantiation
     id: usize,
@@ -172,11 +173,12 @@ impl PlacedChampion {
 }
 
 ///Struct for champion placed on board in a battle
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize)]
 pub struct SummonedChampion {
     ///array of p, q coordinates, r can be calculated with r = -p - q
     pub location: Location,
 
+    of_champ_id : usize,
     ///progress of movement before new square, goes up to 10 then moves
     movement_progress: [i8; 2],
 
@@ -329,36 +331,26 @@ pub struct SummonedChampion {
     ///omnivamp (% of healing from damage done)
     omnivamp: f32,
 
-    is_setup: bool,
-
     shiv_attack_count: u8,
 }
 
 impl SummonedChampion {
     ///converts PlacedChampion into SummonChampion
-    pub fn new(placed_champion: &PlacedChampion, id: usize, champions : &Vec<Champion>) -> SummonedChampion {
+    pub fn new(placed_champion: &PlacedChampion, id: usize) -> SummonedChampion {
         info!(
             "New Summoned Champion ID : {} Champion ID : {}",
             id, placed_champion.id
         );
 
         let star_level = placed_champion.star; //get star level
-        let of_champ = &champions[placed_champion.id]; //get champ info
         SummonedChampion {
             location: placed_champion.location, //create summoned champ with all details
+            of_champ_id: placed_champion.id,
             movement_progress: [0, 0],
-            health: of_champ.hp,
             initial_hp: 0.0,
-            cm: of_champ.sm, //update current mana to starting mana
             dc: 0,
             cr: 25,
             crit_damage: 0.3,
-            mc: of_champ.mc,
-            ar: of_champ.ar,
-            mr: of_champ.mr,
-            ad: of_champ.ad,
-            attack_speed: of_champ.attack_speed,
-            ra: of_champ.ra * 2, //because distanceBetweenPoints returns value twice as large
             id,
             target_cooldown: 0,
             auto_attack_delay: 0,
@@ -380,44 +372,55 @@ impl SummonedChampion {
             banish: false, //discrepency with this and many others if one status effect banishing ends and another is still going on etc.
             titans_resolve_stacks: 0,
             omnivamp: 0.0,
-            is_setup: false,
             shiv_attack_count: 0,
+            ..Default::default()
         }
     }
     pub fn setup(
         &mut self,
         friendly_champions: &mut VecDeque<SummonedChampion>,
         enemy_champions: &mut VecDeque<SummonedChampion>,
+        champions : &Vec<Champion>,
+        items : &Vec<Item>
     ) {
-        if self.is_setup {
-            return;
-        }
         info!("Setup of Champion {}", self.id);
-        if self.items[0] == 77 {
-            //(!D) doesnt give accurate item pairs
-            info!("Champion has thieves gloves, giving items");
-            let level = true; //implement getting level
-            if level {
-                self.items[1] =
-                    rand::thread_rng().gen_range(0..9) * 10 + rand::thread_rng().gen_range(0..9);
-                self.items[2] = rand::thread_rng().gen_range(0..9); //discrepency do this properly later
-            } else {
-                self.items[1] =
-                    rand::thread_rng().gen_range(0..9) * 10 + rand::thread_rng().gen_range(0..9);
-                self.items[2] =
-                    rand::thread_rng().gen_range(0..9) * 10 + rand::thread_rng().gen_range(0..9);
+        {
+            let of_champion = &champions[self.of_champ_id];
+            self.health = of_champion.hp;
+            self.cm = of_champion.sm;
+            self.ar = of_champion.ar;
+            self.mr = of_champion.mr;
+            self.ad = of_champion.ad;
+            self.attack_speed = of_champion.attack_speed;
+            self.ra = of_champion.ra * 2;
+        }
+        {
+            if self.items[0] == 77 {
+                //(!D) doesnt give accurate item pairs
+                info!("Champion has thieves gloves, giving items");
+                let level = true; //implement getting level
+                if level {
+                    self.items[1] =
+                        rand::thread_rng().gen_range(0..9) * 10 + rand::thread_rng().gen_range(0..9);
+                    self.items[2] = rand::thread_rng().gen_range(0..9); //discrepency do this properly later
+                } else {
+                    self.items[1] =
+                        rand::thread_rng().gen_range(0..9) * 10 + rand::thread_rng().gen_range(0..9);
+                    self.items[2] =
+                        rand::thread_rng().gen_range(0..9) * 10 + rand::thread_rng().gen_range(0..9);
+                }
+            }
+            for item in self.items {
+                info!("Giving item effect {}", item);
+                self.give_item_effect(item, friendly_champions, enemy_champions, items)
             }
         }
-        for item in self.items {
-            info!("Giving item effect {}", item);
-            self.give_item_effect(item, friendly_champions, enemy_champions)
-        }
+        
         self.initial_hp = self.health;
         info!("Set HP to {}", self.health);
-        self.is_setup = true;
     }
 
-    pub fn generate_random_champ(team: bool, id: usize, champions : &Vec<Champion>) -> SummonedChampion {
+    /*pub fn generate_random_champ(team: bool, id: usize, champions : &Vec<Champion>) -> SummonedChampion {
         let random_pos = Location::generate_random_position_team(team);
         let of_champion = rand::thread_rng().gen_range(0..champions.len());
         let star: usize = rand::thread_rng().gen_range(1..3);
@@ -433,8 +436,8 @@ impl SummonedChampion {
             items,
             location: random_pos,
         };
-        SummonedChampion::new(&champ_of, id, champions)
-    }
+        SummonedChampion::new(&champ_of, id)
+    }*/
     ///fn to heal set amount
     fn heal(&mut self, mut healing_amount: f32) {
         info!("{self} - Healing");
@@ -1061,10 +1064,11 @@ impl SummonedChampion {
         item: u8,
         friendly_champions: &mut VecDeque<SummonedChampion>,
         enemy_champions: &mut VecDeque<SummonedChampion>,
+        items : &Vec<Item>,
     ) {
         info!("giving item {}", item);
 
-        let item_obj = DEFAULT_ITEMS[(item as usize) - 1];
+        let item_obj = items[(item as usize) - 1];
         {
             self.health += item_obj.health;
             self.ad += item_obj.ad;
@@ -1522,6 +1526,7 @@ impl Default for SummonedChampion {
             location: Location {
                 ..Default::default()
             },
+            of_champ_id: 0,
             movement_progress: [0, 0],
             health: 0.0,
             cm: 0,
@@ -1554,7 +1559,6 @@ impl Default for SummonedChampion {
             banish: false,
             titans_resolve_stacks: 0,
             omnivamp: 0.0,
-            is_setup: false,
             shiv_attack_count: 0,
         }
     }
@@ -1566,48 +1570,9 @@ impl fmt::Display for SummonedChampion {
     }
 }
 
+/* 
 impl From<PlacedChampion> for SummonedChampion {
     fn from(champ: PlacedChampion) -> Self {
-        let star_level = champ.star; //get star level
-        let of_champion = &DEFAULT_CHAMPIONS[champ.id]; //get champ info
-        SummonedChampion {
-            location: champ.location, //create summoned champ with all details
-            movement_progress: [0, 0],
-            health: of_champion.hp,
-            initial_hp: 0.0,
-            cm: of_champion.sm, //update current mana to starting mana
-            dc: 0,
-            cr: 25,
-            crit_damage: 0.3,
-            mc: of_champion.mc,
-            ar: of_champion.ar,
-            mr: of_champion.mr,
-            ad: of_champion.ad,
-            attack_speed: of_champion.attack_speed,
-            ra: of_champion.ra * 2, //because distanceBetweenPoints returns value twice as large
-            id: 0,
-            target_cooldown: 0,
-            auto_attack_delay: 0,
-            attack_speed_modifier: 1.0,
-            target: 255,
-            target_cells: Location { x: -1, y: -1 }, //(!O)
-            items: champ.items,
-            ap: 1.0,
-            se: Vec::new(),
-            gain_mana_delay: 0,
-            star_level,
-            incoming_damage_modifier: 1.0,
-            targetable: true,
-            shed: 0,
-            shields: Vec::new(),
-            //sortBy : 0,
-            //traits : traits,
-            zap: false, //discrepency maybe if order of status Effects is ever affected, alternative would be to iterate through status Effects and check for ionic spark
-            banish: false, //discrepency with this and many others if one status effect banishing ends and another is still going on etc.
-            titans_resolve_stacks: 0,
-            omnivamp: 0.0,
-            is_setup: false,
-            shiv_attack_count: 0,
-        }
+        SummonedChampion::new(&champ, 0)
     }
-}
+}*/

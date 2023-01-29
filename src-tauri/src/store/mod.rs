@@ -1,16 +1,19 @@
 use std::collections::BTreeMap;
 
 use crate::prelude::*;
+use crate::simulator::board::Board;
 use crate::simulator::{
     champions::Champion, champions::DEFAULT_CHAMPIONS, item::Item, item::DEFAULT_ITEMS,
 };
 use std::sync::Arc;
 use surrealdb::sql::{thing, Array, Datetime, Object, Value};
 use surrealdb::{Datastore, Response, Session};
+use std::mem::{swap, take};
 
 pub struct Store {
     ds: Datastore,
     ses: Session,
+    board : Option<Board>
 }
 
 impl Store {
@@ -18,7 +21,7 @@ impl Store {
         //let ds = Datastore::new("file://temp.db").await?;
         let ds = Datastore::new("file://tft_bot_database").await.unwrap();
         let ses = Session::for_db("appns", "appdb");
-        Ok(Store { ds, ses })
+        Ok(Store { ds, ses, board : None})
     }
     pub async fn setup(&self) -> Result<()> {
         if self.fetch_champions_ids().await?.is_empty() {
@@ -131,6 +134,20 @@ impl Store {
 
         let ress = self.ds.execute(&sql, &self.ses, Some(vars), false).await?;
         Ok(())
+    }
+    pub fn set_board(&mut self, board : Board) -> Result<()> {
+        self.board = Some(board);
+        Ok(())
+    }
+    pub fn replace_board(&mut self, mut board : Option<Board>) -> Result<Option<Board>> {
+        if self.board.is_some() {
+            swap(&mut self.board, &mut board);
+            return Ok(board)
+        }
+        Err(Error::FetchBoardError)
+    }
+    pub fn fetch_board(&self) -> Result<Option<Board>> {
+        Ok(self.board.as_ref().cloned())
     }
 }
 

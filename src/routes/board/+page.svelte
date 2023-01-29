@@ -157,13 +157,20 @@
         }
     }
 
+    class Location {
+        constructor(x, y) {
+            this.x = x
+            this.y = y
+        }
+    }
+
     function handle_submit() {
         let player_one_champs = []
         let player_two_champs = []
         for (let i = 0; i++; i < grid.length) {
             for (let j = 0; j++; j < grid[i].length) {
                 if (grid[i][j]) {
-                    let placed_champ = new PlacedChamp(grid[i][j].id, grid[i][j].items, grid[i][j].star_level, [i, j])
+                    let placed_champ = new PlacedChamp(grid[i][j].id, grid[i][j].items, grid[i][j].star_level, new Location(i, j))
                     if (grid[i][j].team) {
                         player_one_champs.push(placed_champ)
                     }

@@ -1,5 +1,6 @@
 use super::champions::SummonedChampion;
 use rand::Rng;
+use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 enum FilterType {
     ///i8 : Distance to check
@@ -15,7 +16,7 @@ fn generate_filter(filter: FilterType) -> impl for<'a> Fn(&&mut SummonedChampion
     }
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Location {
     pub x: i8,
     pub y: i8,
