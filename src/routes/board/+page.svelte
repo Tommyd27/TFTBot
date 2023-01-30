@@ -152,7 +152,7 @@
         constructor(id, items, star_level, location) {
             this.id = id
             this.items = items
-            this.star_level = star_level
+            this.star = star_level
             this.location = location
         }
     }
@@ -164,11 +164,11 @@
         }
     }
 
-    function handle_submit() {
+    async function handle_submit() {
         let player_one_champs = []
         let player_two_champs = []
-        for (let i = 0; i++; i < grid.length) {
-            for (let j = 0; j++; j < grid[i].length) {
+        for (let i = 0; i < grid.length; i++) {
+            for (let j = 0; j < grid[i].length; j++) {
                 if (grid[i][j]) {
                     let placed_champ = new PlacedChamp(grid[i][j].id, grid[i][j].items, grid[i][j].star_level, new Location(i, j))
                     if (grid[i][j].team) {
@@ -180,7 +180,8 @@
                 }
             }
         }
-        invoke("submit_board", player_one_champs, player_two_champs, time_unit, time_till_draw)
+        await invoke("submit_board", {"playerOneChamps": player_one_champs, "playerTwoChamps": player_two_champs, "timeUnit": time_unit, "timeTillDraw" : time_till_draw})
+        window.location.href = "/board/battle"
     }
 
     let champ = champs_list[0]

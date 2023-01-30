@@ -145,7 +145,7 @@ pub enum DamageType {
 ///PlacedChampion (struct):
 ///Stores information about a champion's location and status on a board (as well as ID of actual champion)
 ///Not used in battles, only for planning phase
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct PlacedChampion {
     ///id given at instantiation
     id: usize,
@@ -1064,10 +1064,10 @@ impl SummonedChampion {
         item: u8,
         friendly_champions: &mut VecDeque<SummonedChampion>,
         enemy_champions: &mut VecDeque<SummonedChampion>,
-        items : &Vec<Item>,
+        items : &[Item],
     ) {
         info!("giving item {}", item);
-
+        if item == 0 { return }
         let item_obj = items[(item as usize) - 1];
         {
             self.health += item_obj.health;
