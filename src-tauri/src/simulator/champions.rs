@@ -1569,10 +1569,3 @@ impl fmt::Display for SummonedChampion {
         write!(f, "{}: {}", self.id, self.health)
     }
 }
-
-/* 
-impl From<PlacedChampion> for SummonedChampion {
-    fn from(champ: PlacedChampion) -> Self {
-        SummonedChampion::new(&champ, 0)
-    }
-}*/

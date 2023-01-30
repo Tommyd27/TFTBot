@@ -111,6 +111,8 @@ pub async fn simulate_x_ticks(num_ticks : Option<u32>, connection : AppHandle<Wr
 #[command]
 pub async fn fetch_board(connection : AppHandle<Wry>) -> Result<Option<Board>> {
     if let Ok(store) = get_store_read_from_state(connection) {
+        let board = store.read().await.fetch_board()?.unwrap();
+        println!("{board}");
         return store.read().await.fetch_board()
     }
     Err(Error::StoreError)
