@@ -140,11 +140,8 @@ impl Store {
         Ok(())
     }
     pub fn replace_board(&mut self, mut board : Option<Board>) -> Result<Option<Board>> {
-        if self.board.is_some() {
-            swap(&mut self.board, &mut board);
-            return Ok(board)
-        }
-        Err(Error::FetchBoardError)
+        swap(&mut self.board, &mut board);
+        return Ok(board)
     }
     pub fn fetch_board(&self) -> Result<Option<Board>> {
         Ok(self.board.as_ref().cloned())

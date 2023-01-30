@@ -11,7 +11,7 @@ mod error;
 mod prelude;
 mod ipc;
 
-use crate::ipc::{retrieve_all_items, retrieve_all_units, retrieve_item_from_id, retrieve_unit_from_id, retrieve_all_item_ids, retrieve_all_unit_ids, update_unit, update_item, submit_board, fetch_board};
+use crate::ipc::{retrieve_all_items, retrieve_all_units, retrieve_item_from_id, retrieve_unit_from_id, retrieve_all_item_ids, retrieve_all_unit_ids, update_unit, update_item, submit_board, fetch_board, simulate_x_ticks};
 use crate::prelude::*;
 
 #[macro_use]
@@ -37,7 +37,8 @@ async fn main() -> Result<()> {
                 update_unit,
                 update_item,
                 submit_board,
-                fetch_board
+                fetch_board,
+                simulate_x_ticks
                 
             ])
             .run(tauri::generate_context!())

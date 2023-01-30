@@ -393,6 +393,7 @@ impl SummonedChampion {
             self.ad = of_champion.ad;
             self.attack_speed = of_champion.attack_speed;
             self.ra = of_champion.ra * 2;
+            self.mc = of_champion.mc;
         }
         {
             if self.items[0] == 77 {
