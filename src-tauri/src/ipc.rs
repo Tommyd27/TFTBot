@@ -86,6 +86,9 @@ pub async fn submit_board(player_one_champs : VecDeque<PlacedChampion>, player_t
             items = store_read.fetch_items().await?;
         }
         let mut store_write = store.write().await;
+
+        let board = Board::new(&player_one_champs, &player_two_champs, &champs, &items, time_unit, time_till_draw);
+        println!("{board}");
         return store_write.set_board(Board::new(&player_one_champs, &player_two_champs, &champs, &items, time_unit, time_till_draw));
     }
     Err(Error::StoreError)

@@ -49,6 +49,12 @@
     async function fetch_board() {
         create_grid()
         board = await invoke("fetch_board")
+        if (board.p1_champions.length == 0 || board.p2_champions.length == 0) {
+            console.log("ovaaaa")
+            show_over = true
+            await new Promise(r => setTimeout(r, 2000));
+            show_over = false
+        }
         console.log("board ", board)
         for (let champ_index in board.p1_champions) {
             let location = board.p1_champions[champ_index].location
@@ -62,11 +68,6 @@
             board.p2_champions[champ_index].placed_id = generate_id(board.p2_champions[champ_index].id)
             grid[location.x][location.y] = board.p2_champions[champ_index]
         }
-    }
-
-    async function print_board() {
-        let board_p = await invoke("fetch_board")
-        console.log("board ", board_p)
     }
     function pause() {
         play = false;
@@ -89,11 +90,22 @@
         await invoke("simulate_x_ticks", {numTicks : jump_ticks_num})
         await fetch_board()
     }
+    async function save_battle() {
+        if (board.p1_champions.length > 0 && board.p2_champions.length > 0 ) {
+            show_battle_over = 100
+            await new Promise(r => setTimeout(r, 500));
+            show_battle_over = 0
+            return
+        }
+
+    }
     let grid;
     let play_at_ticks = 5;
     let jump_ticks_num = 100;
     let board;
     let selected_champ;
+    let show_battle_over = 0
+    let show_over = false;
     fetch_board()
 </script>
 
@@ -151,9 +163,14 @@
         <input type = "number" min = 1 max = 20 bind:value = {play_at_ticks}>
         <label>Jump Forward</label>
         <input type = "number" min = 1 max = 20000 bind:value = {jump_ticks_num}>
-        <button on:click = {print_board}>Fetch Board</button>
+        <button on:click = {save_battle}>Save Result</button>
+        <h1 style = "opacity: {show_battle_over}">Battle not over</h1>
     </div>
 </div>
+
+{#if show_over}
+    <div class = "show_over">Battle Over!!</div>
+{/if}
 
 <style>
     .row {
@@ -185,6 +202,13 @@
         margin-bottom: 0px;
         font-size: 20px;
         line-height: 10px;
+    }
+    .show_over {
+        position: absolute; 
+        top: 50%; 
+        left: 50%;
+        background-color: grey;
+        font-size: 60px;
     }
 </style>
 
