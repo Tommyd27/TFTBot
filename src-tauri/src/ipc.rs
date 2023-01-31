@@ -125,9 +125,17 @@ pub async fn update_outcome(outcome : u8, connection : AppHandle<Wry>) -> Result
 }
 
 #[command]
-pub async fn fetch_outcomes(connection : AppHandle<Wry>) -> Result<()> {
+pub async fn fetch_outcomes(connection : AppHandle<Wry>) -> Result<Vec<(i64, String)>> {
     if let Ok(store) = get_store_read_from_state(connection) {
         return store.read().await.fetch_outcomes().await;
+    }
+    Err(Error::StoreError)
+}
+
+#[command]
+pub async fn fetch_outcome_board(id : String, connection : AppHandle<Wry>) -> Result<Vec<PlacedChampion>> {
+    if let Ok(store) = get_store_read_from_state(connection) {
+        return store.read().await.fetch_outcome_board(id).await;
     }
     Err(Error::StoreError)
 }

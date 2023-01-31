@@ -182,14 +182,23 @@ impl Store {
         Err(Error::LastBoardError)
     }
 
-    pub async fn fetch_outcomes(&self) -> Result<()> {
+    pub async fn fetch_outcomes(&self) -> Result<Vec<(i64, String)>> {
         let sql = "SELECT * FROM boards";
         let ress = self.ds.execute(sql, &self.ses, None, false).await?;
-        for obj in into_iter_objects(ress)? {
-            println!("{obj:?}");
-        }
-        Ok(())
+
+
+        Ok(into_iter_objects(ress)?.map(|obj| {
+            let mut obj = obj.unwrap();
+            (obj.remove("outcome").unwrap().as_int(), Value::from(obj.remove("id").unwrap().record().unwrap().id).as_string())
+        }).collect())
     }
+
+    pub async fn fetch_outcome_board(&self, id : String) -> Result<Vec<PlacedChampion>> {
+        let sql = &format!("SELECT * FROM boards_champ WHERE board = boards:{id}");
+        let ress = self.ds.execute(sql, &self.ses, None, false).await?;
+        Ok(into_iter_objects(ress)?.map(|f| PlacedChampion::try_from(f.unwrap()).unwrap()).collect())
+    }
+
 
 }
 

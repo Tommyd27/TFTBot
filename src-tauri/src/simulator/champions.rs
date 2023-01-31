@@ -144,7 +144,7 @@ pub enum DamageType {
 ///PlacedChampion (struct):
 ///Stores information about a champion's location and status on a board (as well as ID of actual champion)
 ///Not used in battles, only for planning phase
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Serialize)]
 pub struct PlacedChampion {
     ///id given at instantiation
     id: usize,
@@ -159,6 +159,20 @@ pub struct PlacedChampion {
     location: Location,
 }
 
+impl TryFrom<Object> for PlacedChampion {
+    type Error = Error;
+    fn try_from(mut obj: Object) -> Result<Self> {
+        let id = obj.remove("of_champ").unwrap().as_int() as usize;
+        let item_0 = obj.remove("item_0").unwrap().as_int() as u8;
+        let item_1 = obj.remove("item_1").unwrap().as_int() as u8;
+        let item_2 = obj.remove("item_2").unwrap().as_int() as u8;
+        let star_level = obj.remove("star").unwrap().as_int() as usize;
+        let location_x = obj.remove("location_x").unwrap().as_int() as i8;
+        let location_y = obj.remove("location_y").unwrap().as_int() as i8;
+        Ok(PlacedChampion { id, star: star_level, items: [item_0, item_1, item_2], location: Location { x: location_x, y: location_y } })
+    }
+}
+
 impl PlacedChampion {
     pub fn new(id: usize, star: usize, items: [u8; 3], location: Location) -> PlacedChampion {
         info!("Creating new placed champion {}", id);
@@ -170,7 +184,7 @@ impl PlacedChampion {
         }
     }
     pub fn into_values(&self) -> [(String, Value); 7] {
-        [("id".into(), self.id.into()),
+        [("of_champ".into(), self.id.into()),
          ("star".into(), self.star.into()),
          ("item_0".into(), self.items[0].into()),
          ("item_1".into(), self.items[1].into()),
