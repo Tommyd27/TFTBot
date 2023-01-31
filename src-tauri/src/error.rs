@@ -23,5 +23,8 @@ pub enum Error {
 
 	#[error("Failed to fetch board")]
 	FetchBoardError,
+
+	#[error("Failed to retrieve last board")]
+	LastBoardError,
 	
 }

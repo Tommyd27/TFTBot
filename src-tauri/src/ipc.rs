@@ -86,9 +86,7 @@ pub async fn submit_board(player_one_champs : VecDeque<PlacedChampion>, player_t
             items = store_read.fetch_items().await?;
         }
         let mut store_write = store.write().await;
-
-        let board = Board::new(&player_one_champs, &player_two_champs, &champs, &items, time_unit, time_till_draw);
-        println!("{board}");
+        store_write.store_board(&player_one_champs, &player_two_champs).await;
         return store_write.set_board(Board::new(&player_one_champs, &player_two_champs, &champs, &items, time_unit, time_till_draw));
     }
     Err(Error::StoreError)
@@ -115,6 +113,21 @@ pub async fn simulate_x_ticks(num_ticks : Option<u32>, connection : AppHandle<Wr
 pub async fn fetch_board(connection : AppHandle<Wry>) -> Result<Option<Board>> {
     if let Ok(store) = get_store_read_from_state(connection) {
         return store.read().await.fetch_board()
+    }
+    Err(Error::StoreError)
+}
+#[command]
+pub async fn update_outcome(outcome : u8, connection : AppHandle<Wry>) -> Result<()> {
+    if let Ok(store) = get_store_read_from_state(connection) {
+        return store.read().await.update_outcome(outcome).await
+    }
+    Err(Error::StoreError)
+}
+
+#[command]
+pub async fn fetch_outcomes(connection : AppHandle<Wry>) -> Result<()> {
+    if let Ok(store) = get_store_read_from_state(connection) {
+        return store.read().await.fetch_outcomes().await;
     }
     Err(Error::StoreError)
 }

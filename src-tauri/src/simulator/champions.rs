@@ -5,7 +5,6 @@ use super::status_effects::{StatusEffect, StatusType, Stun};
 use super::utils::{find_champion_index_from_id, find_champion_index_from_id_targetable, sign};
 use super::item::{Item};
 use core::fmt;
-use rand::seq::SliceRandom;
 use rand::Rng;
 use std::collections::VecDeque;
 use std::mem::take;
@@ -169,6 +168,16 @@ impl PlacedChampion {
             items,
             location,
         }
+    }
+    pub fn into_values(&self) -> [(String, Value); 7] {
+        [("id".into(), self.id.into()),
+         ("star".into(), self.star.into()),
+         ("item_0".into(), self.items[0].into()),
+         ("item_1".into(), self.items[1].into()),
+         ("item_2".into(), self.items[2].into()),
+         ("location_x".into(), self.location.x.into()),
+         ("location_y".into(), self.location.y.into())
+        ]
     }
 }
 

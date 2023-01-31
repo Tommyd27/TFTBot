@@ -50,7 +50,6 @@
         create_grid()
         board = await invoke("fetch_board")
         if (board.p1_champions.length == 0 || board.p2_champions.length == 0) {
-            console.log("ovaaaa")
             show_over = true
             await new Promise(r => setTimeout(r, 2000));
             show_over = false
@@ -97,6 +96,14 @@
             show_battle_over = 0
             return
         }
+        let outcome = 0
+        if (board.p1_champions.length > 0) {
+            outcome = 1
+        }
+        else {
+            outcome = 2
+        }
+        invoke("update_outcome", {outcome})
 
     }
     let grid;
