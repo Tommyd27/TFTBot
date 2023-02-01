@@ -160,12 +160,14 @@ impl Store {
         for champ in p1_champs {
             let mut data: BTreeMap<String, Value> = champ.into_values().into();
             data.insert("board".into(), board_link.clone().into());
+            data.insert("team".into(), 1.into());
             let vars: BTreeMap<String, Value> = [("data".into(), data.into())].into();
             let ress = self.ds.execute(sql, &self.ses, Some(vars), false).await?;
         }
         for champ in p2_champs {
             let mut data: BTreeMap<String, Value> = champ.into_values().into();
             data.insert("board".into(), board_link.clone().into());
+            data.insert("team".into(), 2.into());
             let vars: BTreeMap<String, Value> = [("data".into(), data.into())].into();
             let ress = self.ds.execute(sql, &self.ses, Some(vars), false).await?;
         }

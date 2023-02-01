@@ -154,6 +154,7 @@
             this.items = items
             this.star = star_level
             this.location = location
+            this.team = null
         }
     }
 

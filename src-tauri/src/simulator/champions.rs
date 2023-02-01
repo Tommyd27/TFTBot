@@ -157,6 +157,8 @@ pub struct PlacedChampion {
 
     ///location on board
     location: Location,
+
+    team : Option<u8>
 }
 
 impl TryFrom<Object> for PlacedChampion {
@@ -169,7 +171,8 @@ impl TryFrom<Object> for PlacedChampion {
         let star_level = obj.remove("star").unwrap().as_int() as usize;
         let location_x = obj.remove("location_x").unwrap().as_int() as i8;
         let location_y = obj.remove("location_y").unwrap().as_int() as i8;
-        Ok(PlacedChampion { id, star: star_level, items: [item_0, item_1, item_2], location: Location { x: location_x, y: location_y } })
+        let team = obj.remove("team").unwrap().as_int() as u8;
+        Ok(PlacedChampion { id, star: star_level, items: [item_0, item_1, item_2], location: Location { x: location_x, y: location_y }, team : Some(team) })
     }
 }
 
@@ -181,6 +184,7 @@ impl PlacedChampion {
             star,
             items,
             location,
+            team : None
         }
     }
     pub fn into_values(&self) -> [(String, Value); 7] {
