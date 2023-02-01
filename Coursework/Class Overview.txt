@@ -1,0 +1,141 @@
+class Location:
+
+class Champion:
+	Attributes:
+		-(pub) id : u8,
+			ID of the champion.
+			Public so store can access id.
+			u8 as no need to be negative and not many champions so no need for high value
+		-hp : f32,
+			Base healthpoints of the champion.
+			f32 so operations can be done involving division and percentages without losing precision.
+		-sm : i16,
+			Starting mana for the champion.
+			i16 so it can be used in calculations with current mana (attribute on SummonedChampion) without conversions.
+		-mc : i16,
+			Mana cost for the champion.
+			i16 so it can be used in calculations with current mana (attribute on SummonedChampion) without conversions.
+		-ar : f32,
+			Base armour of the champion.
+			f32 so it can be used in calculations with hp without conversions and to allow it to act like a percentage.
+		-mr : f32,
+			Base magic resist of the champion.
+			f32 so it can be used in calculations with hp without conversions and to allow it to act like a percentage.
+		-ad : f32,
+			Base attack damage of the champion.
+			f32 so it can be used in calculations with hp without conversions and to allow it to act like a percentage.
+		-attack_speed: f32,
+			Base attack speed of the champion.
+			f32 so can store decimal point attack speeds (attacks per second), without needing to divide by 100.
+		-ra : i8,
+			Range of the champion.
+			i8 so it can be used in calculations with the Location class.
+	Methods:
+		from_object:
+			Converts from an object collected from the database into the Champion class.
+			Pseudocode:
+				FUNCTION from_object(obj) -> Champion:
+					let ad = obj.get("ad")
+					let ar = obj.get("ar")
+					let attack_speed = obj.get("attack_speed")
+					let hp = obj.get("hp")
+					let id = obj.get("id")
+					let mc = obj.get("mc")
+					let mr = obj.get("mr")
+					let ra = obj.get("ra")
+					let sm = obj.get("sm")
+					RETURN Champion { id, hp, sm, mc, ar, mr, ad, attack_speed, ra }
+				ENDFUNCTION
+		into_values:
+			Converts a Champion into an array of key value pairs for storage in the database.
+			Psuedocode:
+				FUNCTION into_values(self) -> [(String, Value) ; 9]:
+					RETURN [
+						("id", self.id),
+						("hp", self.hp),
+						("sm", self.sm),
+						("mc", self.mc),
+						("ar", self.ar),
+						("mr", self.mr),
+						("ad", self.ad),
+						("attack_speed", self.attack_speed),
+						("ra", self.ra)
+						]
+				ENDFUNCTION
+	Constants:
+		There is one constant involving the Champion class:
+			DEFAULT_CHAMPIONS:
+				Array of champions : [Champion ; 4]
+				If there are no champions stored in the database (common after first time initialisation of the database)
+				then DEFAULT_CHAMPIONS will be used to fill the database with the default champions.
+				Value:
+					[
+						Champion {
+							id: 0,
+							hp: 1100.0,
+							sm: 70,
+							mc: 140,
+							ar: 0.25,
+							mr: 0.25,
+							ad: 70.0,
+							attack_speed: 0.6,
+							ra: 2,
+						},
+						Champion {
+							id: 1,
+							hp: 1400.0,
+							sm: 50,
+							mc: 100,
+							ar: 0.45,
+							mr: 0.45,
+							ad: 100.0,
+							attack_speed: 0.7,
+							ra: 1,
+						},
+						Champion {
+							id: 2,
+							hp: 1200.0,
+							sm: 35,
+							mc: 100,
+							ar: 0.25,
+							mr: 0.25,
+							ad: 120.0,
+							attack_speed: 0.7,
+							ra: 3,
+						},
+						Champion {
+							id: 3,
+							hp: 1200.0,
+							sm: 35,
+							mc: 150,
+							ar: 0.25,
+							mr: 0.25,
+							ad: 60.0,
+							attack_speed: 0.6,
+							ra: 3,
+						}
+					]
+
+class PlacedChampion:
+	Attributes:
+		-id : usize,
+			Id of the PlacedChampion, correlates to the ID of a Champion.
+			Usize so the id can directly index arrays to retrieve the associated champion.
+		-star : usize,
+			Star level of the PlacedChampion.
+			Usize so the star level can directly index arrays where values change depending on the star level.
+		-items : [u8; 3],
+			Ids of the items it holds, correlates to the ID and index of an item.
+			Can hold 3 items so array of length three.
+			u8 as that is the datatype of the id of items.
+		-location : Location,
+			Location of the PlacedChampion. 
+		-team : Option<u8>,
+			Team of the PlacedChampion.
+			This attribute is only used when storing and retrieving PlacedChampion's from the database.
+			When this class is used in the backend, the two separate teams of PlacedChampion's are stored in two
+			lists, but when PlacedChampion's are stored in the backend, they are stored together and thus need a record
+			of what team they are on so the board can be reconstructed accurately.
+			u8 to allow for easy storage, option so the value can be None when not needed/ unused.
+	Methods:
+		from_object
