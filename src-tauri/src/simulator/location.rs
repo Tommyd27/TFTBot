@@ -49,16 +49,12 @@ impl Location {
         }
     }
     pub fn check_valid(&self) -> bool {
-        if self.x >= 0
-            && self.x < 10
-            && self.y >= 0
-            && self.y < 8
-            && 2 - (self.y / 2) < self.x
-            && 10 - (self.y / 2) > self.x
-        {
-            return true;
-        }
-        false
+           self.x >= 0
+        && self.x < 10
+        && self.y >= 0
+        && self.y < 8
+        && 2 - (self.y / 2) < self.x
+        && 10 - (self.y / 2) > self.x
     }
     pub fn generate_random_position_team(team: bool) -> Location {
         let y: i8 = if team {

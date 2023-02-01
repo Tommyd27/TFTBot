@@ -1,6 +1,67 @@
 class Location:
+	Description:
+		Class that describes the location of a PlacedChampion or SummonedChampion.
+		Location describes a place on a hexagon grid, however, two dimensional coordinates
+		cannot fully/ accurately describe position on graph, so additional "z" value needed, however
+		z (which is used when calculating distance) can be calculated with z = -x - y therefore only
+		x and y positions need to be saved and z can be calculated.
+		
+		Most methods public as Location's as usually attached to a separate class that wants to utilise methods of Location.
+	Attributes:
+		-(pub) x : i8,
+			Stores the x value.
+			i8 as positions can be negative yet does not need to store large values.
+		-(pub) y : i8,
+			Stores the y value.
+			i8 as positions can be negative yet does not need to store large values.
+	Methods:
+		calculate_z:
+			Calculates the z value of self.
+			Psuedocode:
+				FUNCTION calculate_z(self) -> i8:
+					RETURN -self.x - self.y
+				ENDFUNCTION
+		(pub) distance_between_points:
+			Calculates the distance between two locations. For a distance of 1 hex, returns 2, for this reason the range of all Champions are doubled when converted into SummonedChampion.
+			Psuedocode: (ABS = absolute value)
+				FUNCTION distance_between_points(self, other_pos : Location) -> i8:
+					RETURN ABS(self.x - other_pos.x) + ABS(self.y - other_pos.y) + ABS(self.calculate_z() - other.calculate_z())
+				ENDFUNCTION
+		(pub) sub_positions:
+			Subtracts two positions, returns a new position.
+			Psuedocode:
+				FUNCTION sub_positions(pos_one : Location, pos_two : Location) -> Location:
+					RETURN Location { x : pos_one.x - pos_two.x, y : pos_one.y - pos_two.y }
+				ENDFUNCTION
+		(pub) add_position_vec:
+			Adds an array to a Location, returning a new location.
+			Psuedocode:
+				FUNCTION add_position_vec(location : Location, pos_array = [i8 ; 2]) -> Location:
+					RETURN Location {x : location.x + pos_array[0], y : location.y + pos_array[1]}
+				ENDFUNCTION
+		(pub) check_valid:
+			Checks if the location is a valid position in the grid
+			Psuedocode:
+				FUNCTION check_valid(self) -> bool:
+					RETURN  self.x >= 0
+							&& self.x < 10
+							&& self.y >= 0
+							&& self.y < 8
+							&& 2 - (self.y / 2) < self.x
+							&& 10 - (self.y / 2) > self.x
+				ENDFUNCTION
+		(pub) get_closest_to_location:
+			Takes a list of locations or class with a location and returns the closest to self position.
+		(pub) get_closest_to_location_targetable:
+			Takes a list of SummonedChampion's and returns the closest to self location that is targetable.
+		(pub) get_closest_to_location_targetable_index:
+			Takes a list of SummonedChampion's and returns the closest to self location that is targetable, along with its index in the list.
+		(pub) get_within_distance):
+			Takes a list of SummonedChampion's and returns a list of all SummonedChampions within provided distance.
 
 class Champion:
+	Description:
+		Class that describes the base stats of a champion.
 	Attributes:
 		-(pub) id : u8,
 			ID of the champion.
@@ -35,7 +96,7 @@ class Champion:
 			Converts from an object collected from the database into the Champion class.
 			Pseudocode:
 				FUNCTION from_object(obj) -> Champion:
-					let ad = obj.get("ad")
+					let ad = obj.get("ad") //retrieves ad from dictionary like object "obj"
 					let ar = obj.get("ar")
 					let attack_speed = obj.get("attack_speed")
 					let hp = obj.get("hp")
@@ -117,6 +178,8 @@ class Champion:
 					]
 
 class PlacedChampion:
+	Description:
+		Class to be used to represent a champion placed on a board during setup. Holds a reference to Champion and is converted into SummonedChampion during a battle.
 	Attributes:
 		-id : usize,
 			Id of the PlacedChampion, correlates to the ID of a Champion.
@@ -138,4 +201,91 @@ class PlacedChampion:
 			of what team they are on so the board can be reconstructed accurately.
 			u8 to allow for easy storage, option so the value can be None when not needed/ unused.
 	Methods:
-		from_object
+		from_object:
+			Converts from an object collected from the database into the PlacedChampion class.
+			Psuedocode:
+				FUNCTION try_from(obj) -> PlacedChampion:
+					let id = obj.get("of_champ") //retrieves id from dictionary like object "obj"
+					let item_0 = obj.get("item_0")
+					let item_1 = obj.get("item_1")
+					let item_2 = obj.get("item_2")
+					let star_level = obj.get("star")
+					let location_x = obj.get("location_x")
+					let location_y = obj.get("location_y")
+					let team = obj.get("team")
+					
+					RETURN PlacedChampion { id, items : [item_0, item_1, item_2], star : star_level, location : Location { location_x, location_y }, team : Some(team) }
+				ENDFUNCTION
+		into_values:
+			Converts a PlacedChampion into an array of key value pairs for storage in the database.
+			Psuedocode:
+				FUNCTION into_values(self) -> [(String, Value) ; 7]:
+					RETURN [
+						("of_champ", self.id),
+						("star", self.star),
+						("item_0", self.items[0]), //need to separate items as arrays cannot be stored in database.
+						("item_1", self.items[1]),
+						("item_2", self.items[2]),
+						("location_x", self.location.x), //need to separate x and y as Location cannot be stored in database.
+						("location_y", self.location.y)
+					]
+				ENDFUNCTION
+
+class SummonedChampion:
+	Description:
+		Class that represents a champion on a board during a battle. Constructed from a SummonedChampion.
+	Attributes:
+		-(pub) location : Location,
+			Location of the SummonedChampion
+		-of_champ_id : usize,
+			Id of the PlacedChampion/ Champion it was constructed from.
+		-movement_progress : [i8 ; 2],
+			Progress towards moving towards a new cell.
+			i8 to allow it to be used in calculations with Location without conversions.
+		-health: f32,
+			Current health of the SummonedChampion.
+			f32 to allow for calculations with percentages and division while holding precision.
+		-cm : i16,
+			Current mana.
+			i16 as current mana can be negative (if given debuff from certain item).
+		-dc : u8,
+			Dodge chance.
+			Used as a percentage.
+			u8 as it cannot be negative or larger than 100, so u8 to save space.
+		-cr : u8,
+			Critical strike rate.
+			Used as a percentage.
+			u8 as it cannot be negative.
+		-crit_damage : f32,
+			Critical strike damage multiplyer.
+			f32 to allow it to store decimal increases and be used in calculations with health without conversions, which would slow program.
+		-mc : i16,
+			Mana cost of ability.
+			i16 to allow it to be used in calculations with current mana without conversions.
+		-ar : f32,
+			Armour of SummonedChampion.
+			f32 to allow it to be treated like percentage and be used in calculations with health without conversions, which would slow program.
+		-mr : f32,
+			Magic resist of SummonedChampion.
+			f32 to allow it to be treated like percentage and be used in calculations with health without conversions, which would slow program.
+		-ad : f32
+			Attack damage of SummonedChampion.
+			f32 to allow it to hold decimal values and be used in calculations with health without conversions, which would slow program.
+		-attack_speed : f32
+			Base attack speed from SummonedChampion.
+			f32 to allow it to store decimal values of attacks per second.
+		-ra : i8,
+			Basic attack range of the SummonedChampion, double the value of the range on the associated Champion.
+			i8 to allow it to be used in calculations with location without conversions, which would slow program.
+		-id : usize,
+			Unique id of the SummonedChampion to allow the object to be uniquely identified.
+		-target_cooldown : i8,
+			Variable that holds the length of time (in centiseconds) before it should update its current target (to the nearest located enemy champion).
+			i8 to reduce the chance of underflow error when subtracting the time unit from it.
+		-auto_attack_delay : i16,
+			Holds the length of time (in centiseconds) before the SummonedChampion can auto attack again. Calculated by 100 / (attack_speed * attack_speed_modifier).
+		-attack_speed_modifier : f32,
+			Attack speed modifier from items and abilities.
+			f32 to hold percentage/ decimal changes and to allow it to be used in calculations with attack speed without conversions.
+		-target : usize,
+			The id of the SummonedChampion that this SummonedChampion is currently targeting.
