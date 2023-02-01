@@ -289,3 +289,406 @@ class SummonedChampion:
 			f32 to hold percentage/ decimal changes and to allow it to be used in calculations with attack speed without conversions.
 		-target : usize,
 			The id of the SummonedChampion that this SummonedChampion is currently targeting.
+		-target_cells : Location,
+			The stored target cell for pathfinding, attempts to move towards this spot.
+		-items : [u8 ; 3],
+			Array of the ids of the items the SummonedChampion is currently holding
+		-ap : f32,
+			Ability power, a measure of how effective abilities are/ how much damage they do etc.
+			f32 to allow it to hold decimal values and be used in calculations with health without conversion.
+		-se : Vec<StatusEffect>,
+			A list of all the status effects currently affecting the SummonedChampion.
+			List/ vector as it needs to be able to grow and shrink in size
+		-gain_mana_delay : i16,
+			Delay until SummonedChampion can start generating mana again, to ensure consistency with actual TFT (champions cannot generate mana 1 second after casting ability)
+		-star_level : usize,
+			Star level of the SummonedChampion
+			usize to allow it to index arrays for values that change depending on star level.
+		-incoming_damage_modifier : f32,
+			A percentage increase or decrease to incoming damage, altered by some abilities.
+			f32 to allow it to hold percentage/ decimal values accurately and be used in calculations with health without conversion.
+		-initial_hp : f32, 
+			Attribute that stores the initial healthpoints of the SummonedChampion, ensuring the SummonedChampion doesn't overheal and allows the value to be retrieved for effects that activate at half health etc.
+		-targetable : bool,
+			Stores whether the SummonedChampion can be targeted by abilities and auto attacks.
+			bool as it is a true or false value
+		-shed : u8,
+			Whether the SummonedChampion is in the process of shedding negative status effects, can be 0, 1 or 2 measuring process of shed effect.
+			u8 as it cannot be negative or store large values, allowing less data usage.
+		-shields : Vec<Shield>,
+			List of shields on the SummonedChampion
+			List/ vector as it needs to be able to grow and shrink in size
+		-zap : bool,
+			Stores whether currently "zapped" by ionic spark.
+			bool as it is true or false value.
+		-banish : bool,
+			Whether the SummonedChampion is currently "banished".
+			bool as it is true or false value
+		-titans_resolve_stacks : u8,
+			Stores the current stacks from titan's resolve item.
+			u8 as it cannot be negative and only needs to go up to 25.
+		-omnivamp : f32,
+			Stores omnivamp (healing from damage)
+			f32 so it can hold percentage values and so it can be used in calculations with damage without conversions.
+		-shiv_attack_count: u8,
+			Stores the current attack count for stattik shiv item.
+			u8 as it only needs to contain the values 0 to 4.
+	Methods:
+		new:
+			Creates a new SummonedChampion from a placed_champion and an id.
+		setup:
+			Gives all item stat increases and initialises SummonedChampion stats to base stats given by its respective Champion.
+		heal:
+			Provides healing to the SummonedChampion
+			Psuedocode:
+				FUNCTION heal(self, healing_amount : f32):
+					IF self.se.contains(GreviousWounds):
+						healing_amount /= 2
+					ENDIF
+					self.health = MIN(self.health + healing_amount, self.initial_hp)
+				ENDFUNCTION
+		(pub) take_turn:
+			Takes the turn of the SummonedChampion, returns a boolean describing if the SummonedChampion is still alive.
+			False = dead, true = alive
+			Psuedocode: (Option is a type that contains a value which can be something or nothing)
+				FUNCTION take_turn(self, friendly_champions : Vec<SummonedChampion>, enemy_champions : Vec<SummonedChampion>, time_unit : i8, movement_amount : i8, projectiles : Vec<Projectile>) -> bool:
+					IF self.health <= 0:
+						RETURN False
+					ENDIF
+
+					self.target_cooldown -= time_unit
+					self.auto_attack_delay -= time_unit
+					self.gain_mana_delay -= time_unit
+
+					IF self.banish:
+						RETURN True //is banished, end turn
+					ENDIF
+					let stun : BOOLEAN = false
+					FOR status_effect in self.se:
+						IF status_effect == stun:
+							stun = True
+						ENDIF
+						self.perform_status(status_effect, friendly_champions, enemy_champions, time_unit)
+					ENDFOR
+
+
+					IF self.health <= 0:
+						return False //killed by status effect
+					ENDIF
+
+					FOR shield in self.shields:
+						shield.update_shield(time_unit) //reduce remaining duration of shield
+						IF shield.duration <= 0:
+							self.shields.remove(shield)
+						ENDIF
+					ENDFOR
+
+					IF stun:
+						return True //stunned, end turn
+					ENDIF
+
+					let need_new_target_cell : BOOLEAN = false //assumes doesn't need new pathfinding target cell
+					let target_object : Option<SummonedChampion> = None //creates variable to store a target object, but sets to None by default.
+
+					IF self.target_cooldown >= 0: //doesn't want to find new target.
+						FOR enemy_champ in enemy_champions:
+							IF enemy_champ.id == self.target:
+								target_object = Some(enemy_champ)
+								break
+							ENDIF
+						ENDFOR
+					IF target_object == None: //couldn't find target or need new target.
+						self.target_cooldown = 100 //reset target cooldown
+						need_new_target_cell = true //reset pathfinding
+						target_object = Some(self.location.get_closest_to_location_targetable(enemy_champions))
+					ENDIF
+
+					let target_object : SummonedChampion = target_object.unwrap() //remove the Option from summonedchampion.
+
+					let distance_to_get : i8 = self.location.distance_between_points(target_object.location)
+
+					IF distance_to_target <= self.ra: //target in range
+						IF self.auto_attack_delay <= 0: //auto-attack ready
+							self.auto_attack_delay = 100 / (self.attack_speed * self.attack_speed_modifier)
+							IF self.gain_mana_delay <= 0: //can gain mana
+								self.cm += 10
+							ENDIF
+
+							IF target_object.dc < GENERATE_RANDOM_NUMBER(0 to 100): //checking for a dodge
+								self.deal_damage(friendly_champions, target_object, self.ad, PhysicalDamage)
+							ENDIF
+						ENDIF
+					ELSE: //target not in range
+						IF need_new_target_cell || self.location == self.target_cells: //find new target cell
+							self.target_cells = self.location //if can't find new target cell, then don't pathfind anywhere
+
+							let lowest_distance : i8 = i8::MAX;
+							let new_position : Location;
+
+							FOR possible_move in [[0, -1], [1, -1], [1, 0], [-1, 0], [-1, 1], [0, 1]]:
+								new_position = Location::add_position_vec(self.location, possible_move)
+								let distance_from_target : i8 = new_position.distance_between_points(target_object.location)
+								IF distance_from_target < lowest_distance AND new_position.is_valid(): //if lower distance and a valid position
+									let collision : BOOLEAN = False
+									FOR friendly_champ in friendly_champions:
+										IF new_position == friendly_champ.location: //make sure we don't pathfind into collision
+											collision = True
+											BREAK
+										ENDIF
+									ENDFOR
+									IF collision:
+										CONTINUE
+									ENDIF
+									lowest_distance = distance_from_target //update lowest distance and target cells
+									self.target_cells = new_position
+								ENDIF
+							ENDFOR
+						ENDIF
+						self.movement_progress[0] += movement_amount * sign(self.target_cells.x - self.location.x) //sign converts positive numbers to 1, zero to zero and negative numbers to -1, so just calculates the direction.
+						self.movement_progress[1] += movement_amount * sign(self.target_cells.y - self.location.y)
+						IF ABS(self.movement_progress[0]) >= 10: //ready to move to new cell
+							self.location.x += sign(self.movement_progress[0]) //add movement
+							self.movement_progress[0] = 0 //reset movement progress
+						ENDIF
+
+						IF ABS(self.movement_progress[1]) >= 10:
+							self.location.y += sign(self.movement_progress[1]) //add movement
+							self.movement_progress[1] = 0
+						ENDIF
+					ENDIF
+
+					IF self.cm >= self.mc: //ready to cast ability
+						self.cm = 0
+						self.gain_mana_delay = 100
+						self.cast_ability(friendly_champions, enemy_champions, projectiles)
+					ENDIF
+				ENDFUNCTION
+		deal_damage:
+			Deals damage to a enemy champion, calculating all associated effects.
+			Psuedocode:
+				FUNCTION deal_damage(self, friendly_champions : Vec<SummonedChampion>, target : SummonedChampion, damage_amount : f32, damage_type : DamageType):
+					let damage : f32 = damage_amount * target.incoming_damage_modifier
+
+					let can_crit : BOOLEAN = false //magic and true damage can only crit under certain conditions
+					let crit_damage : f32 = self.crit_damage
+					IF damage_type == PhysicalDamage:
+						can_crit = true
+						damage /= 1 + target.ar //damage reduction due to armor
+					ELSE:
+						can_crit = self.items.contains(27) //requires a certain item to crit
+						IF damage_type == MagicDamage:
+							damage /= 1 + target.mr //damage reduction due to mr
+						ENDIF
+					ENDIF
+
+					IF can_crit AND self.cr > GENERATE_RANDOM_NUMBER(0 to 100): //if can crit and does crit
+						let additional_crit_damage : f32 = damage * crit_damage
+						IF target.items.contains(44): //reduce damage due to bramble vest item
+							additional_crit_damage /= 4
+						ENDIF
+						damage += additional_crit_damage
+					ENDIF
+
+					IF self.items.contains(16): //give bonus giant slayer damage
+						IF target.initial_hp >= 2200:
+							damage *= 1.45
+						ELSE:
+							damage *= 1.2
+						ENDIF
+					ENDIF
+
+					self.heal(damage * self.omnivamp)
+
+					IF damage_type != PhysicalDamage AND self.items.contains(12): //give gunblade healing
+						let healing : f32 = damage / 4
+						self.heal(healing)
+						let lowest_hp_ally : SummonChampion = friendly_champions[0]
+						FOR friendly_champion in friendly_champions: //fetch lowest HP ally
+							IF friendly_champion.health < lowest_hp_ally.health:
+								lowest_hp_ally = friendly_champion
+							ENDIF
+						ENDFOR
+						lowest_hp_ally.heal(healing)
+					ENDIF
+
+					FOR shield in target.shields:
+						damage = shield.handle_damage(damage, damage_type)
+						IF damage <= 0:
+							BREAK
+						ENDIF
+					ENDFOR
+
+					self.titans_resolve_stacks = MIN(25, self.titans_resolve_stacks + 1) //give titan resolve stack
+					target.titans_resolve_stacks = MIN(25, self.titans_resolve_stacks + 1) //make sure stacks do not go above max of 25
+					target.health -= damage //deal damage 
+					IF target.gain_mana_delay <= 0: /if can gain mana
+						targget.cm += damage * 0.7 //give 70% of damage to keep consistency with TFT
+					ENDIF
+				ENDFUNCTION
+		cast_ability:
+			Casts the ability of the SummonedChampion
+			Arguments: self, friendly_champions : Vec<SummonedChampion>, enemy_champions : Vec<SummonedChampion>, projectiles : Vec<Projectile>
+		(pub) get_is_targetable:
+			Method that returns whether the SummonedChampion is targetable
+			Psuedocode:
+				FUNCTION get_is_targetable(self) -> bool:
+					RETURN self.targetable && NOT self.banish
+				ENDFUNCTION
+		give_item_effect:
+			Takes an item as an argument and gives its stats increases to the SummonedChampion as well as any other secondary effects.
+		(pub) equal_id:
+			Takes in an id as input and checks if it is equal to its own id, instance of encapsulation.
+		(pub) is_shred:
+			Checks if self.shed == 2, encapsulation.
+		(pub) update_shred:
+			Updates self.shred
+			Psuedocode:
+				FUNCTION update_shred(self):
+					IF self.shed == 1:
+						self.shed = 2
+					ELSE:
+						self.shed = 0
+					ENDIF
+				ENDFUNCTION
+		perform_status:
+			Performs and updates the inputted status effect, reducing its duration and performing any effects it has.
+		
+enum DamageType:
+	Description:
+		A type of variable which can take on one of three forms.
+		PhysicalDamage, MagicalDamage or TrueDamage.
+		Correlates to the three damage types in TFT
+
+class Item:
+	Description:
+		Holds the stat increases an item gives.
+		All attributes are public to allow for SummonedChampion to retrieve their stats.
+	Attributes (pub): 
+		-id : u8,
+			Stores the id for this respective item
+		-health : f32,
+			Health increase given by the item
+		-ad : f32,
+			Ad increase given by the item
+		-ap : f32,
+			Ap increase given by the item
+		-ar : f32,
+			Armor increase given by the item
+		-mr : f32,
+			Magic resist increase given by the item
+		-attack_speed_modifier : f32,
+			Attack speed increase given by the item
+		-ra : i8,
+			Range increase given by the item
+		-cr : u8,
+			Critical strike rate increase given by the item
+		-dc : u8,
+			Dodge chance rate increase given by the item
+		-cm : i16,
+			Current mana increase given by the item
+		-omnivamp : f32,
+			Omnivamp increase given by the item
+		-crit_damage : f32,
+			Crit damage increase given by the item
+	Methods:
+		into_values:
+			Converts the item into a key value array to insert into the database.
+		try_from_object:
+			Trys to create an item object from an dictionary like object retrieved from the database.
+
+class Projectile:
+	Description:
+		A class for a projectile, can be created by abilities.
+	Attributes:
+		location : Location,
+			Current location of the projectile
+		location_progress : [i8 ; 2],
+			Movement progress of the projectile
+		target_location : Option<Location>,
+			Target location for the projectile, option as the projectile may aim for a SummonedChampion instead.
+		target_id : usize,
+			Id of the SummonedChampion it is aiming for, ignored if there is a target location.
+		damage : f32,
+			Damage the projectile will do
+		damage_type : DamageType,
+			Damage type of the projectile
+		splash_damage : f32,
+			Splash damage of the projectile.
+		speed : i8,
+			Speed of the projectile
+			i8 to be used in calculations with location without conversions.
+		shooter_id : usize,
+			Id of the shooter, required so the projectile can successfully apply any effects from the shooter.
+	Methods:
+		simulate_tick:
+			Simulates a tick for a projectile
+			Returns a bool describing whether the projectile should be deleted after this tick or not.
+			Psuedocode:
+				FUNCTION simulate_tick(self, possible_targest : Vec<SummonedChampion>, friendly_champions : Vec<SummonedChampion>, dead_champions : Vec<SummonedChampion>) -> bool:
+					target_location = None
+					IF self.target_location != None:
+						target_location = self.target_location
+					ELSE:
+						FOR champ in possible_targets:
+							IF champ.id == self.target_id:
+								target_location = champ.location
+								BREAK
+							ENDIF
+						ENDFOR
+						IF target_location == None:
+							RETURN False //target dead so remove projectile
+						ENDIF
+					ENDIF
+
+					self.location_progress[0] += self.speed * sign(target_location.x - self.location.x)
+					self.location_progress[1] += self.speed * sign(target_location.y - self.location.y)
+
+					IF ABS(self.location_progress[0]) >= 10:
+						self.location.x += sign(location_progress[0])
+					ENDIF
+
+					IF ABS(self.location_progress[1]) >= 10:
+						self.location.y += sign(location_progress[1])
+					ENDIF
+
+					IF NOT self.location.check_valid():
+						RETURN False //out of bounds, removing
+					ENDIF
+
+					FOR possible_target in possible_targets:
+						IF self.location == possible_target.location:
+							DEAL_DAMAGE(self.damage, possible_target)
+							RETURN False
+						ENDIF
+					ENDFOR
+					
+					RETURN True
+				ENDFUNCTION
+		new:
+			Creates a new projectile.
+
+class Shield:
+	Description:	
+		Reduces damage taken by a certain amount.
+	Attributes:
+		duration : i16,
+			Duration of shield in centiseconds
+		size : f32,
+			Size of shield/ quantity of damage it can take
+		blocks_type : Option<DamageType>,
+			Type of damage it can block, option as some shields block all types of damage
+		pop : bool,
+			Whether the shield pops/ destroys itself after any damage is taken, even if damage was not enough to completely destroy shield
+	Methods:
+		update_shield:
+			Reduces the duration of the shield by the length of time provided.
+		handle_damage:
+			Takes an input of damage and its damage_type, if the damage type is the type it blocks, reduces the damage by the size of the shield.
+
+enum StatusType:
+	Description:
+		An enum that holds all the possible/ different status types.
+
+class StatusEffect:
+	Description:
+		

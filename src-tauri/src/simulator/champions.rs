@@ -447,25 +447,6 @@ impl SummonedChampion {
         self.initial_hp = self.health;
         info!("Set HP to {}", self.health);
     }
-
-    /*pub fn generate_random_champ(team: bool, id: usize, champions : &Vec<Champion>) -> SummonedChampion {
-        let random_pos = Location::generate_random_position_team(team);
-        let of_champion = rand::thread_rng().gen_range(0..champions.len());
-        let star: usize = rand::thread_rng().gen_range(1..3);
-        let items: [u8; 3] = {
-            let item1 = *VALID_ITEMS.choose(&mut rand::thread_rng()).unwrap();
-            let item2 = *VALID_ITEMS.choose(&mut rand::thread_rng()).unwrap();
-            let item3 = *VALID_ITEMS.choose(&mut rand::thread_rng()).unwrap();
-            [item1, item2, item3]
-        };
-        let champ_of = PlacedChampion {
-            id: of_champion,
-            star,
-            items,
-            location: random_pos,
-        };
-        SummonedChampion::new(&champ_of, id)
-    }*/
     ///fn to heal set amount
     fn heal(&mut self, mut healing_amount: f32) {
         info!("{self} - Healing");
@@ -774,13 +755,13 @@ impl SummonedChampion {
                     "Position ({0:?}) -- Movement Progress ({1:?})",
                     self.location, self.movement_progress
                 );
-                if self.movement_progress[0].abs() == 10 {
+                if self.movement_progress[0].abs() >= 10 {
                     self.location.x += sign(self.movement_progress[0]);
                     self.movement_progress[0] = 0;
                 }
                 self.movement_progress[1] +=
                     movement_amount * sign(self.target_cells.y - self.location.y);
-                if self.movement_progress[1].abs() == 10 {
+                if self.movement_progress[1].abs() >= 10 {
                     self.location.y += sign(self.movement_progress[1]);
                     self.movement_progress[1] = 0;
                 }
@@ -1299,14 +1280,14 @@ impl SummonedChampion {
     pub fn is_shred(&self) -> bool {
         self.shed == 2
     }
-    pub fn update_shred(&mut self) {
+    fn update_shred(&mut self) {
         if self.shed == 1 {
             self.shed = 2;
         } else {
             self.shed = 0;
         }
     }
-    pub fn perform_status(
+    fn perform_status(
         &mut self,
         status_effect: &mut StatusEffect,
         friendly_champions: &mut VecDeque<SummonedChampion>,

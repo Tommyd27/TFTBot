@@ -22,7 +22,6 @@
             outcomes[i].placed_id = generate_id()
             grid[outcomes[i].location.x][outcomes[i].location.y] = outcomes[i]
         }
-        console.log(grid)
     }
     function log_base_n(base, number) {
         return Math.floor(Math.log(number) / Math.log(base));
