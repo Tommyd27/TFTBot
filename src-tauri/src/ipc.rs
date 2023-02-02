@@ -6,7 +6,6 @@ use std::collections::VecDeque;
 use std::sync::{Arc};
 use tokio::sync::{RwLock, RwLockReadGuard};
 use tauri::{command, AppHandle, Manager, Wry};
-use std::mem::replace;
 
 fn get_store_read_from_state(connection: AppHandle<Wry>) -> Result<Arc<RwLock<Store>>> {
     Ok((*connection.state::<Arc<RwLock<Store>>>()).clone())

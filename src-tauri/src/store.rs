@@ -44,8 +44,6 @@ impl Store {
                 }
             }
         }
-        let champ = self.fetch_champion_from_id(27).await;
-		println!("{champ:?}");
 		Ok(())
     }
     pub async fn insert_champion(&self, champion: &Champion) -> Result<()> {
@@ -208,6 +206,8 @@ impl Store {
 fn fetch_id(ress: Vec<Response>) -> String {
     Value::from(into_iter_objects(ress).unwrap().next().unwrap().unwrap().remove("id").unwrap().record().unwrap().id).as_string()
 }
+
+///code taken from: https://www.youtube.com/watch?v=iOyvum0D3LM
 fn into_iter_objects(ress: Vec<Response>) -> Result<impl Iterator<Item = Result<Object>>> {
     let res = ress
         .into_iter()

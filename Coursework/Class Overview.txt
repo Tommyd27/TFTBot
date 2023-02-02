@@ -691,4 +691,198 @@ enum StatusType:
 
 class StatusEffect:
 	Description:
+		A class describing a status effect afflicting a SummonedChampion, with a duration and status type.
+	Attributes:
+		duration : Option<i16>,
+			Duration of the status effect
+			Option as some status effects can be indefinite.
+		applied : bool,
+			Tracks whether the status has been applied already.
+		status_type : StatusType,
+			The status type of the effect.
+		is_negative : bool,
+			Tracks whether the status effect is negative, if it is, it will be shed when shedding negative effects.
+
+class Board:
+	Description:
+		A class containing the layout and state of a board.
+	Attributes:
+		p1_champions : VecDeque<SummonedChampion>,
+			A vector/ list holding all the SummonedChampion's on player one's team.
+			Vector as it has to be able to grow and shrink in size as SummonedChampion die etc.
+			Double ended vector as I have to be able to pop and append elements to both ends of the vector.
+			Reasoning convered in pseudocode comments.
+		p2_champions : VecDeque<SummonedChampion>,
+			A vector/ list holding all the SummonedChampion's on player two's team.
+			Vector as it has to be able to grow and shrink in size as SummonedChampion die etc.
+			Double ended vector as I have to be able to pop and append elements to both ends of the vector.
+		time_unit : i8,
+			Time unit for the board, the length of time simulated in a single tick/ iteration, measured in centiseconds.
+			i8 to be used in calculations with variables that can be negative without conversions.
+		ticks_till_draw : u32,
+			The number of ticks until the battle is declared a draw.
+			u32 as it cannot be negative but has to store very large numbers.
+		tick_count : u32,
+			A count of the number of ticks that has currently surparsed. Required so the board can avoid indefinite battles.
+			u32 as it has to store very large values, but cannot be negative.
+		p1_projectiles : Vec<Projectile>,
+			A vector/ list of all the projectiles created by player one's summoned champions.
+		p2_projectiles : Vec<Projectile>,
+			A vector/ list of all the projectiles created by player two's summoned champions.
+		dead_champs : Vec<SummonedChampion>,
+			A vector/ list of all the dead champions from both teams, required so projectiles that outlive who shoot them can still apply the correct effects.
+	Methods: 
+		new:
+			Creates a new board from a list of PlacedChampion for both players
+		simulate_battle:
+			Simulates a number of ticks on this board.
+			Psuedocode:
+				FUNCTION simulate_battle(self, ticks_to_simulate : Option<u32>):
+					let upper_limit : u32 = self.ticks_till_draw //sets upper limit to ticks till draw
+					IF ticks_to_simulate.is_some() AND self.tick_count + ticks_to_simulate < self.ticks_till_draw:
+						upper_limit = self.tick_count + ticks_to_simulate //if there is input ticks to simulate and its lower than ticks till draw, update upper limit
+					ENDIF
+
+					FOR _ in RANGE(self.tick_count, upper_limit): //for tick in simulating range
+						self.tick_count += 1
+
+						//when calling take_turn on each SummonedChampion, I have to pass in a vector containing all friendly champions, for healing and pathfinding iteractions.
+						//the SummonedChampion has to be outside of the vector at this stage, to avoid interacting with itself as though it was a separate champion.
+						//it also means I can avoid copying the champion, as it doesn't exist in two places, avoiding the expensive calculation.
+						//By using a double-ended vector, I can pop an element from the front of the list and append it to the back once finished,
+						//by doing this once for every item in the list, I can access all elements in the vector, keeping them in order all with O(1)
+						//operations that ensure the program run efficiently and quickly.
+
+						FOR _champ_count in range(0, self.p1_champions.length()):
+							let current_champ : SummonedChampion = self.p1_champions.pop_left()
+							let alive = current_champ.take_turn(self.p1_champions, self.p2_champions, self.time_unit, self.movement_amount, self.p1_projectiles) //take turn
+							IF alive: //if still alive after turn
+								self.p1_champions.push_back(current_champ) //push back
+							ELSE:
+								self.dead_champions.push(current_champ) //add to dead champions in case needed by projectile
+							ENDIF
+						ENDFOR
+
+						FOR _champ_count in range(0, self.p2_champions.length()):
+							let current_champ : SummonedChampion = self.p2_champions.pop_left()
+							let alive : bool = current_champ.take_turn(self.p2_champions, self.p1_champions, self.time_unit, self.movement_amount, self.p2_projectiles) //take turn
+							IF alive: //if still alive after turn
+								self.p2_champions.push_back(current_champ) //push back
+							ELSE:
+								self.dead_champions.push(current_champ) //add to dead champions in case needed by projectile
+							ENDIF
+						ENDFOR
+
+						FOR projectile in self.p1_projectiles: //simulate tick for each projectile
+							projectile.simulate_tick(self.p2_champions, self.p1_champions, self.dead_champs)
+						ENDFOR
+
+						FOR projectile in self.p2_projectiles:
+							projectile.simulate_tick(self.p1_champions, self.p2_champions, self.dead_champs)
+						ENDFOR
+
+						IF self.p1_champions.length == 0 OR self.p2_champions.length: //there is a winner, stop simulating
+							BREAK
+						ENDIF
+					ENDFOR
+				ENDFUNCTION
+
+There will also be a number of accompanying useful utility functions I will create to assist with the development/ running of the app, helping avoiding repeating redundant code.
+
+Functions:
+	find_champion_index_from_id:
+		Retrieves the index of a champion in a vector, returning None if it is not found.
+		Psuedocode:
+			find_champion_index_from_id(champions : Vec<SummonedChampion>, id : usize) -> Option<usize>:
+				let i : usize = 0 //initialise counting variable i to 0
+				FOR champ in champions: //iterate through all the champions
+					IF champ.id == id: //check for match
+						RETURN Some(i)
+					ENDIF
+					i += 1
+				ENDFOR
+
+				RETURN None
+			ENDFUNCTION
+	find_champion_index_from_id_targetable:
+		Retrieves the index of a champion in a vector, only returning it if the champion is targetable.
+		Psuedocode:
+			find_champion_index_from_id_targetable(champions : Vec<SummonedChampion>, id : usize) -> Option<usize>:
+				let i : usize = 0
+				FOR champ in champions:
+					IF champ.id == id:
+						IF champ.get_is_targetable():
+							RETURN Some(i)
+						ENDIF
+
+						RETURN None //if the champ is not targetable, return None
+					ENDIF
+					i += 1
+				ENDFOR
+
+				RETURN None
+			ENDFUNCTION
+
+		
+-----------------
+
+class Store:
+	Description:
+		Class that interfaces with the database
+	Attributes:
+		ds : Datastore,
+			Opened database file
+		ses : Session,
+			Database session to query
+		board : Option<Board>:
+			Current board being held/ simulated
+			Option as none may be simulated
+		last_board : Option<String>:
+			ID of the last saved board, can be used to update/ input the outcome of the match
+			Option as no board may be saved.
+	Methods:
+		new:
+			Returns a new Store object.
+		setup:
+			Setups the database, checks to see if there are saved champions/ items in the datastore. 
+			If there are none, it inputs the default champions or items into the database.
+		insert_champion:
+			Inserts the inputted champion into the database
+		insert_item:
+			Inserts the inputted item into the database
+		fetch_champions:
+			Returns a list of all the champions in the database
+		fetch_champion_from_id:
+			Returns a champion from the given id
+		fetch_items:
+			Returns a list of all the items in the database
+		fetch_item_from_id:
+			Returns an item from the given id
+		fetch_champions_ids:
+			Returns a list of all the ids of the champions in the database
+		fetch_items_ids:
+			Returns a list of all the ids of the items in the database
+		update_champion:	
+			Updates the stats in the database of the given champion
+		update_item:
+			Updates the stats in the database of the given item
+		set_board:
+			Sets self.board to the given value
+		replace_board:
+			Swaps the stored board with the given board, returning the old one
+		fetch_board:
+			Returns the stored board
+		store_board:
+			Takes two inputs of placed champions and stores them in the database.
+		update_outcome:
+			Updates the outcome of the self.last_board stored in the database with the given output
+		fetch_outcomes:
+			Returns a list of all the stored outcomes/ battle results in the database
+		fetch_outcome_board:
+			Fetches the initial board state of the board with the given id.
+
+
+		
+		
+		
 		
