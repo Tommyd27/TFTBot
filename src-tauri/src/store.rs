@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::fmt::format;
 
 use crate::prelude::*;
 use crate::simulator::board::Board;
@@ -7,10 +6,9 @@ use crate::simulator::champions::PlacedChampion;
 use crate::simulator::{
     champions::Champion, champions::DEFAULT_CHAMPIONS, item::Item, item::DEFAULT_ITEMS,
 };
-use std::sync::Arc;
-use surrealdb::sql::{thing, Array, Datetime, Object, Value};
+use surrealdb::sql::{Object, Value};
 use surrealdb::{Datastore, Response, Session};
-use std::mem::{swap, take};
+use std::mem::{swap};
 use std::collections::VecDeque;
 
 pub struct Store {
@@ -51,7 +49,7 @@ impl Store {
         let data: BTreeMap<String, Value> = champion.into_values().into();
         let vars: BTreeMap<String, Value> = [("data".into(), data.into())].into();
 
-        let ress = self.ds.execute(&sql, &self.ses, Some(vars), false).await?;
+        self.ds.execute(&sql, &self.ses, Some(vars), false).await?;
         Ok(())
     }
     pub async fn insert_item(&self, item: &Item) -> Result<()> {
@@ -126,7 +124,7 @@ impl Store {
         let data: BTreeMap<String, Value> = champion.into_values().into();
         let vars: BTreeMap<String, Value> = [("data".into(), data.into())].into();
 
-        let ress = self.ds.execute(&sql, &self.ses, Some(vars), false).await?;
+        self.ds.execute(&sql, &self.ses, Some(vars), false).await?;
         Ok(())
     }
     pub async fn update_item(&self, item : Item) -> Result<()> {
@@ -134,7 +132,7 @@ impl Store {
         let data: BTreeMap<String, Value> = item.into_values().into();
         let vars: BTreeMap<String, Value> = [("data".into(), data.into())].into();
 
-        let ress = self.ds.execute(&sql, &self.ses, Some(vars), false).await?;
+        self.ds.execute(&sql, &self.ses, Some(vars), false).await?;
         Ok(())
     }
     pub fn set_board(&mut self, board : Board) -> Result<()> {
@@ -143,7 +141,7 @@ impl Store {
     }
     pub fn replace_board(&mut self, mut board : Option<Board>) -> Result<Option<Board>> {
         swap(&mut self.board, &mut board);
-        return Ok(board)
+        Ok(board)
     }
     pub fn fetch_board(&self) -> Result<Option<Board>> {
         Ok(self.board.as_ref().cloned())
@@ -160,14 +158,14 @@ impl Store {
             data.insert("board".into(), board_link.clone().into());
             data.insert("team".into(), 1.into());
             let vars: BTreeMap<String, Value> = [("data".into(), data.into())].into();
-            let ress = self.ds.execute(sql, &self.ses, Some(vars), false).await?;
+            self.ds.execute(sql, &self.ses, Some(vars), false).await?;
         }
         for champ in p2_champs {
             let mut data: BTreeMap<String, Value> = champ.into_values().into();
             data.insert("board".into(), board_link.clone().into());
             data.insert("team".into(), 2.into());
             let vars: BTreeMap<String, Value> = [("data".into(), data.into())].into();
-            let ress = self.ds.execute(sql, &self.ses, Some(vars), false).await?;
+            self.ds.execute(sql, &self.ses, Some(vars), false).await?;
         }
         self.last_board = Some(id);
         Ok(())
@@ -176,7 +174,7 @@ impl Store {
         if self.last_board.is_some() {
             let last_board = self.last_board.clone().unwrap();
             let sql = &format!("UPDATE boards:{last_board} SET outcome = {outcome}");
-            let ress = self.ds.execute(sql, &self.ses, None, false).await?;
+            self.ds.execute(sql, &self.ses, None, false).await?;
             return Ok(())
         }
         Err(Error::LastBoardError)

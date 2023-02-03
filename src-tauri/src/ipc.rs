@@ -4,7 +4,7 @@ use crate::simulator::{champions::Champion, item::Item, board::Board};
 use crate::store::Store;
 use std::collections::VecDeque;
 use std::sync::{Arc};
-use tokio::sync::{RwLock, RwLockReadGuard};
+use tokio::sync::{RwLock};
 use tauri::{command, AppHandle, Manager, Wry};
 
 fn get_store_read_from_state(connection: AppHandle<Wry>) -> Result<Arc<RwLock<Store>>> {
@@ -85,7 +85,7 @@ pub async fn submit_board(player_one_champs : VecDeque<PlacedChampion>, player_t
             items = store_read.fetch_items().await?;
         }
         let mut store_write = store.write().await;
-        store_write.store_board(&player_one_champs, &player_two_champs).await;
+        store_write.store_board(&player_one_champs, &player_two_champs).await?;
         return store_write.set_board(Board::new(&player_one_champs, &player_two_champs, &champs, &items, time_unit, time_till_draw));
     }
     Err(Error::StoreError)

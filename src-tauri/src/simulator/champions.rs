@@ -8,15 +8,10 @@ use core::fmt;
 use rand::Rng;
 use std::collections::VecDeque;
 use std::mem::take;
-use surrealdb::sql::{Value, Object, Thing};
+use surrealdb::sql::{Value, Object};
 use serde::{Serialize, Deserialize};
 use crate::prelude::*;
-use crate::error;
 
-const VALID_ITEMS: [u8; 42] = [
-    1, 2, 3, 4, 5, 6, 7, 8, 11, 12, 13, 14, 15, 16, 17, 18, 22, 23, 24, 25, 26, 27, 28, 33, 34, 35,
-    37, 38, 44, 45, 46, 47, 48, 55, 56, 57, 58, 66, 67, 68, 78, 88,
-];
 ///Stores basic information surrounding a champion
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Champion {
@@ -177,16 +172,6 @@ impl TryFrom<Object> for PlacedChampion {
 }
 
 impl PlacedChampion {
-    pub fn new(id: usize, star: usize, items: [u8; 3], location: Location) -> PlacedChampion {
-        info!("Creating new placed champion {}", id);
-        PlacedChampion {
-            id,
-            star,
-            items,
-            location,
-            team : None
-        }
-    }
     pub fn into_values(&self) -> [(String, Value); 7] {
         [("of_champ".into(), self.id.into()),
          ("star".into(), self.star.into()),
@@ -407,8 +392,8 @@ impl SummonedChampion {
         &mut self,
         friendly_champions: &mut VecDeque<SummonedChampion>,
         enemy_champions: &mut VecDeque<SummonedChampion>,
-        champions : &Vec<Champion>,
-        items : &Vec<Item>
+        champions : &[Champion],
+        items : &[Item]
     ) {
         info!("Setup of Champion {}", self.id);
         {

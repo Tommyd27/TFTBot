@@ -1,5 +1,4 @@
 use super::champions::SummonedChampion;
-use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 enum FilterType {
@@ -56,7 +55,7 @@ impl Location {
         && 2 - (self.y / 2) < self.x
         && 10 - (self.y / 2) > self.x
     }
-    pub fn generate_random_position_team(team: bool) -> Location {
+    /*pub fn generate_random_position_team(team: bool) -> Location {
         let y: i8 = if team {
             rand::thread_rng().gen_range(0..4)
         } else {
@@ -66,7 +65,7 @@ impl Location {
         let high = 10 - (y / 2);
         let x: i8 = rand::thread_rng().gen_range(low..high);
         Location { x, y }
-    }
+    }*/
     pub fn get_closest_to_location<'a>(
         &self,
         enemy_champions: &'a mut VecDeque<SummonedChampion>,

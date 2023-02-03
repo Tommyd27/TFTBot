@@ -34,7 +34,7 @@ pub struct Board {
 }
 
 impl Board {
-    pub fn new (p1_placed_champs: &VecDeque<PlacedChampion>, p2_placed_champs: &VecDeque<PlacedChampion>, champions : &Vec<Champion>, items : &Vec<Item>, time_unit: i8, ticks_till_draw : u32) -> Board {
+    pub fn new (p1_placed_champs: &VecDeque<PlacedChampion>, p2_placed_champs: &VecDeque<PlacedChampion>, champions : &[Champion], items : &[Item], time_unit: i8, ticks_till_draw : u32) -> Board {
         info!("New Board");
         let mut p1_champions = VecDeque::new();
         let mut p2_champions = VecDeque::new();
