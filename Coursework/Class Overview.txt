@@ -7,6 +7,10 @@ class Location:
 		x and y positions need to be saved and z can be calculated.
 		
 		Most methods public as Location's as usually attached to a separate class that wants to utilise methods of Location.
+	Justification:
+		By creating a class for Location the class can hold many key methods to help reduce redundant and repeated code, providing methods for
+		common actions such as checking the distance between two points. Also allows for different classes to hold a Location attribute and therefore
+		have easier interaction between them.
 	Attributes:
 		-(pub) x : i8,
 			Stores the x value.
@@ -180,6 +184,9 @@ class Champion:
 class PlacedChampion:
 	Description:
 		Class to be used to represent a champion placed on a board during setup. Holds a reference to Champion and is converted into SummonedChampion during a battle.
+	Justification:
+		Due to the existence of the champion class, the PlacedChampion class can be simple, only holding an id correlating to a champion. 
+		This means the new class only needs to hold values that make it unique to other PlacedChampion's of the same type, such as its location or items, reducing the quantity of memory used by the program.
 	Attributes:
 		-id : usize,
 			Id of the PlacedChampion, correlates to the ID of a Champion.
@@ -234,6 +241,8 @@ class PlacedChampion:
 class SummonedChampion:
 	Description:
 		Class that represents a champion on a board during a battle. Constructed from a SummonedChampion.
+	Justification:
+		
 	Attributes:
 		-(pub) location : Location,
 			Location of the SummonedChampion
