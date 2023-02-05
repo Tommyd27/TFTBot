@@ -98,6 +98,7 @@ class Champion:
 	Methods:
 		from_object:
 			Converts from an object collected from the database into the Champion class.
+			Required so users can retrieve altered Champion's from the database, allowing alterations they have made to persistent across app runs.
 			Pseudocode:
 				FUNCTION from_object(obj) -> Champion:
 					let ad = obj.get("ad") //retrieves ad from dictionary like object "obj"
@@ -113,6 +114,7 @@ class Champion:
 				ENDFUNCTION
 		into_values:
 			Converts a Champion into an array of key value pairs for storage in the database.
+			Required so users can save altered Champion's from the database, allowing alterations they have made to persistent across app runs.
 			Psuedocode:
 				FUNCTION into_values(self) -> [(String, Value) ; 9]:
 					RETURN [
@@ -242,7 +244,7 @@ class SummonedChampion:
 	Description:
 		Class that represents a champion on a board during a battle. Constructed from a SummonedChampion.
 	Justification:
-		
+		Unlike PlacedChampion that only has to hold the id of a champion and its location (essentially), SummonedChampion needs to hold all the stats/ fields that are required for the simulation as there will be plenty of ways to alter the stats of a SummonedChampion from the base stats on the Champion. For example, placing an item on a SummonedChampion will change the stats of it, that is why the class must hold the require fields so they can be altered. As SummonedChampion's are only required while simulating the battle, while creating or viewing a board PlacedChampions are sufficient as they use much less memory. 
 	Attributes:
 		-(pub) location : Location,
 			Location of the SummonedChampion
@@ -567,6 +569,9 @@ enum DamageType:
 		A type of variable which can take on one of three forms.
 		PhysicalDamage, MagicalDamage or TrueDamage.
 		Correlates to the three damage types in TFT
+	Justification:
+		Required to differentiate between the damage types, by creating an enum I can create more readable and understandable code as opposed to an integer id system (where 0 is true damage, 1 is physical etc).
+		It also means I can ensure all damage types are accounted for when writing code and easily compare/ check damage types.
 
 class Item:
 	Description:
@@ -602,12 +607,15 @@ class Item:
 	Methods:
 		into_values:
 			Converts the item into a key value array to insert into the database.
+			Required to users can save altered item stats allowing changes to be persistent.
 		try_from_object:
 			Trys to create an item object from an dictionary like object retrieved from the database.
+			Required to users can retrieve altered item stats allowing changes to be persistent.
 
 class Projectile:
 	Description:
 		A class for a projectile, can be created by abilities.
+		Encapsulates the behaviour of a projectile, simplifying code and avoiding redundant code. For instance, by adding a location field to the projectile, it alows the projectile to check if it is out of bounds easily, being able to delete itself if so to avoid wastefully simulating something that will not come into play.
 	Attributes:
 		location : Location,
 			Current location of the projectile
@@ -801,6 +809,7 @@ There will also be a number of accompanying useful utility functions I will crea
 Functions:
 	find_champion_index_from_id:
 		Retrieves the index of a champion in a vector, returning None if it is not found.
+		It is a good idea to create a function for this behavior as it will be very commonly used, as, for example, SummonedChampion objects hold a target id that references another SummonedChampion's id, which will need retrieving from a vector. If the summonedchampion were to hold the index rather than id of its target, then when SummonedChampion's die and are removed, the index would be made invalidated and be focusing the wrong object, which may even lead to an out of bounds index error in some scenarios.
 		Psuedocode:
 			find_champion_index_from_id(champions : Vec<SummonedChampion>, id : usize) -> Option<usize>:
 				let i : usize = 0 //initialise counting variable i to 0
