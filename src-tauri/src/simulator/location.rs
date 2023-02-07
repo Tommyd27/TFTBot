@@ -1,6 +1,7 @@
 use super::champions::SummonedChampion;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
+use rand::Rng;
 enum FilterType {
     ///i8 : Distance to check
     ///Location : Other Location
@@ -55,7 +56,7 @@ impl Location {
         && 2 - (self.y / 2) < self.x
         && 10 - (self.y / 2) >= self.x
     }
-    /*pub fn generate_random_position_team(team: bool) -> Location {
+    pub fn generate_random_position_team(team: bool) -> Location {
         let y: i8 = if team {
             rand::thread_rng().gen_range(0..4)
         } else {
@@ -65,7 +66,7 @@ impl Location {
         let high = 10 - (y / 2);
         let x: i8 = rand::thread_rng().gen_range(low..high);
         Location { x, y }
-    }*/
+    }
     pub fn get_closest_to_location<'a>(
         &self,
         enemy_champions: &'a mut VecDeque<SummonedChampion>,
@@ -102,13 +103,8 @@ impl Location {
         enemy_champions
             .iter_mut()
             .enumerate()
+            .filter(|(i, x)| x.get_is_targetable())
             .reduce(|(i, x), (j, y)| {
-                if !x.get_is_targetable() {
-                    return (j, y);
-                } else if !y.get_is_targetable() {
-                    return (i, x);
-                }
-
                 if x.location.distance_between_points(self)
                     < y.location.distance_between_points(self)
                 {

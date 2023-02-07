@@ -1,45 +1,61 @@
+// Import required types from other modules
 use super::location::Location;
 use super::projectiles::Projectile;
 use super::shields::Shield;
 use super::status_effects::{StatusEffect, StatusType, Stun};
 use super::utils::{find_champion_index_from_id, find_champion_index_from_id_targetable, sign};
-use super::item::{Item};
-use core::fmt;
-use rand::Rng;
-use std::collections::VecDeque;
-use std::mem::take;
-use surrealdb::sql::{Value, Object};
-use serde::{Serialize, Deserialize};
+use super::item::Item;
 use crate::prelude::*;
 
-///Stores basic information surrounding a champion
+// Import functionality from core
+use core::fmt;
+use rand::Rng;
+use rand::seq::SliceRandom;
+use std::collections::VecDeque;
+use std::mem::take;
+
+// Import surrealdb Value object and serde Serialize.
+use surrealdb::sql::{Value, Object};
+use serde::{Serialize, Deserialize};
+
+
+///Champion struct<br />
+///Holds basic information about the champion
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Champion {
     ///index in champions array
     pub id: u8,
-    ///healthpoints (star level dependent)
+
+    ///healthpoints 
     hp: f32,
+
     ///starting mana
     sm: i16,
+
     ///ability mana cost
     mc: i16,
+
     ///base armor value
     ar: f32,
+
     ///Base Magic Resist Value
     mr: f32,
-    ///attack damage (star level dependent)
+
+    ///attack damage
     ad: f32,
+
     ///attack speed (attacks per second)
     attack_speed: f32,
+
     ///attack range
     ra: i8,
-    /*///ability id: index in abilities array
-    a_id: usize,*/
 }
 
+///Converts from a surrealdb Object to a champion
 impl TryFrom<Object> for Champion {
     type Error = Error;
     fn try_from(mut obj: Object) -> Result<Self> {
+        //fetch and convert values from the object
         let ad : f32 = obj.remove("ad").unwrap().as_float() as f32;
         let ar : f32 = obj.remove("ar").unwrap().as_float() as f32;
         let attack_speed : f32 = obj.remove("attack_speed").unwrap().as_float() as f32;
@@ -49,9 +65,11 @@ impl TryFrom<Object> for Champion {
         let mr : f32 = obj.remove("mr").unwrap().as_float() as f32;
         let ra : i8 = obj.remove("ra").unwrap().as_int() as i8;
         let sm : i16 = obj.remove("sm").unwrap().as_int() as i16;
+        //return new champ
         Ok(Champion { id, hp, sm, mc, ar, mr, ad, attack_speed, ra})
     }
 }
+/// Default values for champs
 impl Default for Champion {
     fn default() -> Self {
         Champion { id: 0, hp: 0.0, sm: 0, mc: 0, ar: 0.0, mr: 0.0, ad: 0.0, attack_speed: 0.0, ra: 0 }
@@ -59,6 +77,7 @@ impl Default for Champion {
 }
 
 impl Champion {
+    ///Converts from a champion into String Value array for insertion in database
     pub fn into_values(&self) -> [(String, Value) ; 9] {
         [
             ("id".into(), self.id.into()),
@@ -73,8 +92,8 @@ impl Champion {
         ]
     }
 }
-///CHAMPIONS (const):<br />
-///Stores all the champion information
+
+/// Default champions array
 pub const DEFAULT_CHAMPIONS: [Champion; 4] = [
     //Support
     Champion {
@@ -127,7 +146,7 @@ pub const DEFAULT_CHAMPIONS: [Champion; 4] = [
 ];
 
 ///Enum for the 3 damage types Physical, Magical and True
-#[derive(PartialEq, Eq, Clone, Copy, Debug, Serialize)] //derives clone copy and partial equal
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Serialize)]
 pub enum DamageType {
     Physical(),
     Magical(),
@@ -136,12 +155,11 @@ pub enum DamageType {
     True(),
 }
 
-///PlacedChampion (struct):
+///PlacedChampion:<br />
 ///Stores information about a champion's location and status on a board (as well as ID of actual champion)
-///Not used in battles, only for planning phase
 #[derive(Deserialize, Debug, Serialize)]
 pub struct PlacedChampion {
-    ///id given at instantiation
+    ///id of the associated champion
     id: usize,
 
     ///star level of champion
@@ -153,9 +171,10 @@ pub struct PlacedChampion {
     ///location on board
     location: Location,
 
+    ///option for team
     team : Option<u8>
 }
-
+///Converts from a surrealdb object from the database to a PlacedChampion
 impl TryFrom<Object> for PlacedChampion {
     type Error = Error;
     fn try_from(mut obj: Object) -> Result<Self> {
@@ -172,6 +191,7 @@ impl TryFrom<Object> for PlacedChampion {
 }
 
 impl PlacedChampion {
+    ///converts a placed champion into a String value array for insertion into the database
     pub fn into_values(&self) -> [(String, Value); 7] {
         [("of_champ".into(), self.id.into()),
          ("star".into(), self.star.into()),
@@ -182,27 +202,50 @@ impl PlacedChampion {
          ("location_y".into(), self.location.y.into())
         ]
     }
+    ///generates a random placed champion
+    pub fn generate_random_champ(id_range : usize, valid_items : &Vec<u8>, team : bool) -> PlacedChampion {
+        //generates a random id and star level
+        let id = rand::thread_rng().gen_range(0..id_range);
+        let star = rand::thread_rng().gen_range(0..3) as usize;
+
+        //initialise item array
+        let mut items : [u8 ; 3] = [0, 0, 0];
+        for i in 0..rand::thread_rng().gen_range(0..3) {
+            //choose item from valid_items
+            items[i] = *valid_items.choose(&mut rand::thread_rng()).unwrap();
+        }
+        //generate random location
+        let location = Location::generate_random_position_team(team);
+        
+        //returns placed champion
+        PlacedChampion { id, star, items, location, team: None }
+    }
 }
 
 ///Struct for champion placed on board in a battle
 #[derive(Debug, Clone, Serialize)]
 pub struct SummonedChampion {
-    ///array of p, q coordinates, r can be calculated with r = -p - q
+    ///location
     pub location: Location,
 
+    ///id of associated champion/ placed champion
     of_champ_id : usize,
+
     ///progress of movement before new square, goes up to 10 then moves
     movement_progress: [i8; 2],
 
     ///health
     health: f32,
+
     ///current mana
     cm: i16,
 
     ///dodge chance in %
     dc: u8,
+
     ///crit rate in %
     cr: u8,
+
     ///crit damage
     crit_damage: f32,
 
@@ -224,8 +267,7 @@ pub struct SummonedChampion {
     ///auto attack range
     ra: i8,
 
-
-    ///id
+    ///unique id
     id: usize,
 
     ///cooldown before target chance
@@ -329,8 +371,6 @@ pub struct SummonedChampion {
     ///vec of all shields
     shields: Vec<Shield>,
 
-    /*///trait abilities
-    traits : Vec<u8>,*/
     ///whether zapped from ionic spark
     zap: bool,
 
@@ -343,6 +383,7 @@ pub struct SummonedChampion {
     ///omnivamp (% of healing from damage done)
     omnivamp: f32,
 
+    ///shiv attack count
     shiv_attack_count: u8,
 }
 
@@ -353,10 +394,9 @@ impl SummonedChampion {
             "New Summoned Champion ID : {} Champion ID : {}",
             id, placed_champion.id
         );
-
-        let star_level = placed_champion.star; //get star level
+        //create summoned champ with all details
         SummonedChampion {
-            location: placed_champion.location, //create summoned champ with all details
+            location: placed_champion.location, 
             of_champ_id: placed_champion.id,
             movement_progress: [0, 0],
             initial_hp: 0.0,
@@ -373,7 +413,7 @@ impl SummonedChampion {
             ap: 1.0,
             se: Vec::new(),
             gain_mana_delay: 0,
-            star_level,
+            star_level : placed_champion.star,
             incoming_damage_modifier: 1.0,
             targetable: true,
             shed: 0,
@@ -388,6 +428,7 @@ impl SummonedChampion {
             ..Default::default()
         }
     }
+    ///setup champion
     pub fn setup(
         &mut self,
         friendly_champions: &mut VecDeque<SummonedChampion>,
@@ -397,6 +438,7 @@ impl SummonedChampion {
     ) {
         info!("Setup of Champion {}", self.id);
         {
+            //sets stats to initial values specified by Champion.
             let of_champion = &champions[self.of_champ_id];
             self.health = of_champion.hp;
             self.cm = of_champion.sm;
@@ -408,33 +450,21 @@ impl SummonedChampion {
             self.mc = of_champion.mc;
         }
         {
-            if self.items[0] == 77 {
-                //(!D) doesnt give accurate item pairs
-                info!("Champion has thieves gloves, giving items");
-                let level = true; //implement getting level
-                if level {
-                    self.items[1] =
-                        rand::thread_rng().gen_range(0..9) * 10 + rand::thread_rng().gen_range(0..9);
-                    self.items[2] = rand::thread_rng().gen_range(0..9); //discrepency do this properly later
-                } else {
-                    self.items[1] =
-                        rand::thread_rng().gen_range(0..9) * 10 + rand::thread_rng().gen_range(0..9);
-                    self.items[2] =
-                        rand::thread_rng().gen_range(0..9) * 10 + rand::thread_rng().gen_range(0..9);
-                }
-            }
+            //for each item, give item effect
             for item in self.items {
                 info!("Giving item effect {}", item);
                 self.give_item_effect(item, friendly_champions, enemy_champions, items)
             }
         }
-        
+        //set initial hp to current health, accounting for items etc
         self.initial_hp = self.health;
         info!("Set HP to {}", self.health);
     }
-    ///fn to heal set amount
+    ///heal
     fn heal(&mut self, mut healing_amount: f32) {
         info!("{self} - Healing");
+
+        //check for grevious wounds
         if self.se.contains(&StatusEffect {
             status_type: StatusType::GreviousWounds(),
             ..Default::default()
@@ -443,22 +473,15 @@ impl SummonedChampion {
                 "Has Grevious Wounds cutting halving healing before: {}",
                 healing_amount
             );
-            healing_amount /= 2.0;
+            healing_amount /= 2.0; //cut healing in half
             info!("After {}", healing_amount);
         }
 
-        self.health = self.initial_hp.min(self.health + healing_amount);
+        self.health = self.initial_hp.min(self.health + healing_amount); //make sure health doesn't go higher than initial amount
         info!("{self}");
     }
-    ///simulates a tick/ turn for a champion<br />
-    ///friendlyChampions[selfIndex] : this champion<br />
-    ///friendlyChampionsLocations : location of all friend champs (array of positions), for pathfinding<br />
-    ///enemyChampions : all enemy champions, for targetting<br />
-    ///timeUnit : time unit of a frame, in centiseconds<br />
-    ///movementAmount : precalculated movement distance for 1 frame<br />
-    fn turn_to_void_spawn(&mut self) {
-        error!("Unimplemented turn to voidspawn");
-    }
+    
+    ///takes the turn for a summonedchamp, returns whether the champion is alive at end of turn
     pub fn take_turn(
         &mut self,
         friendly_champions: &mut VecDeque<SummonedChampion>,
@@ -471,54 +494,56 @@ impl SummonedChampion {
         if self.health <= 0.0 {
             info!("Health below zero, removing self");
             return false;
+            //champ is dead
         }
 
         self.target_cooldown = self.target_cooldown.checked_sub(time_unit).unwrap_or(-1); //Reduce cooldown to check target/ find new target
         self.auto_attack_delay = self
             .auto_attack_delay
             .checked_sub(time_unit as i16)
-            .unwrap_or(-1); //Risks going out of bounds as auto attack value may not be called for some time
+            .unwrap_or(-1); //Risks going out of bounds as auto attack value may not be called for some time, so checked subtraction
         self.gain_mana_delay = self
             .gain_mana_delay
             .checked_sub(time_unit as i16)
             .unwrap_or(-1);
 
+
+        {
+            info!("Simulating status effects");
+            let mut status_effects = take(&mut self.se); //takes status effect vec
+            let mut stun = Stun { stun: 0 }; // setting stun to 0
+            status_effects.retain_mut(|x| {
+                self.perform_status(x, friendly_champions, enemy_champions, time_unit, &mut stun)
+            }); //perform status for each status effect
+
+            if self.health <= 0.0 {
+                info!("Health below zero from status effect, removing");
+                //died from status effect
+                return false;
+            }
+
+            self.se.extend(status_effects); //extend se by status effects
+            //do NOT set self.se = status_effects, as new status may have been added
+
+            self.update_shed(); //updates shed
+
+            self.shields.retain_mut(|x| x.update_shield(time_unit)); //updates all shields
+
+            if stun.stun == 1 {
+                info!("Is stunned");
+                //stunned
+                return true;
+            }
+        }
         if self.banish {
+            //banished
             info!("Is banished");
             return true;
         }
 
         {
-            info!("Simulating status effects");
-            let mut status_effects = take(&mut self.se);
-            let mut stun = Stun { stun: 0 };
-            status_effects.retain_mut(|x| {
-                self.perform_status(x, friendly_champions, enemy_champions, time_unit, &mut stun)
-            });
-
-            if self.health <= 0.0 {
-                info!("Health below zero from status effect, removing");
-                return false;
-            }
-
-            self.se.extend(status_effects);
-
-            self.update_shred();
-
-            self.shields.retain_mut(|x| x.update_shield(time_unit));
-
-            if stun.stun == 1 {
-                info!("Is stunned");
-                return true;
-            }
-        }
-
-        //does auto attack delay need to reset on pathing? does attack instantly after reaching path/ in range
-
-        {
             info!("Calculating auto attack or movement");
-            //targetObject/ pathfinding block
-            let mut need_new_target_cell: bool = false; //Bool to store whether new path is needed
+            let mut need_new_target_cell: bool = false; //bool to store whether new path is needed
 
             let mut target_object: Option<SummonedChampion> = None;
 
@@ -526,31 +551,29 @@ impl SummonedChampion {
                 info!("Cooldown above zero, trying to find target {}", self.target);
                 //if already has target and doesnt want to change targets
                 if let Some(index) =
-                    find_champion_index_from_id_targetable(enemy_champions, self.target)
+                    find_champion_index_from_id_targetable(enemy_champions, self.target) //try to find target
                 {
                     target_object = enemy_champions.swap_remove_back(index);
+                    //target found
                     info!("Target found? : {}", target_object.is_some());
                 }
             }
 
             if target_object.is_none() {
-                //index not updating from initial intilialisation of 99, therefore need new target
+                //target_object not found
                 info!("Could not find target or need new target");
                 self.target_cooldown = 100; //reset target cooldown
 
                 need_new_target_cell = true; //tells us to recalculate pathfinding later
-                                             //discrepency what if target has moved regardless
+                
                 let mut index: Option<usize> = None;
                 if let Some((i, champ)) = self
                     .location
-                    .get_closest_to_location_targetable_index(enemy_champions)
-                {
-                    if champ.get_is_targetable() {
-                        info!("Found closest to location that is targetable index : {i}");
-                        index = Some(i)
-                    }
+                    .get_closest_to_location_targetable_index(enemy_champions) {
+                    index = Some(i);//get closest to location that is targetable
                 }
                 if index.is_none() {
+                    //no targetable champions, ending turn
                     info!("No targetable champions, ending turn");
                     return true;
                 }
@@ -560,16 +583,17 @@ impl SummonedChampion {
 
             let mut target_object: SummonedChampion = target_object.unwrap();
             info!("Target is {target_object}");
-            self.target = target_object.id;
+            self.target = target_object.id; //set target
+
             let distance_to_target = self
                 .location
-                .distance_between_points(&target_object.location);
+                .distance_between_points(&target_object.location); //get distance to target
             info!("Distance to target {distance_to_target}");
 
             if distance_to_target <= self.ra {
                 //if target in range
                 info!("Target in range, attacking or reducing auto attack cooldown");
-                info!("Auto Attack Delay Remaining {0}", self.auto_attack_delay); //discrepency, does auto attack "charge" while moving
+                info!("Auto Attack Delay Remaining {0}", self.auto_attack_delay);
                 if self.auto_attack_delay <= 0
                 //if autoattack ready
                 {
@@ -594,11 +618,10 @@ impl SummonedChampion {
                     if self.items.contains(&26) {
                         self.attack_speed_modifier *= 1.06;
                         info!("Increasing speed with Rageblade")
-                    } //(!D) if attack speed doesnt increase when attack misses/ is dodged
+                    }
 
-                    //attack speed unclear, capped at five yet some champions let you boost beyond it?
-                    //optimisation definitely here
                     if self.gain_mana_delay <= 0 {
+                        //if can gain mana
                         self.cm += 10;
                         info!("Gaining mana");
                         if self.items.contains(&18) {
@@ -607,11 +630,10 @@ impl SummonedChampion {
                         }
                         info!("Current mana {}", self.cm);
                     }
-                    self.shiv_attack_count += 1;
+                    self.shiv_attack_count += 1; //increase shiv count
                     if self.items.contains(&68) && self.shiv_attack_count == 3 {
-                        //(!O) go through foreach in items and match statement
                         info!("Has shiv and on third auto, applying affect");
-
+                        //shiv effect
                         self.deal_damage(
                             friendly_champions,
                             &mut target_object,
@@ -625,7 +647,7 @@ impl SummonedChampion {
                             is_negative: true,
                             ..Default::default()
                         });
-
+                        //for other champs affected by shiv effect
                         for (i, enemy_champ) in enemy_champions.iter_mut().enumerate() {
                             self.deal_damage(
                                 friendly_champions,
@@ -646,14 +668,14 @@ impl SummonedChampion {
                             }
                         }
                     }
-                    self.shiv_attack_count %= 3;
+                    self.shiv_attack_count %= 3; //make sure shiv count sticks between 0 to 2
                     if self.items.contains(&56) {
-                        //(!D) can be dodged
+                        //doing runaan's second auto attack
                         info!("Has runaan's, performing second auto");
                         warn!("Runaan's can be dodged, treated like normal auto");
                         let closest_other_enemy = self
                             .location
-                            .get_closest_to_location_targetable(enemy_champions);
+                            .get_closest_to_location_targetable(enemy_champions); //fetch closest other champ
                         if let Some(target) = closest_other_enemy {
                             self.deal_damage(
                                 friendly_champions,
@@ -661,7 +683,7 @@ impl SummonedChampion {
                                 self.ad * 0.7,
                                 DamageType::Physical(),
                                 false,
-                            ) //discrepency runaans can miss
+                            ) //do damage
                         }
                     }
                     info!("Auto attacking");
@@ -670,9 +692,9 @@ impl SummonedChampion {
                         || self.items.contains(&66)
                     //calculating whether to dodge
                     {
-                        //(!O) from not generating random gen
+                        //no dodge
                         info!("Not dodged");
-                        self.deal_damage(
+                        self.deal_damage( //deal auto damage
                             friendly_champions,
                             &mut target_object,
                             self.ad,
@@ -681,19 +703,6 @@ impl SummonedChampion {
                         );
 
                         info!("Enemy Champion Health is {0}", target_object.health);
-                        if target_object.health <= 0.0
-                        //if enemy champion dead
-                        {
-                            info!("Health Lower than 0 - Removing");
-
-                            if target_object.items.contains(&36) {
-                                info!("Turning to void spawn");
-                                target_object.turn_to_void_spawn();
-                                //(!D) cant be asked to set everything to default)
-                                //(!D) stats change depending on stage
-                            }
-                            //(!D), only checks for champion death when it is auto attacked
-                        }
                     } else {
                         info!("Dodged Attack");
                     }
@@ -1265,7 +1274,7 @@ impl SummonedChampion {
     pub fn is_shred(&self) -> bool {
         self.shed == 2
     }
-    fn update_shred(&mut self) {
+    fn update_shed(&mut self) {
         if self.shed == 1 {
             self.shed = 2;
         } else {
