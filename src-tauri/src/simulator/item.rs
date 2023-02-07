@@ -1,6 +1,9 @@
+/// Import serde and surrealdb for frontend-backend and database communication
 use serde::{Serialize, Deserialize};
 use surrealdb::sql::{Object, Value};
 use crate::prelude::*;
+
+///default items
 pub const DEFAULT_ITEMS : [Item ; 47] = [
     Item {id : 1, ad : 10.0, health : 0.0, ap : 0.0, ar : 0.0, mr : 0.0, ra : 0, attack_speed_modifier : 1.0, cr : 0, dc : 0, cm : 0, omnivamp : 0.0, crit_damage : 0.0},
     Item {id : 2, ap : 0.1, health : 0.0, ad : 0.0, ar : 0.0, mr : 0.0, ra : 0, attack_speed_modifier : 1.0, cr : 0, dc : 0, cm : 0, omnivamp : 0.0, crit_damage : 0.0},
@@ -51,6 +54,7 @@ pub const DEFAULT_ITEMS : [Item ; 47] = [
     Item {id : 88, cm : 50, health : 0.0, ad : 0.0, ap : 0.0, ar : 0.0, mr : 0.0, ra : 0, attack_speed_modifier : 1.0, cr : 0, dc : 0, omnivamp : 0.0, crit_damage : 0.0},
 ];
 
+///item struct holding base stats and ids
 #[derive(Clone, Copy, Serialize, Deserialize)]
 pub struct Item {
     pub id : u8,
@@ -69,6 +73,7 @@ pub struct Item {
 }
 
 impl Item {
+    ///converts into string value array for insertion in database
     pub fn into_values(&self) -> [(String, Value) ; 13] {
         [
             ("id".into(), self.id.into()),
@@ -90,7 +95,9 @@ impl Item {
 
 impl TryFrom<Object> for Item {
     type Error = Error;
+    ///tries to convert from a database object into an item object
     fn try_from(mut obj: Object) -> Result<Self> {
+        //fetches values from database like object
         let ad = obj.remove("ad").unwrap().as_float() as f32;
         let ap = obj.remove("ap").unwrap().as_float() as f32;
         let ar = obj.remove("ar").unwrap().as_float() as f32;
@@ -108,6 +115,7 @@ impl TryFrom<Object> for Item {
     }
 }
 impl Default for Item {
+    ///default values for item
     fn default() -> Self {
         Item {
             id : 0,
