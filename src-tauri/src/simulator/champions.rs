@@ -707,22 +707,21 @@ impl SummonedChampion {
                         info!("Dodged Attack");
                     }
                 }
+                //return target
                 enemy_champions.push_back(target_object);
             } else {
                 info!("Not in Range");
                 if need_new_target_cell || self.location == self.target_cells {
-                    //if need to update pathfinding or at pathfinding target
-                    //optimisation?, accuracy vs performance cost
+                    //checks if need new pathfinding target
                     info!("Need Target Cell");
                     self.target_cells = self.location; //setting target cells to location so if it does not find a target this frame will try to do it again
-                                                       //optimisation does not need to check every frame
-
+                            
                     let mut lowest_distance: i8 = i8::MAX; //setting lowestDistance to high value
                     let mut new_position;
                     for possible_move in [[0, -1], [1, -1], [1, 0], [-1, 0], [-1, 1], [0, 1]]
                     //for every possible move
-                    //optimisation
                     {
+                        //calculate distance
                         new_position = Location::add_position_vec(&self.location, possible_move);
                         let distance_to_target = target_object
                             .location
@@ -735,8 +734,9 @@ impl SummonedChampion {
                             {
                                 continue;
                             }
+                            //if distance lower, position valid and there is no other friendly champion in cell
                             info!("Found target cell {}", new_position);
-                            lowest_distance = distance_to_target;
+                            lowest_distance = distance_to_target;//set new target cell
                             self.target_cells = new_position;
                         }
                     }
@@ -744,7 +744,7 @@ impl SummonedChampion {
 
                 info!("Moving to Target Cell {}", self.target_cells);
                 self.movement_progress[0] +=
-                    movement_amount * sign(self.target_cells.x - self.location.x); //optimisation here
+                    movement_amount * sign(self.target_cells.x - self.location.x); //add movement progress
                 info!(
                     "Position ({0:?}) -- Movement Progress ({1:?})",
                     self.location, self.movement_progress

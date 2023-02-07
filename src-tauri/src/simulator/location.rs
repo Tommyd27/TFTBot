@@ -102,8 +102,8 @@ impl Location {
     ) -> Option<(usize, &'a mut SummonedChampion)> {
         enemy_champions
             .iter_mut()
+            .filter(|x| x.get_is_targetable())
             .enumerate()
-            .filter(|(i, x)| x.get_is_targetable())
             .reduce(|(i, x), (j, y)| {
                 if x.location.distance_between_points(self)
                     < y.location.distance_between_points(self)
