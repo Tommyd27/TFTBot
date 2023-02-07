@@ -1,33 +1,44 @@
+// Import Serialize from serde so Board can be sent to frontend.
 use serde::Serialize;
 
+// Import the necessary types from other modules.
 use super::champions::{PlacedChampion, SummonedChampion, Champion};
 use super::item::Item;
 use super::projectiles::Projectile;
+
+// Import format and VecDeque from rust collections.
 use core::fmt;
 use std::collections::VecDeque;
+
+/// Constant for movement amount.
 const MOVEMENT_AMOUNT_CONST: i8 = 10;
-///Board Struct:<br />
-///Simulates battles
+
+/// Board Struct:<br/>
+/// Simulates Battles
 #[derive(Clone, Serialize)]
 pub struct Board {
-    ///vecdeque of player 1's champs
+    /// A vector deque (double ended vector) of player 1's summoned champions.
     p1_champions: VecDeque<SummonedChampion>,
 
-    ///vecdeque of player 2's champs
+    /// A vector deque of player 2's summoned champions.
     p2_champions: VecDeque<SummonedChampion>,
 
-    ///time unit for board in centiseconds (1/100 of a second)
+    /// Time unit for board in centiseconds (1/100 of a second).
     time_unit: i8,
 
-    ///movement amount per tick, is calculated by const / time unit
+    /// Movement amount per tick, is calculated by const / time unit.
     movement_amount: i8,
 
+    /// Number of ticks until the battle is declared a draw.
     ticks_till_draw : u32,
 
+    /// The current count/ number of ticks that has passed.
     tick_count : u32,
 
+    /// A vector of player 1's projectiles.
     p1_projectiles: Vec<Projectile>,
 
+    /// A vector 
     p2_projectiles: Vec<Projectile>,
 
     dead_champs: VecDeque<SummonedChampion>
