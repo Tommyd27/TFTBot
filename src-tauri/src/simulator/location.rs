@@ -76,7 +76,7 @@ impl Location {
         &self,
         champion_list: &'a mut VecDeque<SummonedChampion>,
     ) -> Option<&'a mut SummonedChampion> {
-        ///iterates through the champion_list, reducing it by comparing the distance to this location (reducing is comparing two sequential elements in the list and keeping the smaller one/ one that fits the bounds and repeating for the entire list, until you have only one)
+        //iterates through the champion_list, reducing it by comparing the distance to this location (reducing is comparing two sequential elements in the list and keeping the smaller one/ one that fits the bounds and repeating for the entire list, until you have only one)
         champion_list.iter_mut().reduce(|x, y| {
             if x.location.distance_between_points(self) < y.location.distance_between_points(self) {
                 x

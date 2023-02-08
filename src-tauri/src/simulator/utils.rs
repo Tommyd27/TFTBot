@@ -29,11 +29,13 @@ pub fn find_champion_index_from_id_targetable(
     champions: &VecDeque<SummonedChampion>,
     id: usize,
 ) -> Option<usize> {
-    let mut out: Option<usize> = None;
     info!("finding from id targetable");
     //checks ID index first
-    if id < champions.len() && champions[id].equal_id(id) && champions[id].get_is_targetable() {
-        return Some(id)
+    if id < champions.len() && champions[id].equal_id(id) {
+        if champions[id].get_is_targetable() {
+            return Some(id)
+        }
+        return None
     } else {
         for (i, champ) in champions.iter().enumerate() { //iterates through all champions searching for index
             if champ.equal_id(id) {

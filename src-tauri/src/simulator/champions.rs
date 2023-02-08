@@ -946,7 +946,7 @@ impl SummonedChampion {
         projectiles: &mut Vec<Projectile>,
     ) {
         info!("casting ability");
-        ///match id to its selected ability
+        //match id to its selected ability
         match self.id {
             0 => { //support ability
 
