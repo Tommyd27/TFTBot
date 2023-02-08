@@ -8,29 +8,29 @@
     }
     async function fetch_items() {
         items_list = await invoke("retrieve_all_items")
-    }
+    } //fetch champs and items
     let champs_list = []
     let items_list = []
-    fetch_champs()
+    fetch_champs() //initialise champs and items list and fetch them
     fetch_items()
-    let opacity_champ_error = 0
+    let opacity_champ_error = 0 //set errors for champ and items opacity to 0
     let opacity_item_error = 0
-    let selected_unit = fetch_champs()
-    let selected_item = fetch_items()
+    let selected_unit //initialise selected unit and item
+    let selected_item
 
     async function handle_submit_update_champ (e) {
-        if (check_valid_champ(selected_unit)) {
+        if (check_valid_champ(selected_unit)) { //if the selected unit is valid, update the unit
             await invoke("update_unit", {selectedUnit : selected_unit})
-            fetch_champs()
-            opacity_champ_error = 0
+            fetch_champs() //fetch new champ
+            opacity_champ_error = 0 //hide error
         }
         else {
-            opacity_champ_error = 100
+            opacity_champ_error = 100 //show champ error
         }
         
     }
 
-    function check_valid_champ(champ) {
+    function check_valid_champ(champ) { //makes sure champ values are reasonable/ will not cause errors
         if (champ.ad < 0 || champ.ad > 9999) { return false }
         if (champ.hp <= 0 || champ.health > 9999) { return false }
         if (champ.attack_speed < 0 || champ.attack_speed > 20) { return false }
@@ -42,7 +42,7 @@
         return true
     }
 
-    function check_valid_item(item) {
+    function check_valid_item(item) { //make sure item values are reasonable/ will not cause errors
         if (item.ad < 0 || item.ad > 9999) { return false }
         if (item.ap < 0 || item.ap > 9999) { return false }
         if (item.health < 0 || item.health > 9999) { return false }
@@ -59,22 +59,22 @@
     }
 
     async function handle_submit_update_item (e) {
-        if (check_valid_item(selected_item)) {
-            await invoke("update_item", {selectedItem : selected_item})
-            fetch_items()
-            opacity_item_error = 0
+        if (check_valid_item(selected_item)) { //if item is valid
+            await invoke("update_item", {selectedItem : selected_item}) //update item
+            fetch_items() //fetch new item
+            opacity_item_error = 0 //hide item erorr
         }
         else {
-            opacity_item_error = 100
+            opacity_item_error = 100 //show item error
         }
         
     }
 
 </script>
 <div class="row">
-    <div class="column">
+    <div class="column"> <!--split page into two-->
         <h1>Change Unit Stats</h1>
-        <form on:submit|preventDefault={handle_submit_update_champ}>
+        <form on:submit|preventDefault={handle_submit_update_champ}> <!--create form-->
             <label>ID</label>
             <select bind:value = {selected_unit} required>
                 {#each champs_list as champ}
@@ -84,7 +84,7 @@
                 {/each}
             </select>
             <br>
-            <label>AD</label>
+            <label>AD</label> <!--create inputs for all required values-->
             <input type= "number" bind:value="{selected_unit.ad}" step = 0.01 required><br>
             <label>HP</label>
             <input type="number" bind:value="{selected_unit.hp}" step = 0.01 required><br>
@@ -103,13 +103,13 @@
 
             <button type = "submit">Submit</button>
 
-            <h1 style="opacity : {opacity_champ_error}">Invalid values for some or all variables, please try again.</h1>
+            <h1 style="opacity : {opacity_champ_error}">Invalid values for some or all variables, please try again.</h1> <!--create error that is hidden most of the time-->
         </form>
     </div>
     <div class="column">
         <h1>Change Item Stats</h1>
-        <form on:submit|preventDefault={handle_submit_update_item}>
-            <label>ID</label>
+        <form on:submit|preventDefault={handle_submit_update_item}> <!--create form for item stats-->
+            <label>ID</label><!--create inputs for all required values-->
             <select bind:value = {selected_item} required>
                 {#each items_list as item}
                     <option value = {item}>
@@ -156,12 +156,13 @@
 
             <button type = "submit">Submit</button>
 
-            <h1 style="opacity : {opacity_item_error}">Invalid values for some or all variables, please try again.</h1>
+            <h1 style="opacity : {opacity_item_error}">Invalid values for some or all variables, please try again.</h1> <!--create error that is hidden most of the time-->
         </form>
     </div>
 </div> 
 
 <style>
+    /* create flex box and set each column to 50% of page */
     .row {
         display: flex;
     }
