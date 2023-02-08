@@ -8,13 +8,14 @@ pub fn find_champion_index_from_id(
     champions: &VecDeque<SummonedChampion>,
     id: usize,
 ) -> Option<usize> {
-    //(!D) swap this out for check targetable as well
     info!("finding champ from id");
+    //checks whether the champion at index ID is has the correct id, as ids are initially assigned by index
     if id < champions.len() && champions[id].equal_id(id) {
         info!("found from index");
         return Some(id);
     }
 
+    //else checks every champion for the id
     for (i, champ) in champions.iter().enumerate() {
         if champ.equal_id(id) {
             info!("found from id");
@@ -30,19 +31,22 @@ pub fn find_champion_index_from_id_targetable(
 ) -> Option<usize> {
     let mut out: Option<usize> = None;
     info!("finding from id targetable");
-    if id < champions.len() && champions[id].equal_id(id) {
-        out = Some(id)
+    //checks ID index first
+    if id < champions.len() && champions[id].equal_id(id) && champions[id].get_is_targetable() {
+        return Some(id)
     } else {
-        for (i, champ) in champions.iter().enumerate() {
+        for (i, champ) in champions.iter().enumerate() { //iterates through all champions searching for index
             if champ.equal_id(id) {
-                out = Some(i);
-                break;
+                //checks if targetable
+                if champ.get_is_targetable() {
+                    return Some(i)
+                }
+                //not targetable, save time by not iterating through rest of vector
+                return None
             }
         }
     }
-    if out.is_some() && champions[out.unwrap()].get_is_targetable() {
-        return out;
-    }
+    //champ not found
     None
 }
 

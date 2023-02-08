@@ -1,9 +1,10 @@
+//import require types from other files
 use super::{
     champions::{DamageType, SummonedChampion},
     location::Location,
     utils::{find_champion_index_from_id, sign},
 };
-
+//import serialise and vecdeque
 use serde::Serialize;
 use std::collections::VecDeque;
 ///Projectile struct
@@ -46,7 +47,7 @@ impl Projectile {
         dead_champions: &mut VecDeque<SummonedChampion>,
     ) -> bool {
         info!("Simulating projectile");
-        let target_location = match self.target_location //discrepency only checks after move to theoretically could phase through someone
+        let target_location = match self.target_location //if self has target location, set target location to that, else get the location of the target champion.
 		{
 			Some(location) => {
                 info!("Target {location}");
@@ -56,8 +57,8 @@ impl Projectile {
 				info!("Finding location from id : {:?}", out_location);
                 match out_location
 				{
-					Some(index) => possible_targets[index].location,
-					None => Location { x: -1, y: -1 },
+					Some(index) => possible_targets[index].location, //if target is still alive, return its location
+					None => Location { x: -1, y: -1 }, //set location to invalid
 				}
                 
 
@@ -68,7 +69,7 @@ impl Projectile {
             return false;
         } //not found, remove projectile
 
-        let subtracted_distance = Location::sub_positions(&target_location, &self.location);
+        let subtracted_distance = Location::sub_positions(&target_location, &self.location); //get location difference
 
         self.location_progress[0] += self.speed * sign(subtracted_distance.x);
         self.location_progress[1] += self.speed * sign(subtracted_distance.y); //add location progress
@@ -92,9 +93,9 @@ impl Projectile {
             //has a hit
             {
                 info!("has a hit");
-                let mut dead = false;
+                let mut dead = false; //stores whether need to add to dead champions or alive
                 let mut shooter: SummonedChampion;
-
+                //if shooter alive, fetch from friendly champions, else fetch from dead champions, this is because deal damage requires damage dealer to apply correct effects
                 if let Some(shooter_index) =
                     find_champion_index_from_id(friendly_champions, self.shooter_id)
                 {
@@ -103,9 +104,9 @@ impl Projectile {
                     info!("shooter alive");
                 } else {
                     let dead_champion_index =
-                        find_champion_index_from_id(dead_champions, self.shooter_id).unwrap();
+                        find_champion_index_from_id(dead_champions, self.shooter_id).unwrap(); //fetch from dead champions
                     shooter = dead_champions.swap_remove_back(dead_champion_index).unwrap();
-                    dead = true;
+                    dead = true; //remember to add to dead champions later
                     info!("shooter dead")
                 }
                 shooter.deal_damage(
@@ -134,14 +135,14 @@ impl Projectile {
                     }
                 }
                 if !dead {
-                    friendly_champions.push_back(shooter)
+                    friendly_champions.push_back(shooter) //push to alive
                 } else {
-                    dead_champions.push_back(shooter)
+                    dead_champions.push_back(shooter) //push to dead
                 }
-                return false; //remove self
+                return false; //has exploded, so return false
             }
         }
-        true
+        true //still alive
     }
     ///Makes new projectile
     pub fn new(

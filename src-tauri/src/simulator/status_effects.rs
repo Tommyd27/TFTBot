@@ -133,7 +133,7 @@ impl Default for StatusEffect {
 }
 
 impl PartialEq for StatusEffect {
-    fn eq(&self, other: &Self) -> bool {
+    fn eq(&self, other: &Self) -> bool { //checks whether two status effects share a status type
         self.status_type == other.status_type
     }
 }

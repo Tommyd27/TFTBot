@@ -20,14 +20,15 @@ extern crate log;
 #[tokio::main]
 async fn main() -> Result<()> {
     env::set_var("RUST_LOG", "error");
-    env_logger::init();
+    env_logger::init(); //setup logger
+
     info!("Program Start Up");
-    let store = Store::new().await?;
-    if store.setup().await.is_ok() {
-        let store = Arc::new(RwLock::new(store));
-        tauri::Builder::default()
+    let store = Store::new().await?; //create a new store
+    if store.setup().await.is_ok() { //if store setup ok
+        let store = Arc::new(RwLock::new(store)); //create new Arc and RwLock of store for cross-thread mutability
+        tauri::Builder::default() //call tauri builder to create app
             .manage(store)
-            .invoke_handler(tauri::generate_handler![
+            .invoke_handler(tauri::generate_handler![ //give commands
                 retrieve_all_items,
                 retrieve_all_units,
                 retrieve_item_from_id,
@@ -49,7 +50,7 @@ async fn main() -> Result<()> {
         Ok(())
     }
     else {
-        Err(Error::DatabaseError("Failure to Start Up"))
+        Err(Error::DatabaseError("Failure to Start Up")) //return database error
     }
     
 }
