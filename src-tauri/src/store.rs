@@ -1,15 +1,18 @@
-use std::collections::BTreeMap;
 
+//import require types
 use crate::prelude::*;
 use crate::simulator::board::Board;
 use crate::simulator::champions::PlacedChampion;
 use crate::simulator::{
     champions::Champion, champions::DEFAULT_CHAMPIONS, item::Item, item::DEFAULT_ITEMS,
 };
+use std::collections::BTreeMap;
 use surrealdb::sql::{Object, Value};
 use surrealdb::{Datastore, Response, Session};
-use std::mem::{swap};
 use std::collections::VecDeque;
+
+//import swap
+use std::mem::swap;
 ///Holds connection to database, a board and the last board simulated
 pub struct Store {
     ///database file
@@ -145,14 +148,18 @@ impl Store {
             .map(|f| Item::try_from(f.unwrap()).unwrap())
             .collect())
     }
+    ///updates a champion's value
     pub async fn update_champion(&self, champion : Champion) -> Result<()> {
+        //create sql, update champ with id : id
         let sql = format!("UPDATE champions:{id} CONTENT $data", id = champion.id);
+        //turn champion into values
         let data: BTreeMap<String, Value> = champion.into_values().into();
         let vars: BTreeMap<String, Value> = [("data".into(), data.into())].into();
-
+        //execute statement
         self.ds.execute(&sql, &self.ses, Some(vars), false).await?;
         Ok(())
     }
+    ///updates an item's values
     pub async fn update_item(&self, item : Item) -> Result<()> {
         let sql = format!("UPDATE items:{id} CONTENT $data", id = item.id);
         let data: BTreeMap<String, Value> = item.into_values().into();
@@ -161,91 +168,112 @@ impl Store {
         self.ds.execute(&sql, &self.ses, Some(vars), false).await?;
         Ok(())
     }
+    ///takes in a board as input and sets the self.board field to it
     pub fn set_board(&mut self, board : Board) -> Result<()> {
         self.board = Some(board);
         Ok(())
     }
+    ///replace the self.board value with the given value, returning the old value
     pub fn replace_board(&mut self, mut board : Option<Board>) -> Result<Option<Board>> {
         swap(&mut self.board, &mut board);
         Ok(board)
     }
+    ///clones the current board and returns it
     pub fn fetch_board(&self) -> Result<Option<Board>> {
         Ok(self.board.as_ref().cloned())
     }
+    ///stores a board with given placed champions
     pub async fn store_board(&mut self, p1_champs : &VecDeque<PlacedChampion>, p2_champs : &VecDeque<PlacedChampion>) -> Result<()> {
+        //create board sql with unknown outcome
         let sql = "CREATE boards SET outcome = 0";
         let ress = self.ds.execute(sql, &self.ses, None, false).await?;
+        //fetch id of new field created
         let id = fetch_id(ress);
-
+        //create sql
         let sql = "CREATE boards_champ CONTENT $data";
+        //create link to board field
         let board_link = format!("boards:{id}");
+        //for each champ in p1_champs
         for champ in p1_champs {
+            //turn champ into values
             let mut data: BTreeMap<String, Value> = champ.into_values().into();
+            //insert into data link to board value
             data.insert("board".into(), board_link.clone().into());
+            //insert into data team value
             data.insert("team".into(), 1.into());
+            //create vars
             let vars: BTreeMap<String, Value> = [("data".into(), data.into())].into();
+            //execute statement
             self.ds.execute(sql, &self.ses, Some(vars), false).await?;
         }
         for champ in p2_champs {
+            //repeat for player 2 champs
             let mut data: BTreeMap<String, Value> = champ.into_values().into();
             data.insert("board".into(), board_link.clone().into());
             data.insert("team".into(), 2.into());
             let vars: BTreeMap<String, Value> = [("data".into(), data.into())].into();
             self.ds.execute(sql, &self.ses, Some(vars), false).await?;
         }
+        //set last board to this board id
         self.last_board = Some(id);
         Ok(())
     }
+    ///updates the outcome of the last board
     pub async fn update_outcome(&self, outcome : u8) -> Result<()> {
-        if self.last_board.is_some() {
-            let last_board = self.last_board.clone().unwrap();
-            let sql = &format!("UPDATE boards:{last_board} SET outcome = {outcome}");
+        if self.last_board.is_some() { //if there is last board
+            let last_board = self.last_board.clone().unwrap(); //clone the string
+            let sql = &format!("UPDATE boards:{last_board} SET outcome = {outcome}"); //update the board outcome in the database with the new outcome
             self.ds.execute(sql, &self.ses, None, false).await?;
             return Ok(())
         }
-        Err(Error::LastBoardError)
+        Err(Error::LastBoardError) //return last board error
     }
-
+    ///returns a vector of a outcome, board ID pair
     pub async fn fetch_outcomes(&self) -> Result<Vec<(i64, String)>> {
-        let sql = "SELECT * FROM boards";
+        let sql = "SELECT * FROM boards"; //select all from boards
         let ress = self.ds.execute(sql, &self.ses, None, false).await?;
-
-
+        //execute statement, get result
+        
+        //turn ress into iterator of objects, map the objects to an outcome, id pair and return
         Ok(into_iter_objects(ress)?.map(|obj| {
             let mut obj = obj.unwrap();
             (obj.remove("outcome").unwrap().as_int(), Value::from(obj.remove("id").unwrap().record().unwrap().id).as_string())
         }).collect())
     }
 
+    ///fetch the board state of a board with id : ID
     pub async fn fetch_outcome_board(&self, id : String) -> Result<Vec<PlacedChampion>> {
+        //fetch all champs from boards_champ with board id id
         let sql = &format!("SELECT * FROM boards_champ WHERE board = boards:{id}");
         let ress = self.ds.execute(sql, &self.ses, None, false).await?;
+        //map result iterator into a vector of placedChampions
         Ok(into_iter_objects(ress)?.map(|f| PlacedChampion::try_from(f.unwrap()).unwrap()).collect())
     }
 
 
 }
 
-
+///small utility piece of code to fetch the id of the first result from a response
+///<br /> fairly obtuse piece of code enclosed in a function to avoid redundant repeated code
 fn fetch_id(ress: Vec<Response>) -> String {
     Value::from(into_iter_objects(ress).unwrap().next().unwrap().unwrap().remove("id").unwrap().record().unwrap().id).as_string()
 }
 
 ///code taken from: https://www.youtube.com/watch?v=iOyvum0D3LM
 fn into_iter_objects(ress: Vec<Response>) -> Result<impl Iterator<Item = Result<Object>>> {
-    let res = ress
-        .into_iter()
-        .next()
-        .map(|rp: Response| rp.result)
-        .transpose()?;
+    let res = ress 
+        .into_iter() //turns ress into an iterator of responses
+        .next() //gets the first response (as in this project, I only make one request per statement, so there will next be any other responses)
+        .map(|rp: Response| rp.result) //get the result of the response
+        .transpose()?; //swap Option<Result> into Result<Option>
     match res {
-        Some(Value::Array(arr)) => {
+        Some(Value::Array(arr)) => { //if res is an array of responses
             let it = arr.into_iter().map(|v| match v {
-                Value::Object(object) => Ok(object),
-                _ => Err(Error::DatabaseError("A record was not an object")),
+                Value::Object(object) => Ok(object), //map each value into an object
+                _ => Err(Error::DatabaseError("A record was not an object")), //return error if invalid
             });
-            Ok(it)
+            Ok(it) //return iterator
         }
-        _ => Err(Error::DatabaseError("No records found")),
+        _ => Err(Error::DatabaseError("No records found")), //return database error
     }
 }

@@ -4,7 +4,7 @@
     <div class = "bottom"></div>
     
 </div>
-<!---->
+<!--just an indent so every other hexagon row is correctly indented, invisible-->
 
 
 <style>
