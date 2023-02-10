@@ -27,7 +27,7 @@ pub struct Board {
     /// Time unit for board in centiseconds (1/100 of a second).
     time_unit: i8,
 
-    /// Movement amount per tick, is calculated by const / time unit.
+    /// Movement amount per tick, is calculated by const * time unit.
     movement_amount: i8,
 
     /// Number of ticks until the battle is declared a draw.
@@ -90,7 +90,7 @@ impl Board {
             p1_champions,
             p2_champions,
             time_unit,
-            movement_amount: MOVEMENT_AMOUNT_CONST / time_unit, //(!O)
+            movement_amount: MOVEMENT_AMOUNT_CONST * time_unit / 10, //(!O)
             ticks_till_draw,
             tick_count: 0,
             p1_projectiles: Vec::new(),
