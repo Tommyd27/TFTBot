@@ -1339,6 +1339,7 @@ impl SummonedChampion {
                             self.health -= dmg_to_do; //deal remainiong damage
                         } else {
                             n_duration = time_next_tick; //set duration to next tick time
+                            self.health -= dmg_per_tick;
                             status_effect.status_type = StatusType::MorellonomiconBurn(
                                 dmg_per_tick,
                                 dmg_to_do - dmg_per_tick,
