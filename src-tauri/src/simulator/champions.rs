@@ -220,6 +220,9 @@ impl PlacedChampion {
         //returns placed champion
         PlacedChampion { id, star, items, location, team: None }
     }
+    pub fn new(id : usize, star : usize, items : [u8 ; 3], location : Location) -> PlacedChampion {
+        PlacedChampion { id, star, items, location, team : None}
+    }
 }
 
 ///Struct for champion placed on board in a battle
@@ -268,7 +271,7 @@ pub struct SummonedChampion {
     ra: i8,
 
     ///unique id
-    id: usize,
+    pub id: usize,
 
     ///cooldown before target chance
     target_cooldown: i8,
@@ -668,7 +671,7 @@ impl SummonedChampion {
                             }
                         }
                     }
-                    self.shiv_attack_count %= 3; //make sure shiv count sticks between 0 to 2
+                    self.shiv_attack_count %= 3; //make sure shiv count sticks between 0 to 3
                     if self.items.contains(&56) {
                         //doing runaan's second auto attack
                         info!("Has runaan's, performing second auto");
@@ -947,7 +950,7 @@ impl SummonedChampion {
     ) {
         info!("casting ability");
         //match id to its selected ability
-        match self.id {
+        match self.of_champ_id {
             0 => { //support ability
 
 
@@ -1058,7 +1061,7 @@ impl SummonedChampion {
                     self.id,
                 ))
             }
-            _ => println!("Unimplemented"),
+            _ => println!("Unimplemented {}", self.id),
         }
     }
     /// get number of enemy champions targetting
@@ -1084,7 +1087,14 @@ impl SummonedChampion {
     ) {
         info!("giving item {}", item);
         if item == 0 { return } //no actual item
-        let item_obj = items[(item as usize) - 1]; //fetch item object
+        let mut item_obj = None;
+        for item_n in items {
+            if item_n.id == item {
+                item_obj = Some(item_n);
+            }
+        }
+        if item_obj.is_none() { return } //can't find item
+        let item_obj = item_obj.unwrap();
         {
             self.health += item_obj.health;
             self.ad += item_obj.ad;
@@ -1439,8 +1449,8 @@ impl SummonedChampion {
                     }
                     StatusType::Zephyr(banish_duration) => {
                         let opposite_location = Location {
-                            x: self.location.y,
-                            y: self.location.x,
+                            x: 13 - self.location.y - (self.location.y % 2) - self.location.x,
+                            y: 7 - self.location.y,
                         }; //gets opposite location
                         opposite_location
                             .get_closest_to_location(enemy_champions)

@@ -58,6 +58,7 @@
 
     function on_mouse_down(champ, e) {
         //on mouse down of drag and drop
+        
         selected_champ_or_item = structuredClone(champ) //clone champ so as not to change by reference the original
         id = champ.id //update id
         show_drag = 100 //show the drag object

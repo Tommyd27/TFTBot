@@ -103,6 +103,7 @@
         
     }
     async function jump_forward() { //simulate x ticks then fetch board
+        if (play) { return }
         await invoke("simulate_x_ticks", {numTicks : jump_ticks_num})
         await fetch_board()
     }
@@ -178,6 +179,7 @@
                 <HexagonIndent></HexagonIndent>
             {/if}
             {#each row as hex, j} <!-- create hexagon with champ at location i j-->
+                
                 <Hexagon champion = {grid[i][j]} on:click = {() => hex_click(i, j)}></Hexagon>
             {/each}
             <div class = "hex-row"></div> <!-- create new row-->

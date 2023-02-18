@@ -20,11 +20,11 @@
     }
     //fetch specific board
     async function view_battle(battle_id) {
-        let outcomes = await invoke("fetch_outcome_board", {id : battle_id}) //fetch board
-        for(let i = 0; i < outcomes.length; i++) {
-            outcomes[i].team -= 1 //reduce team by 1, as they are stored as 1 larger than they should be in database
-            outcomes[i].placed_id = generate_id() //generate id
-            grid[outcomes[i].location.x][outcomes[i].location.y] = outcomes[i] //update grid with new champ
+        let outcome = await invoke("fetch_outcome_board", {id : battle_id}) //fetch board
+        for(let i = 0; i < outcome.length; i++) {
+            outcome[i].team -= 1 //reduce team by 1, as they are stored as 1 larger than they should be in database
+            outcome[i].placed_id = generate_id() //generate id
+            grid[outcome[i].location.x][outcome[i].location.y] = outcome[i] //update grid with new champ
         }
     }
 

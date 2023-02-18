@@ -120,8 +120,7 @@ impl Store {
         Ok(
             into_iter_objects(self.ds.execute(sql, &self.ses, None, false).await?)?
                 .map(|f| {
-                    Value::from(f.unwrap().remove("id").unwrap().record().unwrap().id).as_int()
-                        as u8
+                    fetch_id(f.unwrap()).as_int() as u8
                 })
                 .collect(),
         )
@@ -133,8 +132,7 @@ impl Store {
         Ok(
             into_iter_objects(self.ds.execute(sql, &self.ses, None, false).await?)?
                 .map(|f| {
-                    Value::from(f.unwrap().remove("id").unwrap().record().unwrap().id).as_int()
-                        as u8
+                    fetch_id(f.unwrap()).as_int() as u8
                 })
                 .collect(),
         )
@@ -188,7 +186,7 @@ impl Store {
         let sql = "CREATE boards SET outcome = 0";
         let ress = self.ds.execute(sql, &self.ses, None, false).await?;
         //fetch id of new field created
-        let id = fetch_id(ress);
+        let id = fetch_id(into_iter_objects(ress)?.next().unwrap()?).as_string();
         //create sql
         let sql = "CREATE boards_champ CONTENT $data";
         //create link to board field
@@ -237,7 +235,7 @@ impl Store {
         //turn ress into iterator of objects, map the objects to an outcome, id pair and return
         Ok(into_iter_objects(ress)?.map(|obj| {
             let mut obj = obj.unwrap();
-            (obj.remove("outcome").unwrap().as_int(), Value::from(obj.remove("id").unwrap().record().unwrap().id).as_string())
+            (obj.remove("outcome").unwrap().as_int(), fetch_id(obj).as_string())
         }).collect())
     }
 
@@ -255,8 +253,8 @@ impl Store {
 
 ///small utility piece of code to fetch the id of the first result from a response
 ///<br /> fairly obtuse piece of code enclosed in a function to avoid redundant repeated code
-fn fetch_id(ress: Vec<Response>) -> String {
-    Value::from(into_iter_objects(ress).unwrap().next().unwrap().unwrap().remove("id").unwrap().record().unwrap().id).as_string()
+fn fetch_id(mut obj: Object) -> Value {
+    Value::from(obj.remove("id").unwrap().record().unwrap().id)
 }
 
 ///code taken from: https://www.youtube.com/watch?v=iOyvum0D3LM

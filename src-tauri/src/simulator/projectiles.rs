@@ -119,12 +119,14 @@ impl Projectile {
                 if self.splash_damage > 0.0
                 //if there is splash damage
                 {
+                    let initial_hit = possible_target.id;
                     info!("dealing splash");
                     for possible_secondary_target in possible_targets
                         .iter_mut()
                         .filter(self.location.get_within_distance(3))
                     //iterate through possible splash hits
                     {
+                        if possible_secondary_target.id == initial_hit { continue }
                         shooter.deal_damage(
                             friendly_champions,
                             possible_secondary_target,
@@ -141,6 +143,9 @@ impl Projectile {
                 }
                 return false; //has exploded, so return false
             }
+        }
+        if self.target_location.is_some() && self.target_location.unwrap() == self.location {
+            return false;
         }
         true //still alive
     }

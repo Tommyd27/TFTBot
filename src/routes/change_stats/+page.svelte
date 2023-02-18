@@ -5,18 +5,21 @@
     import { invoke } from "@tauri-apps/api/tauri"
     async function fetch_champs() {
         champs_list = await invoke("retrieve_all_units")
+        return champs_list[0]
     }
     async function fetch_items() {
         items_list = await invoke("retrieve_all_items")
+        return items_list[0]
     } //fetch champs and items
     let champs_list = []
     let items_list = []
-    fetch_champs() //initialise champs and items list and fetch them
-    fetch_items()
+     
+    
     let opacity_champ_error = 0 //set errors for champ and items opacity to 0
     let opacity_item_error = 0
-    let selected_unit //initialise selected unit and item
-    let selected_item
+    //initialise champs and items list and fetch them
+    let selected_unit = fetch_champs() //initialise selected unit and item
+    let selected_item = fetch_items()
 
     async function handle_submit_update_champ (e) {
         if (check_valid_champ(selected_unit)) { //if the selected unit is valid, update the unit
@@ -71,6 +74,9 @@
     }
 
 </script>
+{#await selected_item}
+    <div>Loading...</div>
+{:then} 
 <div class="row">
     <div class="column"> <!--split page into two-->
         <h1>Change Unit Stats</h1>
@@ -160,6 +166,8 @@
         </form>
     </div>
 </div> 
+{/await}
+
 
 <style>
     /* create flex box and set each column to 50% of page */

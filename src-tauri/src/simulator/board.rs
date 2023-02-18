@@ -99,21 +99,40 @@ impl Board {
         }
     }
     ///Generates a random new board
-    pub fn generate_random_board(time_unit: i8, champions : &Vec<Champion>, items : &[Item], ticks_till_draw : u32) -> Board {
+    pub fn generate_random_board(time_unit: i8, champions : &[Champion], items : &[Item], ticks_till_draw : u32) -> Board {
         //randomly selects the number of player 1's and 2's champions in the range 1 to 6
         let num_p1_champs: usize = rand::thread_rng().gen_range(1..6);
         let num_p2_champs: usize = rand::thread_rng().gen_range(1..6);
 
         //fetches all item ids
         let item_ids : Vec<u8> = items.iter().map(|f| f.id).collect();
-
+        let id_range = champions.len();
         //for each champ, generate a random placed champion
         let p1_champions: VecDeque<PlacedChampion> = (0..num_p1_champs)
-            .map(|_ : usize| PlacedChampion::generate_random_champ(champions.len(), &item_ids, false))
+            .map(|_ : usize| PlacedChampion::generate_random_champ(id_range, &item_ids, false))
             .collect();
         let p2_champions: VecDeque<PlacedChampion> = (num_p1_champs
             ..num_p1_champs + num_p2_champs)
-            .map(|_ : usize| PlacedChampion::generate_random_champ(champions.len(), &item_ids, true))
+            .map(|_ : usize| PlacedChampion::generate_random_champ(id_range, &item_ids, true))
+            .collect();
+        //create new board
+        Board::new(&p1_champions, &p2_champions, champions, items, time_unit, ticks_till_draw)
+    }
+    pub fn generate_complex_random_board(time_unit: i8, champions : &[Champion], items : &[Item], ticks_till_draw : u32) -> Board {
+        //randomly selects the number of player 1's and 2's champions in the range 3 to 6
+        let num_p1_champs: usize = rand::thread_rng().gen_range(3..6);
+        let num_p2_champs: usize = rand::thread_rng().gen_range(3..6);
+
+        //fetches all item ids
+        let item_ids : Vec<u8> = items.iter().map(|f| f.id).collect();
+        let id_range = champions.len();
+        //for each champ, generate a random placed champion
+        let p1_champions: VecDeque<PlacedChampion> = (0..num_p1_champs)
+            .map(|_ : usize| PlacedChampion::generate_random_champ(id_range, &item_ids, false))
+            .collect();
+        let p2_champions: VecDeque<PlacedChampion> = (num_p1_champs
+            ..num_p1_champs + num_p2_champs)
+            .map(|_ : usize| PlacedChampion::generate_random_champ(id_range, &item_ids, true))
             .collect();
         //create new board
         Board::new(&p1_champions, &p2_champions, champions, items, time_unit, ticks_till_draw)
@@ -204,6 +223,15 @@ impl Board {
                 break;
             }
         }
+    }
+    pub fn get_winner(&self) -> i8 {
+        if self.p1_champions.is_empty() {
+            return 2
+        }
+        if self.p2_champions.is_empty() {
+            return 1
+        }
+        return 0
     }
 }
 

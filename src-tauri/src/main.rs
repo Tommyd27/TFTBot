@@ -13,7 +13,7 @@ mod ipc;
 
 use crate::ipc::{retrieve_all_items, retrieve_all_units, retrieve_item_from_id, retrieve_unit_from_id, retrieve_all_item_ids, retrieve_all_unit_ids, update_unit, update_item, submit_board, fetch_board, simulate_x_ticks, update_outcome, fetch_outcomes, fetch_outcome_board};
 use crate::prelude::*;
-
+use crate::simulator::perform_tests::perform_test;
 #[macro_use]
 extern crate log;
 
@@ -21,7 +21,6 @@ extern crate log;
 async fn main() -> Result<()> {
     env::set_var("RUST_LOG", "error");
     env_logger::init(); //setup logger
-
     info!("Program Start Up");
     let store = Store::new().await?; //create a new store
     if store.setup().await.is_ok() { //if store setup ok
@@ -54,3 +53,5 @@ async fn main() -> Result<()> {
     }
     
 }
+
+
