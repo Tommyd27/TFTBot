@@ -10,7 +10,7 @@
     let ids = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
     //set default values for time unit and time till draw
     let time_unit = 10
-    let time_till_draw = 10000
+    let time_till_draw = 100000
     
 
     //fetch champs and items func, invoke ipc method
@@ -164,7 +164,7 @@
         constructor(id, items, star_level, location) {
             this.id = id
             this.items = items
-            this.star = star_level
+            this.star = star_level - 1
             this.location = location
             this.team = null
         }

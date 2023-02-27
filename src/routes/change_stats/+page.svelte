@@ -158,7 +158,7 @@
             <input type= "number" bind:value="{selected_item.omnivamp}" step = 0.01 required><br>
 
             <label>Range</label>
-            <input type= "number" bind:value="{selected_item.ra}" step = 0.01 required><br>
+            <input type= "number" bind:value="{selected_item.ra}"required><br>
 
             <button type = "submit">Submit</button>
 

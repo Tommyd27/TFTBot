@@ -61,7 +61,7 @@
         //fetches the board from backend
         board = await invoke("fetch_board")
         //if one side has no champions, declare winner
-        if (board.p1_champions.length == 0 || board.p2_champions.length == 0) {
+        if (board.p1_champions.length == 0 || board.p2_champions.length == 0 || board.ticks_till_draw == board.tick_count) {
             show_over = true
             //show winner then hide after 2 seconds
             await new Promise(r => setTimeout(r, 2000));
@@ -108,7 +108,7 @@
         await fetch_board()
     }
     async function save_battle() {
-        if (board.numTicks != board.ticks_till_draw  && (board.p1_champions.length > 0 && board.p2_champions.length > 0) ) { //if battle isn't over
+        if (board.tick_count != board.ticks_till_draw  && (board.p1_champions.length > 0 && board.p2_champions.length > 0) ) { //if battle isn't over
             show_battle_over = 100 //show battle not over text
             await new Promise(r => setTimeout(r, 500));
             show_battle_over = 0
